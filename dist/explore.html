@@ -39,12 +39,13 @@
  <div class="companion-heading"><div><span class="companion-dot" aria-hidden="true"></span><strong>Your crow companion</strong></div><button id="companion-toggle" aria-label="Expand or collapse conversation" aria-expanded="true">−</button></div>
  <div class="companion-body"><p class="command-intro">Where shall we go?</p><p class="command-hint">Tell me the whole journey. I’ll handle the flight, landing, and view.</p>
  <div class="command-examples"><button data-command="Fly to Osaka, land at Shinsaibashi, and show me around.">Osaka → Shinsaibashi ↗</button><button data-command="Circle around the Eiffel Tower in Paris.">Circle the Eiffel Tower ↻</button></div>
- <div class="voice-card"><div class="voice-heading"><span class="voice-orb" id="voice-orb" aria-hidden="true">◉</span><div><strong>Ask your guide</strong><span id="voice-state">Fly, discover, or plan by voice</span></div><button id="voice-toggle" aria-label="Start live voice guide">Talk ↗</button></div><p class="fine-print">AI voice · Microphone starts when you tap Talk.</p><div id="voice-controls" hidden><button id="voice-mute" aria-pressed="false">Mute mic</button><button id="voice-audio" hidden>Enable audio</button></div><div id="voice-transcript" class="voice-transcript" role="log" aria-label="Live conversation" aria-live="polite"></div><p id="voice-error" class="inline-status error" role="status"></p></div>
+ <div class="voice-card"><div class="voice-heading"><span class="voice-orb" id="voice-orb" aria-hidden="true">◉</span><div><strong>Ask your guide</strong><span id="voice-state">Fly, discover, or plan by voice</span></div><button id="voice-toggle" aria-label="Start live voice guide">Talk ↗</button></div><p class="fine-print">AI voice · Microphone starts when you tap Talk.</p><div id="voice-controls" hidden><button id="voice-mute" aria-pressed="false">Mute mic</button><button id="voice-audio" hidden>Enable audio</button></div><p id="voice-error" class="inline-status error" role="status"></p></div>
  <div id="connection-status" class="connection-status" role="status">Checking AI connection…</div>
-
+ <div id="voice-transcript" class="voice-transcript" role="log" aria-label="Conversation" aria-live="polite"></div>
+ </div><div class="companion-composer">
  <p id="command-status" role="status" class="command-status"></p>
  <button id="command-result" class="command-result" hidden>Open result ↗</button>
- <form id="chat-form" class="chat-form"><label class="sr-only" for="chat-input">Tell your crow where to go</label><input id="chat-input" type="text" maxlength="2000" placeholder="Tell me where to go…" autocomplete="off" required><button id="chat-send" type="submit" aria-label="Send command">↗</button></form>
+ <form id="chat-form" class="chat-form"><label class="sr-only" for="chat-input">Tell your crow where to go</label><input id="chat-input" type="text" maxlength="2000" placeholder="Where next? Ask me anything…" autocomplete="off" enterkeyhint="send" required><button id="chat-send" type="submit" aria-label="Send command">Send ↗</button></form>
  <button id="command-stop" class="command-stop" hidden>Stop current action ■</button>
  </div></aside>
 <dialog id="result-dialog" class="result-dialog" aria-labelledby="result-title"><div class="dialog-top"><h2 id="result-title">Your result</h2><button id="result-close" aria-label="Close result">✕</button></div><div id="result-content"></div></dialog>
@@ -56,6 +57,7 @@
 <script src="location.js"></script>
 <script src="app.js?v=9"></script>
 <link rel="stylesheet" href="panorama-journey.css">
-<script type="module" src="scout.js?v=4"></script>
-<link rel="stylesheet" href="layout.css?v=3"><link rel="stylesheet" href="simple.css"><link rel="stylesheet" href="conversation.css">
+<script src="chat-start.js"></script>
+<script type="module" src="scout.js?v=5"></script>
+<link rel="stylesheet" href="layout.css?v=3"><link rel="stylesheet" href="simple.css"><link rel="stylesheet" href="conversation.css?v=2">
 </body></html>

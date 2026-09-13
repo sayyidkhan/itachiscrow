@@ -1,7 +1,7 @@
 import { PanoramaViewer } from './panorama.js?v=2';
 import { createPanoramaJourney } from './panorama-journey.js';
-import { CrowChat } from './chat.js';
-import { CrowLive } from './live.js';
+import { CrowChat } from './chat.js?v=2';
+import { CrowLive } from './live.js?v=2';
 import { createTravelExperience } from './travel.js';
 
 const $ = id => document.getElementById(id);
@@ -177,13 +177,31 @@ function showResult(kind){
 $('result-close').onclick=closeResult;
 $('result-dialog').addEventListener('close',()=>{if(!$('result-dialog').open)restoreResult();});
 function addMessage(role,text){
+ $('companion').classList.add('has-conversation');
  const p=node('div','',role==='user'?'chat-bubble user':'chat-bubble assistant');
  p.append(node('b',role==='user'?'You':'Crow'));
  const content=node('div','');renderPlan(text,content);p.append(content);$('voice-transcript').append(p);
  while($('voice-transcript').children.length>50)$('voice-transcript').firstElementChild.remove();
- $('voice-transcript').scrollTop=$('voice-transcript').scrollHeight;return p;
+ $('voice-transcript').scrollTop=$('voice-transcript').scrollHeight;
+ const body=$('companion').querySelector('.companion-body');body.scrollTop=body.scrollHeight;return p;
 }
-function abortActions(){actionAbort?.abort();generation?.abort();planning?.abort();window.CrowMap?.pause();}
+new ResizeObserver(()=>{const log=$('voice-transcript');log.scrollTop=log.scrollHeight;}).observe($('voice-transcript'));
+function abortActions(){actionAbort?.abort();generation?.abort();planning?.abort();if(context.mapReady)window.CrowMap?.pause();}
+function waitForMap(signal){
+ if(context.mapReady)return Promise.resolve();
+ note('Your request is queued. Waiting for the 3D map to be ready…');
+ return new Promise((resolve,reject)=>{
+   let timer;
+   const events=['crow:ready','crow:context'];
+   const finish=error=>{clearTimeout(timer);for(const event of events)document.removeEventListener(event,check);signal.removeEventListener('abort',cancel);error?reject(error):resolve();};
+   const cancel=()=>finish(new DOMException('Journey cancelled.','AbortError'));
+   const check=()=>{if(context.mapReady)finish();else if($('loading').querySelector('.failed'))finish(Error('The 3D map could not load. Reload the map and send your destination again.'));};
+   timer=setTimeout(()=>finish(Error('The 3D map is taking too long to load. Try your destination again when the city is ready.')),45000);
+   for(const event of events)document.addEventListener(event,check);
+   signal.addEventListener('abort',cancel,{once:true});
+   if(signal.aborted)cancel();else check();
+ });
+}
 async function resolveCommandPlace(query,city){
  if(/^(here|there|this place|current location)$/i.test(query.trim()))return context.spot||context.destination;
  const places=await window.CrowMap.searchDestinations(city?`${query}, ${city}`:landmarkQuery(query));
@@ -207,7 +225,7 @@ async function executeAction(name,args,{signal,sessionId}={}){
    catch(error){return {status:'partial',landed:true,spot:place,summary:'Landed successfully, but the 360 view could not be generated.',error:error.message};}
  };
  try{
-   if(['travel_to','fly_to','land_at','circle_around','take_off'].includes(name)&&!context.mapReady)throw Error('The map is still getting ready. Try again in a moment.');
+   if(['travel_to','fly_to','land_at','circle_around','take_off'].includes(name)){await waitForMap(controller.signal);guard();}
    if(name==='travel_to'){
      closeResult();
      note(`Finding ${args.landing_spot} in ${args.destination}…`);
@@ -217,7 +235,7 @@ async function executeAction(name,args,{signal,sessionId}={}){
      if(arrival?.status==='cancelled')return arrival;
      return await landAndLook(spot,args.generate_view);
    }
-   if(name==='fly_to'){closeResult();const place=await resolveCommandPlace(args.destination);guard();return await fly(place);}
+   if(name==='fly_to'){closeResult();note(`Finding ${args.destination}…`);const place=await resolveCommandPlace(args.destination);guard();return await fly(place);}
    if(name==='land_at'){closeResult();const place=await resolveCommandPlace(args.spot,context.destination.name);guard();return await landAndLook(place,args.generate_view!==false);}
    if(name==='circle_around'){closeResult();const place=await resolveCommandPlace(args.spot);guard();note(`Circling ${place.name}…`);const result=await window.CrowMap.circleAround(place);if(result?.cancelled)return {status:'cancelled'};note(`Orbit complete around ${place.name}.`);return {status:'completed',place,reducedMotion:result.reducedMotion||false};}
    if(name==='generate_panorama')return await generateScene(controller.signal,args.regenerate===true);
@@ -236,15 +254,16 @@ const live = new CrowLive({
   onTranscript(event){let entry=transcripts.get('current');if(!entry||entry.role!==event.role){entry={role:event.role,element:addMessage(event.role,''),text:''};transcripts.set('current',entry);}entry.text+=event.delta;entry.element.lastElementChild.textContent=entry.text.slice(-5000);$('voice-transcript').scrollTop=$('voice-transcript').scrollHeight;},
   onAction:executeAction
 });
-const chat=new CrowChat({getContext:liveContext,onAction:executeAction,onMessage:addMessage,onBusy:busy=>{commandBusy=busy;$('chat-send').disabled=busy;$('chat-input').setAttribute('aria-busy',String(busy));$('command-stop').hidden=!busy&&!liveState.pendingAction;}});
+const chat=new CrowChat({getContext:liveContext,onAction:executeAction,onMessage:addMessage,onProgress:text=>note(text),onError:error=>note(error.message,true),onBusy:busy=>{commandBusy=busy;$('companion').classList.toggle('busy',busy);$('chat-send').disabled=busy;$('chat-send').textContent=busy?'Sending…':'Send ↗';$('chat-input').setAttribute('aria-busy',String(busy));$('command-stop').hidden=!busy&&!liveState.pendingAction;}});
 function stopCommand(){chat.stop();chat.completedConversation=null;live.cancelActions();abortActions();note('Stopped. Where next?');}
 $('command-stop').onclick=stopCommand;
-$('chat-form').onsubmit=event=>{event.preventDefault();const message=$('chat-input').value.trim();if(!message)return;$('chat-input').value='';if(/^(stop|pause|cancel)[.!]?$/i.test(message)){addMessage('user',message);stopCommand();addMessage('assistant','Stopped.');return;}live.cancelActions();abortActions();chat.send(message);};
+$('chat-form').onsubmit=event=>{event.preventDefault();const message=$('chat-input').value.trim();if(!message)return;if(commandBusy&&!/^(stop|pause|cancel)[.!]?$/i.test(message)){note('Finish or stop the current request before sending another.');return;}$('chat-input').value='';if(/^(stop|pause|cancel)[.!]?$/i.test(message)){addMessage('user',message);stopCommand();addMessage('assistant','Stopped.');return;}live.cancelActions();abortActions();chat.send(message);};
+$('chat-input').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.isComposing){event.preventDefault();$('chat-form').requestSubmit();}});
 for(const button of document.querySelectorAll('[data-command]'))button.onclick=()=>{$('chat-input').value=button.dataset.command;$('chat-input').focus();};
 $('companion-toggle').onclick=()=>{const compact=$('companion').classList.toggle('compact');$('companion-toggle').setAttribute('aria-expanded',String(!compact));$('companion-toggle').textContent=compact?'+':'−';};
 window.addEventListener('pagehide',()=>chat.stop());
 async function connectStatus(){
-  try{const status=await request('/api/status');capabilities=status.capabilities||{};instagramConnection=status.instagram||{};$('connection-status').textContent=capabilities.live?'● Voice & images ready':'Voice & images are not available yet';$('instagram-status').textContent=capabilities.instagram?'Instagram connected. Refresh to find recent public hashtag photos.':'Connect Instagram through Meta to see recent public hashtag photos.';
+  try{const status=await request('/api/status');capabilities=status.capabilities||{};instagramConnection=status.instagram||{};$('connection-status').textContent=capabilities.chat?'● Chat connected · Enter or Send to reply':capabilities.live?'Voice connected · Text chat unavailable':'AI chat is not configured';$('instagram-status').textContent=capabilities.instagram?'Instagram connected. Refresh to find recent public hashtag photos.':'Connect Instagram through Meta to see recent public hashtag photos.';
     $('instagram-connect').disabled=!instagramConnection.oauthAvailable;$('instagram-connect').hidden=Boolean(instagramConnection.selectedAccount);
     $('instagram-disconnect').hidden=!instagramConnection.selectedAccount;
     $('instagram-connection').textContent=instagramConnection.selectedAccount?`Connected as ${instagramConnection.selectedAccount.username||instagramConnection.selectedAccount.name}.`:instagramConnection.connection==='account_selection_required'?'Choose the Instagram account to connect.':instagramConnection.oauthAvailable?'Sign in through Facebook to connect a professional Instagram account linked to a Facebook Page.':'Instagram sign-in hasn’t been set up for this app yet.';

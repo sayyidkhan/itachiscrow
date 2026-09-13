@@ -22,6 +22,8 @@ Open the map and type a request or choose **Talk**. The conversation window is t
 
 Typed and spoken commands share validated application tools. The model chooses actions, waits for their results, and reports cancellations or partial failures. A landing requests a generated view by default. The microphone starts only when you choose Talk; text chat works without microphone access.
 
+Press **Enter** or **Send** to submit text. The conversation shows thinking, place lookup and journey progress immediately, with the input kept below the scrollable messages. Travel actions wait up to 45 seconds for map readiness; **Stop current action** cancels that wait. Replies time out visibly, and an expired conversation restarts automatically for a new message without replaying an earlier action. Publish `chat-start.js` with the other browser files: it preserves the draft and prevents a form reload if the main chat module has not loaded.
+
 Paris resolves to the Eiffel Tower when no more specific destination is requested. Other city and landmark searches remain available. Café results include Google photos, ratings, original Maps links and a separate sourced offer search.
 
 Upload a JPEG, PNG or WebP under 5 MB in **Picture yourself here**. The upload stays in the current tab and is sent to the server and OpenAI only when generation is requested; it is not saved to disk by the upload endpoint. The result is labelled AI-generated and has a download link. Changing destinations or removing the photo cancels pending portrait generation and discards stale results. Generated portraits are separate from the Google map and 360° panorama.

@@ -8,6 +8,7 @@ import { chromium } from 'playwright-core';
 const output = new URL('../_debug/scout-verification/', import.meta.url);
 await mkdir(output, { recursive: true });
 const files = new Set(['index.html', 'home.css', 'home.js', 'explore.html', 'simple.css', 'conversation.css', 'chat.js', 'style.css', 'scout.css', 'layout.css', 'scout.js', 'travel.js', 'travel.css', 'live.js', 'panorama.js', 'panorama-journey.js', 'panorama-journey.css', 'music.js', 'music.css', 'location.js']);
+files.add('chat-start.js');
 const server = createServer(async (request, response) => {
   const name = new URL(request.url, 'http://localhost').pathname.slice(1) || 'index.html';
   if (name === 'app.js' || name === 'config.js') { response.writeHead(200, { 'Content-Type': 'text/javascript' }); response.end('/* replaced by deterministic test Maps contract */'); return; }
@@ -21,7 +22,8 @@ const report = { checks: [], failures: [], pageErrors: [], blockedExternalReques
 let browser, page;
 let imageUrl;
 let failExplore=false;
-let capabilities = { live: true, panorama: true, plan: true, instagram: false };
+let capabilities = { chat: true, live: true, panorama: true, plan: true, instagram: false };
+let chatFailure=false;
 let instagramConnection = { oauthAvailable: false, connection: 'app_not_configured', accounts: [], selectedAccount: null };
 const pending = {};
 function holdNext(name) {
@@ -56,6 +58,7 @@ try {
     const emit = name => document.dispatchEvent(new CustomEvent('crow:' + name, { detail: clone() }));
     const places = { Kyoto: { name: 'Kyoto, Japan', lat: 35.0036, lng: 135.7782, address: 'Kyoto, Japan' }, Paris: { name: 'Paris, France', lat: 48.8566, lng: 2.3522 }, Market: { name: 'Nishiki Market', lat: 35.005, lng: 135.765, address: 'Nakagyo, Kyoto' } };
     window.__crowMock = { searches: [], flights: [], landings: [], microphoneCalls: 0,
+      setReady(ready) { state.mapReady=ready;emit(ready?'ready':'context'); },
       change(destination, spot = null) { state.destination = destination; state.spot = spot; state.mode = spot ? 'landed' : 'hovering'; emit('destination'); },
       resolveSearch: null };
     window.CrowMap = {
@@ -122,6 +125,7 @@ try {
       capabilities = { ...capabilities, instagram: false };
     }
     if(name==='explore'&&failExplore){await route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({error:{message:'Test image service unavailable.'}})});return;}
+    if(name==='chat'&&chatFailure){await route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({error:{message:'The guide is temporarily unavailable. Please try again.'}})});return;}
     const result = name === 'chat' ? (body.results ? {conversationId:'chat-test',text:'Arrived and ready to look around.',calls:[]} : {conversationId:'chat-test',calls:[{call_id:'journey-test',name:'travel_to',arguments:JSON.stringify({destination:'Kyoto',landing_spot:'Market',generate_view:true})}]})
       : name === 'status' ? { capabilities, instagram: instagramConnection, traveller: {portrait:true,discovery:true,savedPhoto:true} }
       : name === 'portrait' ? { imageUrl, synthetic:true }
@@ -223,8 +227,8 @@ try {
     const call=report.apiRequests.filter(x=>x.path==='/api/panorama/explore').at(-1);
     assert.equal(call.body.sourceImage,imageUrl);assert.match(call.body.viewImage,/^data:image\/jpeg;base64,/);
     assert.equal(call.body.selection.x,.5);assert.equal(call.body.selection.y,.5);
-    await page.screenshot({path:new URL('panorama-loading.png',output).pathname});hold.release();
-    await page.waitForFunction(()=>document.getElementById('panorama-journey-message').textContent.includes('arrived'));
+    try{await page.screenshot({path:new URL('panorama-loading.png',output).pathname,timeout:15000});}finally{hold.release();}
+    await page.waitForFunction(()=>document.getElementById('panorama-journey-message').textContent.includes('arrived'),{},{timeout:15000});
     assert(!await page.locator('.pano-loading').count());assert(await canvas.isVisible());
   });
   await check('Failed panorama exploration preserves the old view and allows retry',async()=>{
@@ -496,6 +500,60 @@ try {
     await page.locator('#chat-input').fill('stop');await page.locator('#chat-send').click();
     assert.equal(report.apiRequests.length,calls);
     assert.match(await page.locator('#command-status').textContent(),/Stopped/);
+  });
+  await check('Enter shows immediate chat progress and Stop cancels a delayed reply',async()=>{
+    const hold=holdNext('chat');
+    await page.locator('#chat-input').fill('eifel tower');await page.locator('#chat-input').press('Enter');await hold.wait;
+    assert.match(await page.locator('#voice-transcript').textContent(),/eifel tower/);
+    assert.match(await page.locator('#command-status').textContent(),/Thinking/);
+    assert(await page.locator('#chat-send').isDisabled());
+    for(const width of [1280,390,320]){
+      await page.setViewportSize({width,height:740});
+      const input=await page.locator('#chat-input').boundingBox();
+      assert(input&&input.y>=0&&input.y+input.height<=740);
+      assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+      await page.screenshot({path:new URL('chat-thinking-'+width+'.png',output).pathname});
+    }
+    const flights=await page.evaluate(()=>window.__crowMock.flights.length);
+    await page.locator('#command-stop').click();hold.release();await page.waitForTimeout(80);
+    assert.equal(await page.evaluate(()=>window.__crowMock.flights.length),flights);
+    assert(await page.locator('#chat-send').isEnabled());
+  });
+  await check('A travel command waits for map readiness then executes once without resubmission',async()=>{
+    await page.evaluate(()=>window.__crowMock.setReady(false));
+    const before=await page.evaluate(()=>window.__crowMock.flights.length);
+    await page.locator('#chat-input').fill('Fly to Kyoto and land at Market');await page.locator('#chat-send').click();
+    await page.waitForFunction(()=>document.getElementById('command-status').textContent.includes('queued'));
+    assert.equal(await page.evaluate(()=>window.__crowMock.flights.length),before);
+    await page.evaluate(()=>window.__crowMock.setReady(true));
+    await page.waitForFunction(()=>!document.getElementById('chat-send').disabled);
+    assert.equal(await page.evaluate(()=>window.__crowMock.flights.length),before+1);
+    await page.locator('#panorama-close').click();
+  });
+  await check('Stop removes a queued travel command before the map is ready',async()=>{
+    await page.evaluate(()=>window.__crowMock.setReady(false));
+    const before=await page.evaluate(()=>window.__crowMock.flights.length);
+    await page.locator('#chat-input').fill('Kyoto');await page.locator('#chat-send').click();
+    await page.waitForFunction(()=>document.getElementById('command-status').textContent.includes('queued'));
+    await page.locator('#command-stop').click();await page.evaluate(()=>window.__crowMock.setReady(true));
+    await page.waitForTimeout(80);
+    assert.equal(await page.evaluate(()=>window.__crowMock.flights.length),before);
+    assert.match(await page.locator('#command-status').textContent(),/Stopped/);
+  });
+  await check('A failed chat request displays a visible error and allows retry',async()=>{
+    chatFailure=true;
+    await page.locator('#chat-input').fill('hello');await page.locator('#chat-input').press('Enter');
+    await page.waitForFunction(()=>document.getElementById('command-status').classList.contains('error'));
+    assert.match(await page.locator('#voice-transcript').textContent(),/temporarily unavailable/);
+    assert(await page.locator('#chat-send').isEnabled());chatFailure=false;
+  });
+  await check('A missing chat module preserves the draft and does not reload on Enter',async()=>{
+    await page.route('**/scout.js?*',route=>route.fulfill({status:200,contentType:'text/javascript',body:''}));
+    await page.goto(origin+'/explore.html',{waitUntil:'networkidle'});
+    await page.locator('#chat-input').fill('eifel tower');await page.locator('#chat-input').press('Enter');
+    assert.equal(page.url(),origin+'/explore.html');
+    assert.equal(await page.locator('#chat-input').inputValue(),'eifel tower');
+    assert.match(await page.locator('#command-status').textContent(),/Chat is still starting/);
   });
   await check('Browser integration has no uncaught JavaScript errors or unmocked external requests', async () => {
     assert.deepEqual(report.pageErrors, []);

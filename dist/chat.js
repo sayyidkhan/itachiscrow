@@ -1,4 +1,4 @@
-import { validateLiveAction } from './live.js';
+import { validateLiveAction } from './live.js?v=2';
 
 // Typed and spoken commands use the same validated application action handler.
 export class CrowChat {
@@ -10,18 +10,34 @@ export class CrowChat {
     this.conversationId=this.completedConversation||null;
     this.options.onMessage?.('user',message);this.options.onBusy?.(true);
     const current=()=>this.run===controller&&!controller.signal.aborted;
-    let body={message},steps=0;
+    let body={message},steps=0,restarted=false;
     const completedCalls=new Map();
     try{
       while(current()){
         if(++steps>10)throw Error('That request needed too many steps. Try a shorter journey.');
-        const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},signal:controller.signal,body:JSON.stringify({...body,conversationId:this.conversationId||undefined,context:this.options.getContext()})});
-        const data=await response.json().catch(()=>null);
+        this.options.onProgress?.(body.message?'Thinking about your request…':'Checking the journey result…');
+        const requestController=new AbortController();
+        const abort=()=>requestController.abort();
+        controller.signal.addEventListener('abort',abort,{once:true});
+        const timeout=setTimeout(abort,this.options.timeoutMs??70000);
+        let response,data;
+        try{
+          response=await (this.options.fetch||fetch)('/api/chat',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},signal:requestController.signal,body:JSON.stringify({...body,conversationId:this.conversationId||undefined,context:this.options.getContext()})});
+          data=await response.json().catch(()=>null);
+        }catch(error){
+          if(controller.signal.aborted)throw error;
+          throw Error(requestController.signal.aborted?'The guide took too long to reply. Please send your request again.':'The guide could not be reached. Check your connection and try again.');
+        }finally{clearTimeout(timeout);controller.signal.removeEventListener('abort',abort);}
+        if(!current())return;
+        if(response.status===410&&body.message&&!restarted){this.completedConversation=null;this.conversationId=null;restarted=true;continue;}
         if(!response.ok||!data){if(response.status===410)this.completedConversation=null;throw Error(data?.error?.message||'The guide could not reply. Please try again.');}
         if(!current())return;
         this.conversationId=data.conversationId;
         if(data.text)this.options.onMessage?.('assistant',data.text);
-        if(!data.calls?.length){this.completedConversation=this.conversationId;return;}
+        if(!data.calls?.length){
+          if(!data.text?.trim())throw Error('The guide returned an empty reply. Please try again.');
+          this.completedConversation=this.conversationId;this.options.onProgress?.('');return;
+        }
         const results=[];
         for(const call of data.calls){
           if(!current())return;
@@ -39,7 +55,7 @@ export class CrowChat {
         }
         body={results};
       }
-    }catch(error){if(current())this.options.onMessage?.('assistant',error.message);}
+    }catch(error){if(current()){this.completedConversation=null;this.options.onMessage?.('assistant',error.message);this.options.onError?.(error);}}
     finally{if(this.run===controller){this.run=null;this.options.onBusy?.(false);}}
   }
 }
