@@ -1,30 +1,140 @@
 # Itachi’s Crow
 
-Explore Chelsea, New York through a flying 3D crow inside Google’s photorealistic city map.
+**Scout a city before you arrive.**
 
-Live demo: https://itachis-crow.promptalchemistlabs.chatgpt.site
+A browser-based travel exploration prototype that lets you follow an animated 3D crow through a real city, look around the neighbourhood, and investigate nearby businesses.
 
-## Features
+[Launch the live demo](https://itachis-crow.promptalchemistlabs.chatgpt.site) · [Report a bug or suggest an idea](https://github.com/sayyidkhan/itachiscrow/issues)
 
-- Original three-part GLB crow with articulated wings, layered feathers and banking turns.
-- Prepared Chelsea flight route with gentle swerves and a following camera.
-- Pause, orbit the map, resume, restart, change speed and camera height.
-- Discover nearby businesses and inspect available Google Places details.
+> **Status:** Hackathon prototype · **Demo location:** Chelsea, New York · **Hosting:** GPT Sites
+
+## The idea
+
+Choosing somewhere to visit involves more than knowing its address. What does the neighbourhood look like? What is nearby? Does the area fit the experience you want?
+
+Itachi’s Crow explores a more visual way to answer those questions: fly through the city with a crow as your guide, pause when something catches your attention, and inspect places along the way.
+
+The longer-term vision is an AI travel scout that adapts exploration to your interests and helps turn discoveries into an itinerary. The current release implements the 3D flight and place-discovery foundation.
+
+## Try the experience
+
+1. Open the [live demo](https://itachis-crow.promptalchemistlabs.chatgpt.site) and let the city load.
+2. Select **Start flight** to follow the crow around the prepared Chelsea loop.
+3. Pause or drag the map to explore from another angle.
+4. Select **Places**, or a supported business label, to investigate a location.
+5. Save places during your session, then resume the flight.
+
+| Control | What it does |
+| --- | --- |
+| Start / Pause / Resume | Follow the crow or pause to explore |
+| Restart ↺ | Return to the beginning of the route |
+| Speed | Switch between 0.5×, 1× and 1.5× |
+| Higher / Lower view | Change the camera viewpoint |
+| Place labels | Show or hide the map’s labels |
+| Places | Find nearby businesses and open their details |
+
+## What works today
+
+- **A crow inside the 3D map:** three GLB model parts form its body and articulated wings, with layered feather geometry.
+- **Animated flight:** wingbeats, gliding phases, gentle swerves and banking turns along a prepared route.
+- **A following camera:** the view travels with the crow; pausing lets you orbit the scene.
+- **Place discovery:** nearby business search and available details such as address, opening hours, website and phone number.
+- **Session saves:** shortlist places while the page remains open.
+- **Responsive controls:** a layout designed for phones and desktop browsers.
+
+## How it works
+
+The app loads Google’s 3D map, places the crow’s model parts at geographic coordinates, and updates their positions and rotations during flight. A moving camera follows the route. Place selections request business information through Google Places.
+
+| Component | Implementation |
+| --- | --- |
+| Interface and flight logic | HTML, CSS and vanilla JavaScript |
+| City rendering | Google Maps JavaScript API, `maps3d` library |
+| Crow rendering | Native `Model3DElement` objects with GLB assets |
+| Business information | Google Places library |
+| Asset generation | Python, NumPy, trimesh and Matplotlib |
+| Live hosting | GPT Sites |
+
+The supplied city imagery is rendered by Google. The app does not generate a new city replica, and the current release does not call an AI model for recommendations.
 
 ## Run locally
 
-1. Copy `dist/config.example.js` to `dist/config.js` and add a Google Maps browser API key with access to 3D Maps and Places.
-2. Run `python3 -m http.server 8000 --directory dist` from this repository.
-3. Open http://localhost:8000.
+### Requirements
 
-The key is excluded from this repository. Browser keys are visible to visitors; configure website and API restrictions in Google Cloud.
+- Git and Python 3.
+- A browser and device capable of rendering Google’s 3D Maps.
+- Internet access and a Google Maps browser API key with access to the 3D Maps and Places features used by the app.
 
-## Source
+### Setup
 
-`dist/` contains the deployable static site, including the three crow GLBs in `dist/models/`. `scripts/build_crow.py` generates the original models using Python, numpy, trimesh and matplotlib; the committed GLBs are ready to use without running that script.
+```bash
+git clone https://github.com/sayyidkhan/itachiscrow.git
+cd itachiscrow
+```
 
-## Hosting and scope
+Copy `dist/config.example.js` to `dist/config.js`, then edit the new file:
 
-The live application is hosted on GPT Sites. This GitHub copy is a source export, not an automatic deployment pipeline. The prototype uses a prepared route; building collision avoidance, AI itineraries and social feeds are not implemented. Google imagery and place data depend on coverage and API access.
+```javascript
+window.CROW_MAPS_KEY = 'YOUR_GOOGLE_MAPS_BROWSER_KEY';
+```
 
-Exported from Sites source commit `cebef75b960610f945f18e1a58216c5a37333e80`, with the browser key moved into local configuration.
+Start a local server from the repository root:
+
+```bash
+python3 -m http.server 8000 --directory dist
+```
+
+Open [localhost:8000](http://localhost:8000).
+
+`dist/config.js` is ignored by Git. Browser API keys are visible to visitors; use website and API restrictions appropriate to your local and deployed addresses. Available features depend on the key’s permissions and quota.
+
+No npm build, Unreal Engine or Blender installation is needed to run the app.
+
+## Repository guide
+
+| Path | Purpose |
+| --- | --- |
+| `dist/index.html` | Map container, controls and place-detail dialogs |
+| `dist/style.css` | Responsive interface styling |
+| `dist/app.js` | Map setup, flight animation and place discovery |
+| `dist/config.example.js` | Template for the local browser-key configuration |
+| `dist/models/` | Ready-to-use body and wing GLB assets |
+| `scripts/build_crow.py` | Source for generating the crow geometry |
+
+### Regenerate the crow assets — optional
+
+The GLBs are already committed. To rebuild them:
+
+```bash
+python3 -m pip install numpy trimesh matplotlib
+python3 scripts/build_crow.py
+```
+
+This overwrites the three GLBs in `dist/models/` and produces `crow-geometry.png` in the repository root for inspecting the model.
+
+## Current limitations
+
+- Flight follows one prepared Chelsea route. It does not provide free-flight steering, arbitrary destination routing or building collision avoidance.
+- The crow is a custom stylized model; its animation is driven by separate model-part rotations.
+- Saved places are held in memory and reset when the page reloads.
+- Google imagery may be dated or less detailed close to buildings. Place fields may be missing or restricted.
+- Photos, reviews, Instagram content, local news and AI itineraries are not included.
+- Local geometry and flight-logic checks passed during development; live browser rendering has not yet been verified by an automated end-to-end test.
+
+## Roadmap
+
+These are proposed directions, not available features:
+
+- [ ] Select additional cities and neighbourhoods.
+- [ ] Scout destinations and routes on demand.
+- [ ] Add AI guidance based on interests, time and travel preferences.
+- [ ] Introduce switchable “eyes” for food, culture and other perspectives.
+- [ ] Surface relevant local news and permitted social content with source links.
+- [ ] Turn saved discoveries into an editable itinerary.
+- [ ] Improve flight animation, navigation and device performance.
+
+## Deployment
+
+The public demo runs on **GPT Sites**. This repository contains an export of the application source; GitHub commits do not automatically redeploy the live site.
+
+The initial export came from Sites source commit `cebef75b960610f945f18e1a58216c5a37333e80`, with the browser key moved into local configuration.
