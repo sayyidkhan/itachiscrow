@@ -37,16 +37,16 @@ const radians=Math.PI/180;
 const wrapAngle=v=>(v%360+360)%360;
 const angleDelta=(a,b)=>((a-b+540)%360)-180;
 function flightPosition(s){
- const p=at(s),h=bearing(at(s-1),at(s+1))*radians;
- const weave=1.6*Math.sin(s/18);
+ const p=at(s),h=bearing(at(s-8),at(s+8))*radians;
+ const weave=3.4*Math.sin(s*Math.PI*2/64)+.9*Math.sin(s*Math.PI*2/29);
  return {lat:p.lat-Math.sin(h)*weave/111320,lng:p.lng+Math.cos(h)*weave/84300,
  altitude:105+2.2*Math.sin(s/31)+.22*Math.sin(flightTime*2*Math.PI*1.6)};
 }
 function flightBearing(s){return bearing(flightPosition(s-1),flightPosition(s+1));}
 function camera(s){
- const p=flightPosition(s),ahead=at(s+4);
- return {center:{lat:p.lat+(ahead.lat-at(s).lat)*.65,lng:p.lng+(ahead.lng-at(s).lng)*.65,altitude:p.altitude+1.5},
- heading:flightBearing(s),tilt:high?48:65,range:high?90:48,roll:0,fov:50};
+ const p=at(s),ahead=at(s+4);
+ return {center:{lat:p.lat+(ahead.lat-p.lat)*.65,lng:p.lng+(ahead.lng-p.lng)*.65,altitude:106.5+2.2*Math.sin(s/31)},
+ heading:bearing(at(s-10),at(s+10)),tilt:high?48:65,range:high?90:48,roll:0,fov:50};
 }
 function poseCrow(s){
  const position=flightPosition(s);
@@ -54,7 +54,7 @@ function poseCrow(s){
  const cycle=flightTime%3.8;
  const envelope=cycle<2.6?Math.min(1,cycle/.25,(2.6-cycle)/.3):0;
  const flap=8+envelope*32*Math.sin(flightTime*Math.PI*2*1.6);
- const pitch=-Math.cos(s/31)*3;
+ const pitch=-Math.atan2(flightPosition(s+1).altitude-flightPosition(s-1).altitude,2)/radians+.8*envelope*Math.sin(flightTime*Math.PI*2*1.6);
  crowParts.forEach((part,i)=>{
   part.position=position;
   part.orientation={heading:wrapAngle(crowHeading),tilt:wrapAngle(pitch),
@@ -85,11 +85,12 @@ function hint(s){$('hint').textContent=s;}
 function status(s){$('status').textContent=s;}
 function stop(){setFlightView(false);playing=false;transitioning=false;cancelAnimationFrame(frameId);map?.stopCameraAnimation?.();$('fly').innerHTML='Resume flight <span aria-hidden="true">↗</span>';status('Paused · explore the map');}
 function draw(t){if(!playing)return;if(t-last<FRAME_INTERVAL){frameId=requestAnimationFrame(draw);return;}const dt=Math.min((t-last)/1000,.1);last=t;flightTime+=dt;progress+=dt*speed;if(progress>=total){progress=total;stop();$('fly').textContent='Fly again';status('Flight complete');hint('You’ve scouted the block. Tap Places to explore what’s nearby.');$('progress').style.width='100%';$('progress-text').textContent='100%';return;}
- const cam=camera(progress);const turn=angleDelta(cam.heading,crowHeading);
- crowHeading=wrapAngle(crowHeading+turn*Math.min(1,dt*6));
- const curvature=angleDelta(flightBearing(progress+4),flightBearing(progress-4));
- bank+=(Math.max(-32,Math.min(32,curvature*1.6))-bank)*Math.min(1,dt*4);
- heading=wrapAngle(heading+angleDelta(cam.heading,heading)*Math.min(1,dt*3));poseCrow(progress);
+ const cam=camera(progress);const turn=angleDelta(flightBearing(progress),crowHeading);
+ crowHeading=wrapAngle(crowHeading+turn*(1-Math.exp(-dt*6)));
+ const curvature=angleDelta(flightBearing(progress+3),flightBearing(progress-3))*radians/6;
+ const targetBank=Math.atan(speed*speed*curvature/9.81)/radians;
+ bank+=(Math.max(-32,Math.min(32,targetBank))-bank)*(1-Math.exp(-dt*4));
+ heading=wrapAngle(heading+angleDelta(cam.heading,heading)*(1-Math.exp(-dt*2)));poseCrow(progress);
  map.center=cam.center;map.heading=heading;map.tilt=cam.tilt;map.range=cam.range;map.roll=cam.roll;map.fov=cam.fov;
  $('progress').style.width=progress/total*100+'%';$('progress-text').textContent=Math.floor(progress/total*100)+'%';
  const fraction=progress/total;status(fraction<.40?'Gliding · W 23rd Street':fraction<.5?'Turning · 6th Avenue':fraction<.90?'Gliding · W 22nd Street':'Turning · 7th Avenue');frameId=requestAnimationFrame(draw);}

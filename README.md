@@ -36,8 +36,8 @@ The longer-term vision is an AI travel scout that adapts exploration to your int
 ## What works today
 
 - **A crow inside the 3D map:** three GLB model parts form its body and articulated wings, with layered feather geometry.
-- **Animated flight:** wingbeats, gliding phases, gentle swerves and banking turns along a prepared route.
-- **A following camera:** the view travels with the crow; pausing lets you orbit the scene.
+- **Animated flight:** wingbeats, gliding phases and overlapping swerves up to 4.3 metres either side of the prepared route. The crow points along its own path and banks according to its speed and turn curvature, with gentle vertical sway.
+- **A following camera:** the view follows the route centre independently of the crow's swerves and wingbeat bob, so lateral movement stays visible without shaking the view; pausing lets you orbit the scene.
 - **Place discovery:** nearby business search and available details such as address, opening hours, website and phone number.
 - **Session saves:** shortlist places while the page remains open.
 - **Responsive controls:** a layout designed for phones and desktop browsers; secondary panels hide during flight.

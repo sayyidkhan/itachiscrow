@@ -65,6 +65,29 @@ try {
   assert(initial.parts.every(p => new URL(p.src).origin === new URL(url).origin));
   assert(initial.parts.every(p => p.src.endsWith('.glb')));
   report.checks.push('Three same-origin native models; normal startup enabled controls');
+  report.flightMotion = await page.evaluate(() => {
+    const samples = [];
+    for (let s = 30; s < total - 30; s += .25) {
+      const p = flightPosition(s), route = at(s), cam = camera(s);
+      const h = bearing(at(s - 8), at(s + 8)) * radians;
+      const lateral = -(p.lat - route.lat) * 111320 * Math.sin(h) + (p.lng - route.lng) * 84300 * Math.cos(h);
+      samples.push({ s, lateral, altitude: p.altitude, headingDelta: angleDelta(flightBearing(s), cam.heading),
+        bank: Math.atan(speed * speed * angleDelta(flightBearing(s + 3), flightBearing(s - 3)) * radians / 6 / 9.81) / radians });
+    }
+    const priorTime = flightTime, firstCamera = camera(80);
+    flightTime += .3;
+    const cameraIgnoresWingbeat = JSON.stringify(firstCamera) === JSON.stringify(camera(80));
+    flightTime = priorTime;
+    return { minLateral: Math.min(...samples.map(p => p.lateral)), maxLateral: Math.max(...samples.map(p => p.lateral)),
+      maxHeadingSeparation: Math.max(...samples.map(p => Math.abs(p.headingDelta))), cameraIgnoresWingbeat,
+      right: samples.filter(p => p.s > 40 && p.s < 180).sort((a, b) => b.lateral - a.lateral)[0],
+      left: samples.filter(p => p.s > 40 && p.s < 180).sort((a, b) => a.lateral - b.lateral)[0] };
+  });
+  assert(report.flightMotion.minLateral < -3 && report.flightMotion.maxLateral > 3);
+  assert(Math.max(-report.flightMotion.minLateral, report.flightMotion.maxLateral) <= 4.31);
+  assert(report.flightMotion.maxHeadingSeparation > 15);
+  assert(report.flightMotion.cameraIgnoresWingbeat);
+  report.checks.push('Swerves exceed 3 m both sides, stay within 4.3 m, and move independently of the stable camera');
 
   await page.locator('#fly').click();
   await page.waitForFunction(() => playing && progress > 2, null, { timeout: 60000 });
@@ -113,6 +136,18 @@ try {
   assert(Math.abs((await state()).camera.range - 48) < 0.1);
   assert.equal((await state()).camera.fov, 50);
   report.checks.push('Resume advances from the turn; Reset restores route start and pose');
+
+  for (const side of ['right', 'left']) {
+    await page.evaluate(sample => {
+      progress = sample.s; flightTime = progress / speed;
+      crowHeading = flightBearing(progress); bank = Math.max(-32, Math.min(32, sample.bank));
+      poseCrow(progress); const cam = camera(progress); heading = cam.heading; Object.assign(map, cam);
+    }, report.flightMotion[side]);
+    await settled();
+    await capture('17-swerve-' + side);
+  }
+  await page.locator('#restart').click();
+  await settled();
 
   await page.locator('#nearby').click();
   await page.waitForFunction(() => placesLoaded || document.querySelector('#places').textContent.includes('unavailable'), null, { timeout: 60000 });
