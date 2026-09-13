@@ -40,11 +40,11 @@ The longer-term vision is an AI travel scout that adapts exploration to your int
 - **A following camera:** the view travels with the crow; pausing lets you orbit the scene.
 - **Place discovery:** nearby business search and available details such as address, opening hours, website and phone number.
 - **Session saves:** shortlist places while the page remains open.
-- **Responsive controls:** a layout designed for phones and desktop browsers.
+- **Responsive controls:** a layout designed for phones and desktop browsers; secondary panels hide during flight.
 
 ## How it works
 
-The app loads Google’s 3D map, places the crow’s model parts at geographic coordinates, and updates their positions and rotations during flight. A moving camera follows the route. Place selections request business information through Google Places.
+The app loads Google’s 3D map, places the crow’s model parts at geographic coordinates, and updates their positions and rotations during flight. A moving camera follows the route. Flight updates are capped at 24 per second, and controls wait for the renderer’s steady-state event before enabling. The Places library loads when business information is requested.
 
 | Component | Implementation |
 | --- | --- |
@@ -55,7 +55,7 @@ The app loads Google’s 3D map, places the crow’s model parts at geographic c
 | Asset generation | Python, NumPy, trimesh and Matplotlib |
 | Live hosting | GPT Sites |
 
-The supplied city imagery is rendered by Google. The app does not generate a new city replica, and the current release does not call an AI model for recommendations.
+The renderer downloads the crow GLBs from pinned, public GitHub raw URLs with cross-origin access enabled. Local copies remain in `dist/models/`.\n\nThe supplied city imagery is rendered by Google. The app does not generate a new city replica, and the current release does not call an AI model for recommendations.
 
 ## Run locally
 
