@@ -24,3 +24,9 @@ The real voice check initially found that trimming the offer removed its termina
 Instagram OAuth and photo retrieval are implemented and tested with mocked Meta responses. Real Meta sign-in and photos have not been exercised: the app owner must configure `META_APP_ID`, `META_APP_SECRET`, the callback URI, and the required Meta access. Users can then connect eligible professional Instagram accounts through Facebook Login. Hashtag photos are recent public posts, not verified images of the exact landing coordinates.
 
 Generated surroundings remain AI impressions. Mobile checks use a browser viewport rather than a physical phone. The changes run locally; the earlier hosted demo has not been redeployed.
+
+## Integration with the current main branch
+
+The merge retains Crow Studio, the perched and redesigned flight models, saved colour handling, and music alongside destination flight and the optional API features. README, application startup, navigation and dependency conflicts were combined. The Node server serves MP3 audio with its audio MIME type. Music remains reachable with the scout panel open, and the mobile header fits above it.
+
+Verified on the merged files: clean dependency installation, Studio bundle rebuild, 32 backend/voice tests and map contract checks, all four GLB validations, and 17 browser checks with mocked Maps and provider responses. Browser checks include opening Music with the scout panel visible on desktop and mobile and detecting mobile header overlap. Desktop and 390×844 screenshots were inspected. No real AI-provider, real Maps rendering or physical iPhone tests were run for this merge. Production hosting and service configuration were not changed.

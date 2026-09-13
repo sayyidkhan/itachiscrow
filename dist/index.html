@@ -3,7 +3,7 @@
 <body>
 <main id="world" aria-label="Interactive 3D map of Chelsea"></main>
 <div class="vignette" aria-hidden="true"></div>
-<header class="topbar"><div class="brand"><span class="eye" aria-hidden="true">◉</span><div><h1>Itachi’s Crow</h1><p id="destination-label">CHELSEA, NEW YORK</p></div></div><div class="header-actions"><button id="scout-open" class="glass" aria-expanded="true" aria-controls="scout-panel">Explore ↗</button><button id="info" class="glass round" aria-label="About this prototype">?</button></div></header>
+<header class="topbar"><div class="brand"><span class="eye" aria-hidden="true">◉</span><div><h1>Itachi’s Crow</h1><p id="destination-label">CHELSEA, NEW YORK</p></div></div><nav class="header-actions"><a class="glass studio-link" href="customise.html">Customise crow</a><button id="scout-open" class="glass" aria-expanded="true" aria-controls="scout-panel">Explore ↗</button><button id="info" class="glass round" aria-label="About this prototype">?</button></nav></header>
 <div class="flight-state glass"><span id="status">Preparing the city…</span><span id="progress-text">0%</span><div class="track"><div id="progress"></div></div></div>
 <div class="side-tools"><button id="height" class="glass" disabled>Higher view</button><label class="glass labels"><input id="labels" type="checkbox" checked> Place labels</label></div>
 <div id="loading" class="loading glass" role="status"><span class="spinner"></span><h2>Opening Chelsea</h2><p>Bringing the streets into view.</p><button id="reload" hidden>Try again</button></div>
@@ -34,6 +34,8 @@
 <dialog id="panorama-dialog" class="panorama-dialog" aria-labelledby="panorama-title"><div class="dialog-top"><div><span class="eyebrow">YOUR CROW’S POINT OF VIEW</span><h2 id="panorama-title">Look around.</h2></div><button id="panorama-close" aria-label="Close 360 scene">✕</button></div><div id="panorama-view" class="panorama-view"></div><div class="panorama-footer"><p>Drag to look around · Scroll to zoom · Arrow keys to turn<br><span>AI-generated scene, not a live photograph.</span></p><a id="panorama-download" download="crow-panorama.jpg">Save image ↓</a></div></dialog>
 <dialog id="about"><div class="dialog-top"><span class="eyebrow">SCOUT A CITY BEFORE YOU ARRIVE</span><button id="close-about" aria-label="Close about">✕</button></div><h2>The world, with a little perspective.</h2><p>Fly to a destination, pick a place to land, and explore an AI-generated 360° scene with your crow at its center. Talk to the GPT-Live guide and turn your discoveries into a travel plan.</p><p>The 3D city and place details come from Google Maps. The crow flies a visual route; building collision avoidance is not simulated. Map imagery can be dated and generated scenes are imaginative impressions.</p><p>Instagram photos use recent public hashtags through a connected Meta account. They are not verified photos of the exact landing spot. AI plans include available web sources; check bookings and opening times before traveling.</p><button id="about-done" class="primary">Let’s explore</button></dialog>
 <script src="config.js"></script>
-<script src="app.js?v=4"></script>
+<link rel="stylesheet" href="music.css">
+<script type="module" src="music.js"></script>
+<script src="app.js?v=6"></script>
 <script type="module" src="scout.js"></script>
 </body></html>
