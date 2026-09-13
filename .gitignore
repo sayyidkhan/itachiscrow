@@ -1,0 +1,4 @@
+dist/config.js
+__pycache__/
+*.pyc
+crow-geometry.png
