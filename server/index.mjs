@@ -102,7 +102,7 @@ async function requestJson(url, options, { fetchImpl, signal, timeoutMs = 120_00
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     signal?.throwIfAborted();
-    const response = await fetchImpl(url, { ...options, signal: controller.signal, redirect: 'error' });
+    const response = await fetchImpl(url, { ...options, signal: controller.signal, redirect: 'manual' });
     if (!response.ok) {
       if (response.body?.cancel) await response.body.cancel().catch(() => {});
       if (response.status === 429) throw new HttpError(429, 'provider_rate_limit', `${provider} has reached a rate or usage limit. Check your account limits before trying again.`);

@@ -25,17 +25,6 @@ function tab(name,focus=false){currentTab=name;for(const button of document.quer
 function preferences(){return {days:Number($('plan-days').value),budget:$('plan-budget').value,interests:$('plan-interests').value.trim()};}
 function liveContext(){const prefs=preferences();return {...context,...prefs,interests:prefs.interests.split(/[,\n]/).map(x=>x.trim().slice(0,100)).filter(Boolean).slice(0,12),flightState:context.mode||'exploring'};}
 function clearPlan(){planning?.abort();planning=null;plan=null;$('plan-result').replaceChildren();$('plan-sources').replaceChildren();$('download-plan').hidden=true;$('plan-status').textContent='';$('generate-plan').disabled=false;$('generate-plan').textContent='Plan my trip ↗';}
-function hideTravelTransition(){document.body.classList.remove('long-flight');$('travel-transition').hidden=true;}
-function updateTravelTransition(flight){
-  if(!flight.stage||!(flight.routeDistanceMeters>=50000)){hideTravelTransition();return;}
-  document.body.classList.add('long-flight');$('travel-transition').hidden=false;
-  const stage=flightStages[flight.stage]||'On our way';
-  if($('travel-stage').textContent!==stage)$('travel-stage').textContent=stage;
-  $('travel-origin').textContent=flight.from?.name||'Your starting point';
-  $('travel-destination').textContent=flight.to?.name||context.destination.name;
-  $('travel-distance').textContent=`${Math.round(flight.routeDistanceMeters/1000).toLocaleString()} km`;
-  $('travel-progress').style.width=`${Math.max(0,Math.min(1,flight.progress||0))*100}%`;
-}
 function renderPlan(text,target=$('plan-result')){
   const fragment=document.createDocumentFragment();
   const inline=(target,content)=>{const pattern=/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|\*\*([^*\n]+)\*\*/g;let from=0;for(const match of content.matchAll(pattern)){target.append(document.createTextNode(content.slice(from,match.index)));if(match[3])target.append(node('strong',match[3]));else{const href=safeUrl(match[2]);if(href){const a=node('a',match[1]);a.href=href;a.target='_blank';a.rel='noopener noreferrer';target.append(a);}else target.append(document.createTextNode(match[0]));}from=match.index+match[0].length;}target.append(document.createTextNode(content.slice(from)));};
@@ -56,7 +45,6 @@ function refreshContext(next){
   const spotChanged=identity(next.spot)!==identity(context.spot);
   context={...emptyContext,...next};
   travel.updateContext(context);
-  if(context.mode!=='arriving'||!context.flightStage)hideTravelTransition();
   if(changed||spotChanged){$('command-result').hidden=true;scene=null;$('reopen-scene').hidden=true;$('scene-open').hidden=true;$('step-look').classList.remove('active');generation?.abort();generation=null;if($('panorama-dialog').open)$('panorama-dialog').close();clearPlan();}
   if(changed){searchSerial++;spotSerial++;$('destination-results').replaceChildren();$('spot-results').replaceChildren();$('instagram-hashtag').value=context.destination.name.split(',')[0].replace(/[^\p{L}\p{N}_]/gu,'').toLowerCase();instagramSerial++;$('instagram-refresh').disabled=false;$('instagram-posts').replaceChildren();$('instagram-status').textContent=capabilities.instagram?'Refresh to discover this destination’s recent hashtag posts.':'Connect Instagram through Meta to see recent public hashtag photos.';}
   const findingStart=!context.mapReady&&context.locationStatus==='locating';
@@ -296,7 +284,6 @@ $('voice-toggle').onclick=async()=>{if(['connecting','connected'].includes(liveS
 $('voice-mute').onclick=()=>live.setMuted(!liveState.muted);$('voice-audio').onclick=()=>live.resumeAudio();
 for(const id of ['plan-days','plan-budget','plan-interests'])$(id).addEventListener('input',()=>{clearPlan();live.updateContext(liveContext());});
 for(const event of ['crow:ready','crow:destination','crow:context'])document.addEventListener(event,e=>refreshContext(e.detail));
-document.addEventListener('crow:flight',e=>updateTravelTransition(e.detail));
 document.addEventListener('crow:landing-selected',e=>refreshContext({...e.detail,spot:null}));
 document.addEventListener('crow:landed',e=>{refreshContext(e.detail);setOpen(true);tab('explore');note(`Landed at ${context.spot?.name||'your chosen spot'}.`);if(!managedLandings&&$('auto-scene').checked&&capabilities.panorama)generateScene().catch(()=>{});});
 window.addEventListener('pagehide',()=>{generation?.abort();planning?.abort();viewer?.destroy();live.stop();});

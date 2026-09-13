@@ -22,3 +22,15 @@
 @media (prefers-reduced-motion: reduce) {
   .companion.busy .command-status:not(:empty)::before { animation: none; }
 }
+
+/* Keep the route visible over the globe, clear of map attribution. */
+.explorer.conversation-first.long-flight .travel-transition {
+  left: 50%; top: auto; bottom: max(48px, calc(env(safe-area-inset-bottom) + 32px));
+  width: min(720px, calc(100% - 40px)); z-index: 5;
+}
+@media (max-width: 760px) {
+  .explorer.conversation-first.long-flight .travel-transition {
+    top: calc(var(--header-height) + 12px); bottom: auto;
+    width: calc(100% - 24px);
+  }
+}
