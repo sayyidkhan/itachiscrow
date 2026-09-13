@@ -44,6 +44,12 @@ The longer-term vision is an AI travel scout that adapts exploration to your int
 
 ## How it works
 
+### Soundtracks
+
+Choose **♫ Music** on the flight page or below the crow studio to play three openly licensed Kevin MacLeod recordings: **Floating Cities**, **Night Vigil** and **Asian Drums**. Select a track, play/pause, mute or adjust the volume. Each complete track loops, and music continues while the player is closed or flight is paused. Track and volume/mute preferences are saved locally; playback always requires a fresh Play gesture after navigation or reload. On devices that restrict browser volume, use the device volume buttons.
+
+Music downloads only after Play and is served from the app’s own `audio/` directory. The player works independently of Maps and the studio renderer. Publish `music.js`, `music.css` and the complete `audio/` folder with the app. All music is CC BY 4.0 with in-player attribution; retain [the bundled credits](dist/audio/CREDITS.md) when deploying or redistributing. These are openly licensed recordings, not the Naruto soundtrack. GPT Sites requires a separate deployment to receive this change.
+
 ### Crow studio
 
 Open `customise.html`, or choose **Customise crow** on the flight page. Rotate and zoom the actual articulated crow, inspect portrait/side/wing/eye views, toggle wingbeats, and choose plumage, flight-feather, upper-wing and iris colours. Four presets provide starting palettes. **Save my crow** stores the design in this browser for the next city flight; **Restore original colours**, followed by Save, restores the original materials. Unsaved edits warn before leaving.

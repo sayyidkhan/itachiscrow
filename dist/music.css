@@ -1,0 +1,23 @@
+#music-open{position:absolute;top:186px;left:24px;z-index:2;border:1px solid #ffffff30;border-radius:14px;min-height:44px;padding:10px 14px;background:#101f26ee;color:#eef7f4;font:600 13px/1.5 system-ui;cursor:pointer}
+#music-open.music-studio{position:static;margin:24px 0 0}
+#music-dialog{box-sizing:border-box;width:min(420px,calc(100% - 32px));max-height:85dvh;overflow:auto;border:1px solid #ffffff30;border-radius:24px;padding:24px;background:#101f26;color:#eef7f4;font:15px/1.5 system-ui;box-shadow:0 30px 90px #0009}
+#music-dialog::backdrop{background:#00121b99}
+#music-dialog *{box-sizing:border-box}
+#music-dialog .music-heading{display:flex;justify-content:space-between;align-items:center;color:#80ecd5;font-size:11px;letter-spacing:2px}
+#music-dialog h2{font:28px/1.15 Georgia,serif;margin:18px 0 8px;color:#eef7f4}
+#music-dialog p{font:14px/1.5 system-ui;color:#acbdbe}
+#music-dialog .music-intro{margin:0 0 24px}
+#music-dialog label{display:block;font-size:13px;margin-bottom:8px}
+#music-dialog select{width:100%;min-height:48px;border:1px solid #ffffff35;border-radius:12px;padding:10px;background:#233c40;color:#eef7f4;font:14px system-ui}
+#music-dialog button{min-height:44px;padding:10px 15px;border:0;border-radius:12px;background:#233c40;color:#eef7f4;font:600 14px/1.5 system-ui;cursor:pointer}
+#music-dialog #music-close{background:transparent}
+#music-dialog .music-actions{display:flex;gap:10px;margin:18px 0}
+#music-dialog #music-play{flex:1;background:#80ecd5;color:#092b28}
+#music-dialog .music-volume-label{display:flex;justify-content:space-between;margin-bottom:0}
+#music-dialog input[type=range]{width:100%;height:36px;accent-color:#80ecd5;cursor:pointer}
+#music-dialog #music-status{min-height:42px;font-size:13px}
+#music-dialog .music-credit{font-size:12px;border-top:1px solid #ffffff25;padding-top:16px;margin-bottom:0}
+#music-dialog a{color:#80ecd5;text-underline-offset:3px}
+#music-open:focus-visible,#music-dialog :focus-visible{outline:3px solid #80ecd5;outline-offset:3px}
+@media(max-width:600px){#music-open{top:166px;left:16px}#music-dialog{padding:20px}}
+@media(max-height:520px){#music-open{top:150px}}
