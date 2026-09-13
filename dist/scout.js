@@ -55,7 +55,7 @@ function refreshContext(next){
   context={...emptyContext,...next};
   travel.updateContext(context);
   if(context.mode!=='arriving'||!context.flightStage)hideTravelTransition();
-  if(changed||spotChanged){scene=null;$('reopen-scene').hidden=true;$('step-look').classList.remove('active');generation?.abort();generation=null;if($('panorama-dialog').open)$('panorama-dialog').close();clearPlan();}
+  if(changed||spotChanged){scene=null;$('reopen-scene').hidden=true;$('scene-open').hidden=true;$('step-look').classList.remove('active');generation?.abort();generation=null;if($('panorama-dialog').open)$('panorama-dialog').close();clearPlan();}
   if(changed){searchSerial++;spotSerial++;$('destination-results').replaceChildren();$('spot-results').replaceChildren();$('instagram-hashtag').value=context.destination.name.split(',')[0].replace(/[^\p{L}\p{N}_]/gu,'').toLowerCase();instagramSerial++;$('instagram-refresh').disabled=false;$('instagram-posts').replaceChildren();$('instagram-status').textContent=capabilities.instagram?'Refresh to discover this destination’s recent hashtag posts.':'Connect Instagram through Meta to see recent public hashtag photos.';}
   const findingStart=!context.mapReady&&context.locationStatus==='locating';
   $('destination-label').textContent=findingStart?'FINDING YOUR LOCATION':context.destination.name.toUpperCase();
@@ -115,6 +115,7 @@ async function generateScene(signal){
 }
 async function openScene(){
   if(!scene)return;window.CrowMap?.pause();
+  $('scene-open').hidden=false;
   $('panorama-title').textContent=scene.spot.name;$('panorama-download').href=scene.imageUrl;
   if(!$('panorama-dialog').open)$('panorama-dialog').showModal();
   viewer?.destroy();viewer=new PanoramaViewer($('panorama-view'),{onSelect:panoramaJourney.select});await viewer.load(scene.imageUrl);
@@ -203,6 +204,7 @@ $('use-my-location').onclick=async()=>{try{const result=await window.CrowMap.use
 $('pick-spot').onclick=()=>{try{window.CrowMap.selectLandingMode();setOpen(false);note('Click a particular spot on the map to land.');}catch(error){note(error.message,true);}};
 $('land-here').onclick=async()=>{try{setOpen(false);await window.CrowMap.landAt(context.destination);}catch(error){setOpen(true);note(error.message,true);}};
 $('generate-scene').onclick=()=>generateScene().catch(()=>{});$('reopen-scene').onclick=()=>openScene().catch(error=>note(error.message,true));
+$('scene-open').onclick=()=>openScene().catch(error=>{setOpen(true);note(error.message,true);});
 $('panorama-close').onclick=()=>$('panorama-dialog').close();$('panorama-dialog').addEventListener('close',()=>{viewer?.destroy();viewer=null;});
 $('plan-form').onsubmit=e=>{e.preventDefault();generatePlan().catch(error=>{$('plan-status').textContent=error.message;$('plan-status').classList.add('error');});};
 $('instagram-form').onsubmit=e=>{e.preventDefault();instagram();};

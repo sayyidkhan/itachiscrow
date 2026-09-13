@@ -25,6 +25,7 @@
 .explorer .header-actions > :is(button, a) { position: static; margin: 0; min-height: 40px; padding: 9px 13px; border: 1px solid #ffffff14; border-radius: 10px; background: transparent; color: var(--muted); box-shadow: none; backdrop-filter: none; font: 500 12px/1.5 system-ui; }
 .explorer .header-actions #scout-open { order: -1; color: var(--accent); background: #80ecd50d; border-color: #80ecd52b; }
 .explorer .header-actions #scout-open[aria-expanded=true] { background: #80ecd51b; }
+.explorer .header-actions #scene-open { color: var(--accent); border-color: #80ecd54d; white-space: nowrap; }
 .explorer .header-actions #info { order: 3; width: 40px; padding: 0; }
 .explorer .header-actions #music-open { order: 4; position: static; margin: 0; min-height: 40px; padding: 9px 13px; border: 1px solid #ffffff14; border-radius: 10px; background: transparent; color: var(--muted); font: 500 12px/1.5 system-ui; }
 .explorer .studio-link { max-width: none; }
@@ -118,6 +119,10 @@
   .explorer .controls button { min-height: 46px; }
   .explorer.scout-visible :is(.bottom, .flight-state, .side-tools) { visibility: hidden; pointer-events: none; }
   .explorer .loading { width: min(300px, calc(100% - 40px)); }
+}
+@media (max-width: 420px) {
+  .explorer .header-actions { gap: 4px; }
+  .explorer .header-actions > :is(button, a) { padding: 7px; font-size: 10px; }
 }
 @media (max-height: 540px) and (min-width: 761px) {
   .explorer { --header-height: 60px; }
