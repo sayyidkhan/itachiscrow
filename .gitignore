@@ -2,3 +2,5 @@ dist/config.js
 __pycache__/
 *.pyc
 crow-geometry.png
+_debug/
+node_modules/

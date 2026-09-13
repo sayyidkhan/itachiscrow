@@ -4,7 +4,7 @@ const $=id=>document.getElementById(id);
 let map,Place,Marker,ready=false,playing=false,transitioning=false,progress=0,heading=125,speed=8,high=false,frameId,last=0,selected=null,detailSerial=0,placesLoaded=false;
 let crowParts=[], flightTime=0, bank=0, crowHeading=125;
 let startupFailed=false, sceneSteady=false, modelsMounted=false, startupTimer, sceneTimer, placesPromise;
-const MODEL_BASE='https://raw.githubusercontent.com/sayyidkhan/itachiscrow/0c8b0029555cd374df2d5bb32fabb78cb0f18414/dist/models/';
+const MODEL_BASE=new URL('models/',document.currentScript?.src || document.baseURI);
 const FRAME_INTERVAL=1000/24;
 function setFlightView(active){document.body.classList.toggle('in-flight',active);}
 function finishLoading(){
@@ -46,7 +46,7 @@ function flightBearing(s){return bearing(flightPosition(s-1),flightPosition(s+1)
 function camera(s){
  const p=flightPosition(s),ahead=at(s+4);
  return {center:{lat:p.lat+(ahead.lat-at(s).lat)*.65,lng:p.lng+(ahead.lng-at(s).lng)*.65,altitude:p.altitude+1.5},
- heading:flightBearing(s),tilt:high?48:65,range:high?90:48,roll:0};
+ heading:flightBearing(s),tilt:high?48:65,range:high?90:48,roll:0,fov:50};
 }
 function poseCrow(s){
  const position=flightPosition(s);
@@ -64,19 +64,19 @@ function poseCrow(s){
 async function mountCrow(Model){
  if(!Model)throw Error('3D model support is unavailable');
  const names=['body','left-wing','right-wing'];
- // Google renders models through its own graphics stack: use public CORS-enabled URLs.
- // Download once here; the renderer can reuse the browser's HTTP cache.
+ // Google's renderer uses credentialed XHR; wildcard-CORS hosts fail even when fetch succeeds.
+ // Keep both downloads same-origin and end the URL in .glb; renderer query URLs fail to draw.
  await Promise.all(names.map(async name=>{
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
   try{
-   const response=await fetch(MODEL_BASE+name+'.glb',{signal:controller.signal,cache:'force-cache'});
+   const response=await fetch(new URL(name+'.glb',MODEL_BASE),{signal:controller.signal,credentials:'same-origin',cache:'no-cache'});
    if(!response.ok)throw Error('Crow model download failed');
    const data=await response.arrayBuffer();
    if(data.byteLength<12||new DataView(data).getUint32(0,true)!==0x46546c67)throw Error('Invalid crow model');
   }finally{clearTimeout(timer)}
  }));
  if(startupFailed)return;
- crowParts=names.map(name=>new Model({src:MODEL_BASE+name+'.glb',position:flightPosition(0),altitudeMode:'ABSOLUTE',scale:2.2}));
+ crowParts=names.map(name=>new Model({src:new URL(name+'.glb',MODEL_BASE),position:flightPosition(0),altitudeMode:'ABSOLUTE',scale:2.2}));
  crowHeading=flightBearing(0);poseCrow(0);
  // Require a steady event after models have been appended, not just after API import.
  sceneSteady=false;modelsMounted=true;crowParts.forEach(part=>map.append(part));
@@ -90,12 +90,34 @@ function draw(t){if(!playing)return;if(t-last<FRAME_INTERVAL){frameId=requestAni
  const curvature=angleDelta(flightBearing(progress+4),flightBearing(progress-4));
  bank+=(Math.max(-32,Math.min(32,curvature*1.6))-bank)*Math.min(1,dt*4);
  heading=wrapAngle(heading+angleDelta(cam.heading,heading)*Math.min(1,dt*3));poseCrow(progress);
- map.center=cam.center;map.heading=heading;
+ map.center=cam.center;map.heading=heading;map.tilt=cam.tilt;map.range=cam.range;map.roll=cam.roll;map.fov=cam.fov;
  $('progress').style.width=progress/total*100+'%';$('progress-text').textContent=Math.floor(progress/total*100)+'%';
  const fraction=progress/total;status(fraction<.40?'Gliding · W 23rd Street':fraction<.5?'Turning · 6th Avenue':fraction<.90?'Gliding · W 22nd Street':'Turning · 7th Avenue');frameId=requestAnimationFrame(draw);}
 let transitionTimer;
-function start(){if(!ready)return;if(playing||transitioning){clearTimeout(transitionTimer);stop();return;}if(progress>=total)progress=0;$('details').close();detailSerial++;transitioning=true;map.stopCameraAnimation?.();const cam=camera(progress);heading=cam.heading;map.flyCameraTo({endCamera:cam,durationMillis:1000});poseCrow(progress);$('fly').textContent='Pause flight Ⅱ';status('Returning to the crow');hint('Tap a place to investigate. Drag the map to pause.');transitionTimer=setTimeout(()=>{if(!transitioning)return;transitioning=false;playing=true;setFlightView(true);last=performance.now();frameId=requestAnimationFrame(draw);},1050);}
-function reset(){clearTimeout(transitionTimer);stop();progress=0;flightTime=0;bank=0;crowHeading=flightBearing(0);poseCrow(0);heading=camera(0).heading;map.flyCameraTo({endCamera:camera(0),durationMillis:1000});$('progress').style.width='0%';$('progress-text').textContent='0%';$('fly').textContent='Start flight ↗';status('Ready · Chelsea loop');hint('Follow the crow around the block, then investigate a place.');}
+function start(){
+ if(!ready)return;
+ if(playing||transitioning){clearTimeout(transitionTimer);stop();return;}
+ if(progress>=total)progress=0;
+ $('details').close();detailSerial++;transitioning=true;map.stopCameraAnimation?.();
+ const cam=camera(progress);heading=cam.heading;
+ map.flyCameraTo({endCamera:cam,durationMillis:1000});poseCrow(progress);
+ $('fly').textContent='Pause flight Ⅱ';status('Returning to the crow');
+ hint('Tap a place to investigate. Drag the map to pause.');
+ transitionTimer=setTimeout(()=>{
+  if(!transitioning)return;
+  map.stopCameraAnimation?.();Object.assign(map,camera(progress));
+  transitioning=false;playing=true;setFlightView(true);last=performance.now();
+  frameId=requestAnimationFrame(draw);
+ },1050);
+}
+function reset(){
+ clearTimeout(transitionTimer);stop();progress=0;flightTime=0;bank=0;
+ crowHeading=flightBearing(0);poseCrow(0);heading=camera(0).heading;
+ Object.assign(map,camera(0));
+ $('progress').style.width='0%';$('progress-text').textContent='0%';
+ $('fly').textContent='Start flight ↗';status('Ready · Chelsea loop');
+ hint('Follow the crow around the block, then investigate a place.');
+}
 function fail(message){startupFailed=true;clearTimeout(startupTimer);clearTimeout(sceneTimer);clearTimeout(transitionTimer);stop();ready=false;for(const id of ['fly','restart','speed','height','nearby'])$(id).disabled=true;$('loading').hidden=false;$('loading').querySelector('.spinner').classList.add('failed');$('loading').querySelector('h2').textContent='The city couldn’t load';$('loading').querySelector('p').textContent=message;$('reload').hidden=false;status('Map unavailable');;}
 function el(tag,text,cls){const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;return e;}
 function safeLink(url,label){try{const u=new URL(url);if(!['https:','http:'].includes(u.protocol))return null;const a=el('a',label);a.href=u.href;a.target='_blank';a.rel='noopener noreferrer';return a;}catch{return null}}

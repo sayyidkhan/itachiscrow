@@ -1,0 +1,865 @@
+{
+  "url": "http://127.0.0.1:8806/",
+  "consoleErrors": [],
+  "modelResponses": [
+    {
+      "url": "http://127.0.0.1:8806/models/right-wing.glb",
+      "status": 200,
+      "type": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8806/models/body.glb",
+      "status": 200,
+      "type": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8806/models/left-wing.glb",
+      "status": 200,
+      "type": "fetch"
+    },
+    {
+      "url": "http://127.0.0.1:8806/models/body.glb",
+      "status": 200,
+      "type": "xhr"
+    },
+    {
+      "url": "http://127.0.0.1:8806/models/right-wing.glb",
+      "status": 200,
+      "type": "xhr"
+    },
+    {
+      "url": "http://127.0.0.1:8806/models/left-wing.glb",
+      "status": 200,
+      "type": "xhr"
+    }
+  ],
+  "modelFailures": [],
+  "snapshots": [
+    {
+      "name": "01-before-flight",
+      "state": {
+        "ready": true,
+        "playing": false,
+        "transitioning": false,
+        "progress": 0,
+        "flightTime": 0,
+        "bank": 0,
+        "heading": 35.14531684047478,
+        "camera": {
+          "range": 48,
+          "fov": 50,
+          "tilt": 65,
+          "heading": 35.14531684047478,
+          "center": {
+            "lat": 40.744325987842096,
+            "lng": -73.99510116521164,
+            "altitude": 106.5
+          }
+        },
+        "parts": [
+          {
+            "src": "http://127.0.0.1:8806/models/body.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.744307,
+              "lng": -73.995119,
+              "altitude": 105
+            },
+            "orientation": {
+              "heading": 35.14531684047478,
+              "tilt": 357,
+              "roll": 0
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/left-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.744307,
+              "lng": -73.995119,
+              "altitude": 105
+            },
+            "orientation": {
+              "heading": 35.14531684047478,
+              "tilt": 357,
+              "roll": 8
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/right-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.744307,
+              "lng": -73.995119,
+              "altitude": 105
+            },
+            "orientation": {
+              "heading": 35.14531684047478,
+              "tilt": 357,
+              "roll": 352
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "02-continuous-flight",
+      "state": {
+        "ready": true,
+        "playing": true,
+        "transitioning": false,
+        "progress": 6.933599999999976,
+        "flightTime": 0.866699999999997,
+        "bank": 31.58123466379577,
+        "heading": 64.19772231096925,
+        "camera": {
+          "range": 48,
+          "fov": 50,
+          "tilt": 65,
+          "heading": 56.824220769457725,
+          "center": {
+            "lat": 40.7443507616609,
+            "lng": -73.99503117589227,
+            "altitude": 107.13166626894173
+          }
+        },
+        "parts": [
+          {
+            "src": "http://127.0.0.1:8806/models/body.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.74434755271948,
+              "lng": -73.99506108734295,
+              "altitude": 105.63166626894173
+            },
+            "orientation": {
+              "heading": 64.19772231096925,
+              "tilt": 357.0747264220571,
+              "roll": 31.581234663795783
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/left-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.74434755271948,
+              "lng": -73.99506108734295,
+              "altitude": 105.63166626894173
+            },
+            "orientation": {
+              "heading": 64.19772231096925,
+              "tilt": 357.0747264220571,
+              "roll": 60.482575330332736
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/right-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.74434755271948,
+              "lng": -73.99506108734295,
+              "altitude": 105.63166626894173
+            },
+            "orientation": {
+              "heading": 64.19772231096925,
+              "tilt": 357.0747264220571,
+              "roll": 2.67989399725883
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "03-paused",
+      "state": {
+        "ready": true,
+        "playing": false,
+        "transitioning": false,
+        "progress": 9.333599999999977,
+        "flightTime": 1.1666999999999972,
+        "bank": 31.909546687379887,
+        "heading": 85.90381517998799,
+        "camera": {
+          "range": 48,
+          "fov": 50,
+          "tilt": 65,
+          "heading": 75.34355815313671,
+          "center": {
+            "lat": 40.74434574434181,
+            "lng": -73.9950069164787,
+            "altitude": 106.98897956528246
+          }
+        },
+        "parts": [
+          {
+            "src": "http://127.0.0.1:8806/models/body.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.74435113569772,
+              "lng": -73.99503648735579,
+              "altitude": 105.48897956528246
+            },
+            "orientation": {
+              "heading": 85.90381517998799,
+              "tilt": 357.134953133212,
+              "roll": 31.909546687379873
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/left-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.74435113569772,
+              "lng": -73.99503648735579,
+              "altitude": 105.48897956528246
+            },
+            "orientation": {
+              "heading": 85.90381517998799,
+              "tilt": 357.134953133212,
+              "roll": 16.13608889736946
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/right-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.74435113569772,
+              "lng": -73.99503648735579,
+              "altitude": 105.48897956528246
+            },
+            "orientation": {
+              "heading": 85.90381517998799,
+              "tilt": 357.134953133212,
+              "roll": 47.683004477390284
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "04-wing-down",
+      "state": {
+        "ready": true,
+        "playing": false,
+        "transitioning": false,
+        "progress": 9.333599999999977,
+        "flightTime": 0.78125,
+        "bank": 31.909546687379887,
+        "heading": 85.90381517998799,
+        "camera": {
+          "range": 48,
+          "fov": 50,
+          "tilt": 65,
+          "heading": 75.34355815313671,
+          "center": {
+            "lat": 40.74434574434181,
+            "lng": -73.9950069164787,
+            "altitude": 106.98897956528246
+          }
+        },
+        "parts": [
+          {
+            "src": "http://127.0.0.1:8806/models/body.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.74435113569772,
+              "lng": -73.99503648735579,
+              "altitude": 105.87242208758879
+            },
+            "orientation": {
+              "heading": 85.90381517998799,
+              "tilt": 357.134953133212,
+              "roll": 31.909546687379873
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/left-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.74435113569772,
+              "lng": -73.99503648735579,
+              "altitude": 105.87242208758879
+            },
+            "orientation": {
+              "heading": 85.90381517998799,
+              "tilt": 357.134953133212,
+              "roll": 71.90954668737987
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/right-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.74435113569772,
+              "lng": -73.99503648735579,
+              "altitude": 105.87242208758879
+            },
+            "orientation": {
+              "heading": 85.90381517998799,
+              "tilt": 357.134953133212,
+              "roll": 351.9095466873799
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "05-wing-up",
+      "state": {
+        "ready": true,
+        "playing": false,
+        "transitioning": false,
+        "progress": 9.333599999999977,
+        "flightTime": 1.09375,
+        "bank": 31.909546687379887,
+        "heading": 85.90381517998799,
+        "camera": {
+          "range": 48,
+          "fov": 50,
+          "tilt": 65,
+          "heading": 75.34355815313671,
+          "center": {
+            "lat": 40.74434574434181,
+            "lng": -73.9950069164787,
+            "altitude": 106.98897956528246
+          }
+        },
+        "parts": [
+          {
+            "src": "http://127.0.0.1:8806/models/body.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.74435113569772,
+              "lng": -73.99503648735579,
+              "altitude": 105.43242208758879
+            },
+            "orientation": {
+              "heading": 85.90381517998799,
+              "tilt": 357.134953133212,
+              "roll": 31.909546687379873
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/left-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.74435113569772,
+              "lng": -73.99503648735579,
+              "altitude": 105.43242208758879
+            },
+            "orientation": {
+              "heading": 85.90381517998799,
+              "tilt": 357.134953133212,
+              "roll": 7.909546687379873
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/right-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.74435113569772,
+              "lng": -73.99503648735579,
+              "altitude": 105.43242208758879
+            },
+            "orientation": {
+              "heading": 85.90381517998799,
+              "tilt": 357.134953133212,
+              "roll": 55.90954668737987
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "06-banked-turn",
+      "state": {
+        "ready": true,
+        "playing": false,
+        "transitioning": false,
+        "progress": 323,
+        "flightTime": 1.09375,
+        "bank": 32,
+        "heading": 267.913264296603,
+        "camera": {
+          "range": 48,
+          "fov": 50,
+          "tilt": 65,
+          "heading": 267.913264296603,
+          "center": {
+            "lat": 40.742286187193294,
+            "lng": -73.99347165883253,
+            "altitude": 104.43523730019858
+          }
+        },
+        "parts": [
+          {
+            "src": "http://127.0.0.1:8806/models/body.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.74228083894681,
+              "lng": -73.99344209152342,
+              "altitude": 102.93523730019858
+            },
+            "orientation": {
+              "heading": 267.9132642966031,
+              "tilt": 1.6345732144973226,
+              "roll": 32
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/left-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.74228083894681,
+              "lng": -73.99344209152342,
+              "altitude": 102.93523730019858
+            },
+            "orientation": {
+              "heading": 267.9132642966031,
+              "tilt": 1.6345732144973226,
+              "roll": 8
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/right-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.74228083894681,
+              "lng": -73.99344209152342,
+              "altitude": 102.93523730019858
+            },
+            "orientation": {
+              "heading": 267.9132642966031,
+              "tilt": 1.6345732144973226,
+              "roll": 56
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "07-resumed",
+      "state": {
+        "ready": true,
+        "playing": true,
+        "transitioning": false,
+        "progress": 331.00000000000006,
+        "flightTime": 2.093750000000001,
+        "bank": 30.70620368145814,
+        "heading": 315.1625849334447,
+        "camera": {
+          "range": 48,
+          "fov": 50,
+          "tilt": 65,
+          "heading": 309.30914464330635,
+          "center": {
+            "lat": 40.742332984230615,
+            "lng": -73.99355483121656,
+            "altitude": 104.58839250208042
+          }
+        },
+        "parts": [
+          {
+            "src": "http://127.0.0.1:8806/models/body.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.74231677294953,
+              "lng": -73.99353262998198,
+              "altitude": 103.08839250208042
+            },
+            "orientation": {
+              "heading": 315.1625849334447,
+              "tilt": 0.9384438689072567,
+              "roll": 30.706203681458135
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/left-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.74231677294953,
+              "lng": -73.99353262998198,
+              "altitude": 103.08839250208042
+            },
+            "orientation": {
+              "heading": 315.1625849334447,
+              "tilt": 0.9384438689072567,
+              "roll": 64.59474750145631
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/right-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.74231677294953,
+              "lng": -73.99353262998198,
+              "altitude": 103.08839250208042
+            },
+            "orientation": {
+              "heading": 315.1625849334447,
+              "tilt": 0.9384438689072567,
+              "roll": 356.81765986145996
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "08-reset",
+      "state": {
+        "ready": true,
+        "playing": false,
+        "transitioning": false,
+        "progress": 0,
+        "flightTime": 0,
+        "bank": 0,
+        "heading": 35.14531684047478,
+        "camera": {
+          "range": 48,
+          "fov": 50,
+          "tilt": 65,
+          "heading": 35.14531684047478,
+          "center": {
+            "lat": 40.744325987842096,
+            "lng": -73.99510116521164,
+            "altitude": 106.5
+          }
+        },
+        "parts": [
+          {
+            "src": "http://127.0.0.1:8806/models/body.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.744307,
+              "lng": -73.995119,
+              "altitude": 105
+            },
+            "orientation": {
+              "heading": 35.14531684047478,
+              "tilt": 357,
+              "roll": 0
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/left-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.744307,
+              "lng": -73.995119,
+              "altitude": 105
+            },
+            "orientation": {
+              "heading": 35.14531684047478,
+              "tilt": 357,
+              "roll": 8
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/right-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.744307,
+              "lng": -73.995119,
+              "altitude": 105
+            },
+            "orientation": {
+              "heading": 35.14531684047478,
+              "tilt": 357,
+              "roll": 352
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "09-place-details",
+      "state": {
+        "ready": true,
+        "playing": false,
+        "transitioning": false,
+        "progress": 0,
+        "flightTime": 0,
+        "bank": 0,
+        "heading": 35.14531684047478,
+        "camera": {
+          "range": 48,
+          "fov": 50,
+          "tilt": 65,
+          "heading": 35.14531684047478,
+          "center": {
+            "lat": 40.744325987842096,
+            "lng": -73.99510116521164,
+            "altitude": 106.5
+          }
+        },
+        "parts": [
+          {
+            "src": "http://127.0.0.1:8806/models/body.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.744307,
+              "lng": -73.995119,
+              "altitude": 105
+            },
+            "orientation": {
+              "heading": 35.14531684047478,
+              "tilt": 357,
+              "roll": 0
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/left-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.744307,
+              "lng": -73.995119,
+              "altitude": 105
+            },
+            "orientation": {
+              "heading": 35.14531684047478,
+              "tilt": 357,
+              "roll": 8
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/right-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.744307,
+              "lng": -73.995119,
+              "altitude": 105
+            },
+            "orientation": {
+              "heading": 35.14531684047478,
+              "tilt": 357,
+              "roll": 352
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "10-mobile-before-flight",
+      "state": {
+        "ready": true,
+        "playing": false,
+        "transitioning": false,
+        "progress": 0,
+        "flightTime": 0,
+        "bank": 0,
+        "heading": 35.14531684047478,
+        "camera": {
+          "range": 48,
+          "fov": 50,
+          "tilt": 65,
+          "heading": 35.14531684047478,
+          "center": {
+            "lat": 40.744325987842096,
+            "lng": -73.99510116521164,
+            "altitude": 106.5
+          }
+        },
+        "parts": [
+          {
+            "src": "http://127.0.0.1:8806/models/body.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.744307,
+              "lng": -73.995119,
+              "altitude": 105
+            },
+            "orientation": {
+              "heading": 35.14531684047478,
+              "tilt": 357,
+              "roll": 0
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/left-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.744307,
+              "lng": -73.995119,
+              "altitude": 105
+            },
+            "orientation": {
+              "heading": 35.14531684047478,
+              "tilt": 357,
+              "roll": 8
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/right-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.744307,
+              "lng": -73.995119,
+              "altitude": 105
+            },
+            "orientation": {
+              "heading": 35.14531684047478,
+              "tilt": 357,
+              "roll": 352
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "11-mobile-flight",
+      "state": {
+        "ready": true,
+        "playing": true,
+        "transitioning": false,
+        "progress": 12.10239999999991,
+        "flightTime": 1.5127999999999888,
+        "bank": 31.984136236733992,
+        "heading": 110.44652974193025,
+        "camera": {
+          "range": 48,
+          "fov": 50,
+          "tilt": 65,
+          "heading": 99.14585026306577,
+          "center": {
+            "lat": 40.74433413846118,
+            "lng": -73.9949826752631,
+            "altitude": 107.44263226016835
+          }
+        },
+        "parts": [
+          {
+            "src": "http://127.0.0.1:8806/models/body.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.744346085443134,
+              "lng": -73.99500900898848,
+              "altitude": 105.94263226016835
+            },
+            "orientation": {
+              "heading": 110.44652974193025,
+              "tilt": 357.2257292684922,
+              "roll": 31.984136236734003
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/left-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.744346085443134,
+              "lng": -73.99500900898848,
+              "altitude": 105.94263226016835
+            },
+            "orientation": {
+              "heading": 110.44652974193025,
+              "tilt": 357.2257292684922,
+              "roll": 55.315611707219716
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/right-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.744346085443134,
+              "lng": -73.99500900898848,
+              "altitude": 105.94263226016835
+            },
+            "orientation": {
+              "heading": 110.44652974193025,
+              "tilt": 357.2257292684922,
+              "roll": 8.652660766248289
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "12-mobile-reset",
+      "state": {
+        "ready": true,
+        "playing": false,
+        "transitioning": false,
+        "progress": 0,
+        "flightTime": 0,
+        "bank": 0,
+        "heading": 35.14531684047478,
+        "camera": {
+          "range": 48,
+          "fov": 50,
+          "tilt": 65,
+          "heading": 35.14531684047478,
+          "center": {
+            "lat": 40.744325987842096,
+            "lng": -73.99510116521164,
+            "altitude": 106.5
+          }
+        },
+        "parts": [
+          {
+            "src": "http://127.0.0.1:8806/models/body.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.744307,
+              "lng": -73.995119,
+              "altitude": 105
+            },
+            "orientation": {
+              "heading": 35.14531684047478,
+              "tilt": 357,
+              "roll": 0
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/left-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.744307,
+              "lng": -73.995119,
+              "altitude": 105
+            },
+            "orientation": {
+              "heading": 35.14531684047478,
+              "tilt": 357,
+              "roll": 8
+            }
+          },
+          {
+            "src": "http://127.0.0.1:8806/models/right-wing.glb",
+            "altitudeMode": "ABSOLUTE",
+            "position": {
+              "lat": 40.744307,
+              "lng": -73.995119,
+              "altitude": 105
+            },
+            "orientation": {
+              "heading": 35.14531684047478,
+              "tilt": 357,
+              "roll": 352
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "checks": [
+    "Three same-origin native models; normal startup enabled controls",
+    "Start advances the route; Pause freezes progress",
+    "Resume advances from the turn; Reset restores route start and pose",
+    "Live Places search, details, session save and dialog close",
+    "390×844 Chromium viewport: start, pause, reset"
+  ],
+  "graphics": {
+    "webgl2": true,
+    "pixel": [
+      255,
+      0,
+      0,
+      255
+    ],
+    "error": 0,
+    "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+  },
+  "placesReturned": 12,
+  "automatedChecksPassed": true,
+  "visualReview": "Required: inspect screenshots; automated state checks do not prove crow visibility.",
+  "realIPhoneTested": false
+}

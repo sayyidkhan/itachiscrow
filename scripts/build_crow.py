@@ -1,6 +1,7 @@
 """Original articulated crow. Run with Python, numpy and trimesh.
 
-Author coordinates: X right, Y forward, Z up. Export glTF Y-up.
+Author coordinates: X right, Y forward, Z up. Export glTF Y-up meshes
+under a Maps-space root so native heading/tilt/roll use east/north/up.
 Three model parts share a shoulder pivot so Maps can animate them natively.
 """
 from pathlib import Path
@@ -100,13 +101,14 @@ conversion=np.array([[1,0,0,0],[0,0,1,0],[0,-1,0,0],[0,0,0,1.]])
 for name,meshes in parts.items():
     # Merge by material: small draw-call count, smooth vertex normals retained.
     scene=tm.Scene()
+    scene.graph.update(frame_to='maps-basis', matrix=np.linalg.inv(conversion))
     for index,material in enumerate(materials):
         group=[m for m in meshes if m.visual.material is material]
         if not group: continue
         m=tm.util.concatenate(group)
         m.visual=tm.visual.TextureVisuals(material=material)
         m.apply_transform(conversion)
-        scene.add_geometry(m, geom_name=f'{name}-{index}')
+        scene.add_geometry(m, geom_name=f'{name}-{index}', parent_node_name='maps-basis')
     data=scene.export(file_type='glb', include_normals=True)
     (OUT/f'{name}.glb').write_bytes(data)
     print(name, sum(len(m.faces) for m in meshes), 'triangles,',len(data),'bytes')
@@ -130,4 +132,6 @@ if __name__=='__main__':
         ax.set(xlim=(-2.4,2.4),ylim=(-2,2),zlim=(-1,1))
         ax.set_box_aspect((4.8,4,2));ax.view_init(elev=elev,azim=azim);ax.set_axis_off()
     fig.tight_layout()
-    fig.savefig(str(OUT.parent.parent / 'crow-geometry.png'),dpi=150)
+    preview=OUT.parent.parent / '_debug' / 'crow-geometry.png'
+    preview.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(str(preview),dpi=150)

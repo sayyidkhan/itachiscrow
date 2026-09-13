@@ -55,7 +55,9 @@ The app loads Google’s 3D map, places the crow’s model parts at geographic c
 | Asset generation | Python, NumPy, trimesh and Matplotlib |
 | Live hosting | GPT Sites |
 
-The renderer downloads the crow GLBs from pinned, public GitHub raw URLs with cross-origin access enabled. Local copies remain in `dist/models/`.\n\nThe supplied city imagery is rendered by Google. The app does not generate a new city replica, and the current release does not call an AI model for recommendations.
+The renderer loads the crow GLBs from the application's own `models/` directory. Deploy the three assets together with the HTML and JavaScript. Google makes credentialed model requests: a successful ordinary download from a wildcard-CORS host does not prove the renderer can load that URL.
+
+The supplied city imagery is rendered by Google. The app does not generate a new city replica, and the current release does not call an AI model for recommendations.
 
 ## Run locally
 
@@ -88,6 +90,8 @@ Open [localhost:8000](http://localhost:8000).
 
 `dist/config.js` is ignored by Git. Browser API keys are visible to visitors; use website and API restrictions appropriate to your local and deployed addresses. Available features depend on the key’s permissions and quota.
 
+Alternatively, set `CROW_MAPS_KEY` through your environment's secret configuration and run `python3 scripts/configure.py` to generate the same ignored configuration without putting the key in command-line arguments.
+
 No npm build, Unreal Engine or Blender installation is needed to run the app.
 
 ## Repository guide
@@ -103,14 +107,26 @@ No npm build, Unreal Engine or Blender installation is needed to run the app.
 
 ### Regenerate the crow assets — optional
 
-The GLBs are already committed. To rebuild them:
+The GLBs are already committed. Rebuilding with the pinned development dependencies requires Python 3.12 or newer (tested with Python 3.14.5):
 
 ```bash
-python3 -m pip install numpy trimesh matplotlib
+python3 -m pip install -r scripts/requirements.txt
 python3 scripts/build_crow.py
 ```
 
-This overwrites the three GLBs in `dist/models/` and produces `crow-geometry.png` in the repository root for inspecting the model.
+This overwrites the three GLBs in `dist/models/` and produces `_debug/crow-geometry.png` for offline geometry inspection. Mesh vertices use glTF Y-up coordinates; a shared root transform adapts them to Google's east/north/up model axes, allowing heading, pitch and wing roll to work together.
+
+### Browser verification
+
+The application has no npm runtime dependencies. Optional development checks use Node.js and a Chromium installation:
+
+```bash
+npm ci
+npm run verify:models
+CROW_BROWSER_EXECUTABLE=/path/to/chromium CROW_TEST_URL=http://127.0.0.1:8000/ npm run verify:browser
+```
+
+Set `CROW_SOFTWARE_GL=1` to use Chromium's SwiftShader WebGL2 renderer on a server without a GPU. Alternatively, set `CROW_CDP_URL` to attach to an existing Chromium debugging endpoint. The test first renders and reads back a WebGL2 pixel, then exercises the real map, model requests, flight controls, Places and a 390×844 viewport. It writes screenshots and a redacted report under `_debug/verification/`. Wing extremes and the banked-turn snapshot use deterministic poses in the real native renderer; control checks run the actual animation loop. Inspect the screenshots: state assertions alone do not prove visibility. Mobile viewport coverage is not physical iPhone testing.
 
 ## Current limitations
 
@@ -119,7 +135,7 @@ This overwrites the three GLBs in `dist/models/` and produces `crow-geometry.png
 - Saved places are held in memory and reset when the page reloads.
 - Google imagery may be dated or less detailed close to buildings. Place fields may be missing or restricted.
 - Photos, reviews, Instagram content, local news and AI itineraries are not included.
-- Local geometry and flight-logic checks passed during development; live browser rendering has not yet been verified by an automated end-to-end test.
+- See [rendering verification](docs/verification.md) for browser evidence and device limitations.
 
 ## Roadmap
 
@@ -136,5 +152,7 @@ These are proposed directions, not available features:
 ## Deployment
 
 The public demo runs on **GPT Sites**. This repository contains an export of the application source; GitHub commits do not automatically redeploy the live site.
+
+Publish `dist/index.html`, `dist/app.js`, `dist/style.css`, your environment-specific `dist/config.js`, and all three `dist/models/*.glb` files together. Keep model URLs on the same origin as the app; do not restore the pinned GitHub raw URLs. Use plain URLs ending in `.glb`: adding `?v=4` reproduced an invisible model even with HTTP 200 responses in the tested renderer. The preliminary download revalidates cached assets. No renderer replacement, server API, new Google API, or npm production build is required. A local Python/Zo preview is a development convenience only.
 
 The initial export came from Sites source commit `cebef75b960610f945f18e1a58216c5a37333e80`, with the browser key moved into local configuration.
