@@ -4,31 +4,28 @@ const $=id=>document.getElementById(id);
 let map,Place,Marker,ready=false,playing=false,transitioning=false,progress=0,heading=125,speed=8,high=false,frameId,last=0,selected=null,detailSerial=0,placesLoaded=false;
 let crowParts=[], flightTime=0, bank=0, crowHeading=125;
 let startupFailed=false, sceneSteady=false, modelsMounted=false, startupTimer, sceneTimer, placesPromise;
-let startupCameraStage='waiting',startupCameraTimer,startupCameraFrame,startupCameraAttempts=0;
+let startupCameraStage='waiting',startupCameraTimer,startupCameraFrame,startupCameraAttempts=0,startupPerchTimer,startupFramingAt=null;
 let MODEL_BASE=new URL('models/',document.currentScript?.src || document.baseURI);
 let colourWarning='';
 const FRAME_INTERVAL=1000/24;
 function setFlightView(active){document.body.classList.toggle('in-flight',active);}
 function finishLoading(){
  if(startupFailed||!modelsMounted||ready)return;
- if(startLocation){
-  if(startupCameraStage==='waiting'){if(sceneSteady)frameInitialPerch();return;}
-  if(startupCameraStage!=='confirmed')return;
- }else if(!sceneSteady)return;
+ if(startupCameraStage==='waiting'){if(sceneSteady)frameInitialPerch();return;}
+ if(startupCameraStage!=='confirmed')return;
  clearTimeout(startupTimer);clearTimeout(sceneTimer);clearTimeout(startupCameraTimer);cancelAnimationFrame(startupCameraFrame);ready=true;
  $('loading').hidden=true;for(const id of ['fly','restart','speed','height','nearby'])$(id).disabled=false;
- if(startLocation){landedSurfaceAltitude=surfaceAltitudeAtCrow();$('fly').textContent='Take off ↗';updateProgress(0);}
+ clearTimeout(startupPerchTimer);landedSurfaceAltitude=surfaceAltitudeAtCrow();$('fly').textContent='Take off ↗';updateProgress(0);
  status(startLocation?'Ready · Your location':'Ready · Chelsea demo');hint(colourWarning||(startLocation?'Your crow is perched nearby. Take off or choose a destination.':locationMessage));registerTools();emitCrow('ready');
 }
 function initialPerchMatches(){
- if(!map||!startLocation)return false;
+ if(!map||!scoutPosition)return false;
  const center=map.center,lat=typeof center?.lat==='function'?center.lat():center?.lat,lng=typeof center?.lng==='function'?center.lng():center?.lng;
- // Native camera collision handling can move the requested center and range
- // around nearby buildings. Accept a usable local view, not an exact pose.
- return Number.isFinite(map.range)&&map.range>0&&map.range<=2000&&map.tilt>=35&&map.tilt<=85&&Number.isFinite(lat)&&Number.isFinite(lng)&&distance({lat,lng},startLocation)<1000;
+ return Number.isFinite(map.range)&&map.range>0&&map.range<=80&&map.tilt>=0&&map.tilt<=85&&Number.isFinite(lat)&&Number.isFinite(lng)&&distance({lat,lng},scoutPosition)<Math.max(3,map.range*.15);
 }
 function frameInitialPerch(){
  if(startupFailed||ready)return;
+ if(startupFramingAt===null)startupFramingAt=performance.now();
  startupCameraStage='framing';startupCameraAttempts++;sceneSteady=false;
  $('loading').querySelector('p').textContent='Bringing your crow into view…';
  // Google may ignore a camera request issued before its first steady scene.
@@ -36,7 +33,9 @@ function frameInitialPerch(){
  // Mesh loading may keep isSteady false even after the camera has stopped.
  startupCameraFrame=requestAnimationFrame(()=>{
   if(startupFailed||ready)return;
-  map.flyCameraTo({endCamera:scoutCamera(scoutPosition,true),durationMillis:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?0:900});
+  const endCamera=scoutCamera(scoutPosition,true);
+  if(startupCameraAttempts>1){endCamera.tilt=startupCameraAttempts===2?45:0;endCamera.range=32;}
+  map.flyCameraTo({endCamera,durationMillis:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?0:900});
   if(startupFailed||ready)return;
   const requestedAt=performance.now();let stableSince=null,previous=null;
   const checkCamera=()=>{
@@ -48,6 +47,8 @@ function frameInitialPerch(){
     if(time-stableSince>=300){startupCameraStage='confirmed';finishLoading();return;}
    }else{
     stableSince=null;
+    if(time-startupFramingAt>=120000){fail('We couldn’t frame your starting point. Reload to try again.');return;}
+    if(time-requestedAt>=2400&&current.range>2000){startupCameraAttempts=0;frameInitialPerch();return;}
     if(time-requestedAt>=2400&&startupCameraAttempts<3){frameInitialPerch();return;}
     if(time-requestedAt>=12000){fail('We couldn’t frame your starting point. Reload to try again.');return;}
    }
@@ -62,6 +63,7 @@ async function ensurePlaces(){
 }
 const saved=new Set(),savedPlaces=new Map(),found=new Map(),markers=[];
 const DEMO_DESTINATION={name:'Chelsea, New York',lat:40.74334,lng:-73.99423,address:'Chelsea, Manhattan, New York'};
+const DEMO_PERCH={name:'Chelsea rooftop',lat:40.74474623900293,lng:-73.99385240630164};
 let destination={...DEMO_DESTINATION},landingSpot=null,landingMode=false,scoutMode='demo',scoutPosition=null;
 let scoutAltitudeBase=null,landedSurfaceAltitude=null;
 let journey=null,journeySerial=0,nearbySerial=0;
@@ -441,11 +443,11 @@ async function mountCrow(Model){
   }finally{clearTimeout(timer)}
  }));
  if(startupFailed)return;
- const position=startLocation?{lat:startLocation.lat,lng:startLocation.lng,altitude:1.2}:flightPosition(0);
- crowParts=names.map(name=>new Model({src:new URL(name+'.glb',MODEL_BASE),position,altitudeMode:startLocation?'RELATIVE_TO_MESH':'ABSOLUTE',scale:2.2}));
- if(startLocation){crowHeading=125;poseScout(position,1);}else{crowHeading=flightBearing(0);poseCrow(0);}
- // Require a steady event after models have been appended, not just after API import.
- sceneSteady=false;modelsMounted=true;crowParts.forEach(part=>map.append(part));
+ const perch=startLocation||DEMO_PERCH,position={lat:perch.lat,lng:perch.lng,altitude:1.2};
+ crowParts=names.map(name=>new Model({src:new URL(name+'.glb',MODEL_BASE),position,altitudeMode:'RELATIVE_TO_MESH',scale:2.2}));
+ crowHeading=125;poseScout(position,1);
+ modelsMounted=true;crowParts.forEach(part=>map.append(part));
+ startupPerchTimer=setTimeout(()=>{if(!ready&&!startupFailed&&startupCameraStage==='waiting')frameInitialPerch();},1500);
 }
 function hint(s){$('hint').textContent=s;}
 function status(s){$('status').textContent=s;}
@@ -465,6 +467,7 @@ function start(){
  if(!ready)return;
  if(playing||transitioning){clearTimeout(transitionTimer);stop();return;}
  if(scoutMode==='landed'){takeOff().catch(error=>hint(error.message));return;}
+ if(scoutMode==='hovering'&&!startLocation&&destination.name===DEMO_DESTINATION.name){scoutMode='demo';scoutPosition=null;scoutAltitudeBase=null;crowParts.forEach(part=>{part.altitudeMode='ABSOLUTE';part.scale=2.2});}
  if(scoutMode!=='demo'){flyTo(landingSpot||destination).catch(error=>hint(error.message));return;}
  invalidateLocationRequest();
  if(progress>=total)progress=0;
@@ -483,12 +486,8 @@ function start(){
 function reset(){
  if(!ready)return;invalidateLocationRequest();clearTimeout(transitionTimer);stop();cancelLandingMode();clearNearby();routeDistanceMeters=0;progress=0;
  if(startLocation){restoreUserLocation(startLocation);emitCrow('destination');return;}
- scoutMode='demo';destination={...DEMO_DESTINATION};landingSpot=null;scoutPosition=null;scoutAltitudeBase=null;landedSurfaceAltitude=null;crowParts.forEach(part=>{part.altitudeMode='ABSOLUTE';part.scale=2.2});flightTime=0;bank=0;
- crowHeading=flightBearing(0);poseCrow(0);heading=camera(0).heading;
- Object.assign(map,camera(0));
- $('progress').style.width='0%';$('progress-text').textContent='0%';
- $('fly').textContent='Start flight ↗';status('Ready · Chelsea loop');
- hint('Follow the crow around the block, then investigate a place.');emitCrow('destination');
+ restoreUserLocation(DEMO_PERCH);destination={...DEMO_DESTINATION};
+ status('Ready · Chelsea demo');hint(locationMessage);emitCrow('destination');
 }
 function fail(message){startupFailed=true;clearTimeout(startupCameraTimer);cancelAnimationFrame(startupCameraFrame);clearTimeout(startupTimer);clearTimeout(sceneTimer);clearTimeout(transitionTimer);stop();ready=false;emitCrow('context');for(const id of ['fly','restart','speed','height','nearby'])$(id).disabled=true;$('loading').hidden=false;$('loading').querySelector('.spinner').classList.add('failed');$('loading').querySelector('h2').textContent='The city couldn’t load';$('loading').querySelector('p').textContent=message;$('reload').hidden=false;status('Map unavailable');;}
 function el(tag,text,cls){const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;return e;}
@@ -521,11 +520,12 @@ window.initCrow=async()=>{
   const [lib,locationResult]=await Promise.all([google.maps.importLibrary('maps3d'),initialLocationPromise||locateBrowser()]);
   if(startupFailed)return;
   const located=acceptLocation(locationResult);
-  if(located){destination={...located};landingSpot={...located};scoutMode='landed';}
+  destination={...(located||DEMO_DESTINATION)};landingSpot={...(located||DEMO_PERCH)};scoutMode='landed';
   Marker=lib.Marker3DInteractiveElement;
   // Bootstrap above the chosen coordinates; flyCameraTo then resolves the exact
   // mesh elevation. Map3DElement constructor center itself is always absolute.
-  const cam=located?{center:{lat:located.lat,lng:located.lng,altitude:0},heading:125,tilt:0,range:20000,roll:0,fov:50}:camera(0);heading=cam.heading;
+  const perch=located||DEMO_PERCH;
+  const cam={center:{lat:perch.lat,lng:perch.lng,altitude:0},heading:125,tilt:0,range:20000,roll:0,fov:50};heading=cam.heading;
   map=new lib.Map3DElement({...cam,fov:50,mode:'HYBRID',gestureHandling:'GREEDY',defaultUIHidden:true});
   map.style.width='100%';map.style.height='100%';
   map.addEventListener('gmp-error',()=>fail('Google’s 3D map could not initialize. Try reopening this link in Safari, or reload the city.'));

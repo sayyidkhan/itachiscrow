@@ -71,6 +71,7 @@ for (const name of ['ready', 'destination', 'landing-selected', 'landed', 'conte
 }
 await window.initCrow();
 maps.dispatchEvent(Object.assign(new Event('gmp-steadychange'), { isSteady: true }));
+advance(500);
 const api = window.CrowMap;
 assert.equal(api.getContext().mapReady, true);
 assert.equal(events.filter(event => event.name === 'ready').length, 1);
@@ -229,12 +230,13 @@ assert(Math.abs(maps.center.altitude-parts[0].position.altitude-1.8)<1e-6);
 assert(parts[0].position.lat<48.85837,'The crow approaches from a viewpoint facing the tower');
 
 elements.get('restart').onclick();
-assert.equal(api.getContext().mode, 'demo');
-assert.equal(api.getContext().spot, null);
+assert.equal(api.getContext().mode, 'landed');
+assert.equal(api.getContext().spot.name, 'Chelsea rooftop');
 assert.equal(api.getContext().destination.name, 'Chelsea, New York');
 assert.equal(api.getContext().savedPlaces[0].name, 'Mountain Cafe');
-assert(parts.every(part => part.altitudeMode === 'ABSOLUTE' && part.scale === 2.2));
-assert.equal(maps.range, 48);
+assert(parts.every(part => part.altitudeMode === 'RELATIVE_TO_MESH'));
+assert(parts[1].scale.x < 1);
+assert.equal(maps.range, 22);
 
 const arcMidpoint = vm.runInContext('sphericalPoint({lat:10,lng:179},{lat:10,lng:-179},.5)', sandbox);
 assert(Math.abs(arcMidpoint.lng) > 179, 'Date-line travel must follow the short route');
@@ -264,7 +266,7 @@ assert.equal(parts[0].position.lat, rooftop.lat);
 assert(Math.abs(parts[0].position.lng - rooftop.lng) < 1e-10);
 assert.equal(parts[0].altitudeMode, 'RELATIVE_TO_MESH', 'Without a resolved rooftop height, stay over the same roof');
 
-async function locationCase(locate, key = 'test', nativeAnimationEnd = false, adjustedCamera = false) {
+async function locationCase(locate, key = 'test', nativeAnimationEnd = false, adjustedCamera = false, noSteady = false) {
   const nodes = new Map();
   const isolatedDocument = Object.assign(new EventTarget(), {
     baseURI: document.baseURI, currentScript: document.currentScript, head: new Element(), body: new Element(), activeElement: null,
@@ -277,10 +279,10 @@ async function locationCase(locate, key = 'test', nativeAnimationEnd = false, ad
   vm.runInContext(await readFile(new URL('../dist/app.js', import.meta.url), 'utf8'), isolated);
   if (key) {
     await isolatedWindow.initCrow();
-    const usesLocation = isolatedWindow.CrowMap.getContext().hasUserLocation;
-    if (usesLocation) assert.equal(maps.range, 20000, 'Location startup must await the native initial scene before framing');
-    maps.dispatchEvent(Object.assign(new Event('gmp-steadychange'), { isSteady: true }));
-    if (usesLocation) {
+    assert.equal(maps.range, 20000, 'Startup begins above the chosen perch');
+    if(noSteady)advance(1500);
+    else maps.dispatchEvent(Object.assign(new Event('gmp-steadychange'), { isSteady: true }));
+    {
       assert.equal(isolatedWindow.CrowMap.getContext().mapReady, false, 'The initial 20km scene is not ready for the user');
       advance(20);
       assert.equal(maps.range, 22);
@@ -293,6 +295,10 @@ async function locationCase(locate, key = 'test', nativeAnimationEnd = false, ad
         advance(250);
         assert.equal(isolatedWindow.CrowMap.getContext().mapReady, false, 'Do not accept an unsettled close camera');
         advance(200);
+      }
+      if(adjustedCamera){
+        assert.equal(isolatedWindow.CrowMap.getContext().mapReady,false,'A view away from the crow must not release the loader');
+        advance(3000);
       }
       assert.equal(isolatedWindow.CrowMap.getContext().mapReady, true, 'Camera completion must not wait indefinitely for mesh steady');
       assert.equal(vm.runInContext('sceneSteady', isolated), false);
@@ -349,7 +355,19 @@ assert.equal(animationEnded.api.getContext().mapReady, true, 'Native animation c
 const denied = await locationCase(async () => ({ status: 'denied', place: null, message: 'Location permission denied. Try the Chelsea demo.' }));
 assert.equal(denied.api.getContext().locationStatus, 'denied');
 assert.equal(denied.api.getContext().hasUserLocation, false);
-assert.equal(denied.api.getContext().mode, 'demo');
+assert.equal(denied.api.getContext().mode, 'landed');
+assert.equal(denied.api.getContext().spot.name, 'Chelsea rooftop');
+assert.equal(vm.runInContext('crowParts[0].position.altitude',denied.sandbox),1.2);
+assert.equal(vm.runInContext('crowParts[1].scale.x<1',denied.sandbox),true);
+assert.deepEqual(denied.emitted.map(event=>event.name),['ready']);
+const fallbackTakeoff=denied.api.takeOff();advance(6500);
+assert.equal((await fallbackTakeoff).mode,'hovering');
+denied.nodes.get('fly').onclick();advance(1500);
+assert.equal(denied.api.getContext().mode,'demo','The original Chelsea loop remains available after takeoff');
+assert.equal(vm.runInContext('playing',denied.sandbox),true);
+assert.equal(vm.runInContext('crowParts.every(part=>part.altitudeMode==="ABSOLUTE")',denied.sandbox),true);
+denied.nodes.get('restart').onclick();
+assert.equal(denied.api.getContext().spot.name,'Chelsea rooftop');
 assert.match(denied.api.getContext().locationMessage, /denied/);
 const callsBeforeNoKey = locationCalls;
 const noKey = await locationCase(() => { locationCalls++; throw Error('Location must not be requested without Maps configuration'); }, '');
@@ -360,5 +378,17 @@ console.log('Map contract passed: search, staged country travel, spherical/date-
 
 const adjusted = await locationCase(async()=>({status:'located',place:singapore,message:'Located.'}),'test',false,true);
 assert.equal(adjusted.api.getContext().mapReady,true,'A renderer-adjusted camera near buildings must release the loader');
-assert.equal(adjusted.map.range,131.75,'Do not force the renderer back to the impossible exact requested camera');
+assert.equal(adjusted.map.range,32,'Retry an obstructed view with a steeper camera angle');
+assert.equal(adjusted.map.tilt,45);
 assert.deepEqual(adjusted.emitted.map(event=>event.name),['ready']);
+const neverSteady=await locationCase(async()=>({status:'located',place:singapore,message:'Located.'}),'test',false,false,true);
+assert.equal(neverSteady.api.getContext().mapReady,true,'A missing city steady event must not prevent initial perching');
+const nativeFly=neverSteady.map.flyCameraTo;
+neverSteady.map.flyCameraTo=()=>{};
+vm.runInContext('ready=false;startupCameraStage="waiting";startupFramingAt=null;startupCameraAttempts=0;map.range=20000;frameInitialPerch()',neverSteady.sandbox);
+advance(20000);
+assert.equal(vm.runInContext('startupFailed',neverSteady.sandbox),false,'Slow native startup must not exhaust the obstructed-camera retries');
+assert.equal(neverSteady.api.getContext().mapReady,false,'Ignored native requests must never expose the wide bootstrap view');
+neverSteady.map.flyCameraTo=nativeFly;
+advance(3500);
+assert.equal(neverSteady.api.getContext().mapReady,true,'Framing resumes once the native renderer accepts camera requests');

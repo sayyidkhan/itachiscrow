@@ -41,6 +41,13 @@ async function settled() {
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.waitForFunction(() => sceneSteady, null, { timeout: 180000 });
 }
+async function beginLoop() {
+  if(await page.evaluate(()=>scoutMode==='landed')){
+    await page.locator('#fly').click();
+    await page.waitForFunction(()=>scoutMode==='hovering'&&!transitioning,null,{timeout:60000});
+  }
+  await page.locator('#fly').click();
+}
 try {
   report.graphics = await page.evaluate(() => {
     const gl = document.createElement('canvas').getContext('webgl2');
@@ -89,7 +96,7 @@ try {
   assert(report.flightMotion.cameraIgnoresWingbeat);
   report.checks.push('Swerves exceed 3 m both sides, stay within 4.3 m, and move independently of the stable camera');
 
-  await page.locator('#fly').click();
+  await beginLoop();
   await page.waitForFunction(() => playing && progress > 2, null, { timeout: 60000 });
   await capture('02-continuous-flight');
   assert(Math.abs((await state()).camera.range - 48) < 0.1, 'Follow camera must restore its 48 m range');
@@ -166,7 +173,7 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await settled();
   await capture('10-mobile-before-flight');
-  await page.locator('#fly').click();
+  await beginLoop();
   await page.waitForFunction(() => playing && progress > 1, null, { timeout: 60000 });
   await capture('11-mobile-flight');
   await page.locator('#fly').click();

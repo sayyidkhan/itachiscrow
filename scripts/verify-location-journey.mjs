@@ -283,7 +283,8 @@ try {
     await denied.waitForFunction(() => window.CrowMap.getContext().locationStatus === 'denied', null, { timeout: 30_000 });
     const fallback = await contextOf(denied);
     assert.equal(fallback.hasUserLocation, false);
-    assert.equal(fallback.mode, 'demo');
+    assert.equal(fallback.mode, 'landed');
+    assert.equal(fallback.spot.name, 'Chelsea rooftop');
     assert.match(fallback.locationMessage, /permission|denied|allow|location/i);
     assert.match(await denied.locator('#location-status').textContent(), /location|destination|again/i);
     assert.equal(await denied.locator('#use-my-location').isEnabled(), true);

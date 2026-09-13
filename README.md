@@ -42,11 +42,11 @@ To launch from a building, land using a place’s **Land here** action, the land
 
 Generated scenes are imaginative impressions, with the crow centered in the initial forward view. They are not live photographs or verified reconstructions of the exact surroundings. Instagram photos are recent hashtag matches and can come from outside the chosen location.
 
-Location access requires localhost or HTTPS. If access is declined or unavailable, the app opens the Chelsea demo and explains the fallback. **Use my location** retries or brings the crow back nearby; restart returns to the session’s starting location. Coordinates stay in page memory and are used to render Google Maps. Starting nearby does not automatically generate a paid scene.
+Location access requires localhost or HTTPS. If access is declined or unavailable, the crow starts perched on a known Chelsea rooftop and the app explains the fallback. **Use my location** retries or brings the crow back nearby; restart returns to the session’s starting perch. Coordinates stay in page memory and are used to render Google Maps. Starting nearby does not automatically generate a paid scene.
 
 Flights over 50 km pull the camera up from the departure point, follow a curved path around the globe, then descend into the destination and approach with the crow. A route card shows the flight stage and distance. Pause or map interaction cancels the transition. The browser’s reduced-motion preference skips the sweeping camera movement.
 
-The original Chelsea flight remains the fallback starting route. Its controls support start, pause, resume, restart, speed changes, camera height, map labels, and nearby place discovery.
+In the Chelsea fallback, take off from the rooftop first, then choose **Fly again** to start the original block loop. Its controls support pause, resume, rooftop reset, speed changes, camera height, map labels, and nearby place discovery.
 
 The map opens with a compact chat and voice window. On phones, the conversation sits near the bottom and can be collapsed. Debug opens the full manual sidebar or mobile drawer. Music and Crow Studio are in the top toolbar. Responsive map-page layout is defined in `dist/layout.css`; include it when deploying `dist/`.
 
@@ -169,7 +169,7 @@ See Meta’s [server-side login flow](https://developers.facebook.com/docs/faceb
 | Instagram | Facebook Login code exchange, isolated browser sessions, and Meta Graph API hashtag search |
 | Crow asset generation | Python, NumPy, trimesh, and Matplotlib |
 
-The app positions the crow’s three model parts at geographic coordinates and updates their transforms during flight. Animation updates are capped at 24 per second. The renderer’s steady-state event gates the original flight controls, and Places loads when needed.
+The app positions the crow’s three model parts at geographic coordinates and updates their transforms during flight. Animation updates are capped at 24 per second. Startup waits for a close view of the perched crow, retries ignored camera requests while Maps loads, and tries steeper views when buildings obstruct the camera. A missing city-wide steady event does not block framing. Places loads when needed.
 
 The map city imagery comes from Google. The generated panorama is a separate view built from the selected location context; it does not replace Google’s map imagery. The prompt requests a seamless full-sphere scene, but AI output may still contain perspective or seam artifacts.
 
