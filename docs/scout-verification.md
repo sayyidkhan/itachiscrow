@@ -13,7 +13,7 @@ The real voice check initially found that trimming the offer removed its termina
 
 ## Automated checks
 
-- `npm test`: 25 backend and seven voice tests, plus the map contract checks. These cover input validation, upstream cancellation, citation handling, credential boundaries, OAuth state/replay/isolation/expiry, map search, landing, continuous rooftop takeoff, and cancellation.
+- `npm test`: 25 backend, seven voice, and eight location-helper tests, plus the map contract checks. These cover input validation, upstream cancellation, citation handling, credential boundaries, OAuth state/replay/isolation/expiry, map search, landing, continuous rooftop takeoff, geolocation permission/retry races, spherical travel, reduced motion, and cancellation.
 - `npm run verify:models`: all three GLBs validate without errors or warnings.
 - `npm run verify:scout`: 18 browser checks when the optional locally generated panorama fixture is present, otherwise 17. Covers safe source links, WebGL interaction/cleanup, live controls, stale response rejection, Instagram sign-in/account selection/disconnect, and mobile layout. Providers are mocked.
 - `npm run verify:browser` and `npm run verify:journey`: real Maps browser checks, requiring the local browser key and Chromium.

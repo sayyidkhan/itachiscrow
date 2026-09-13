@@ -8,6 +8,7 @@ let capabilities = {}, scene = null, viewer = null, plan = null;
 let generation = null, planning = null, searchSerial = 0, spotSerial = 0, instagramSerial = 0;
 let currentTab = 'explore', liveState = {status:'idle',muted:false};
 let instagramConnection = {}, oauthPopup = null;
+const flightStages={departing:'Leaving the familiar',cruising:'Crossing the globe',descending:'A new place comes into view',approaching:'Almost there'};
 const transcripts = new Map();
 const presets={Singapore:{name:'Singapore',lat:1.2868,lng:103.8545},Kyoto:{name:'Kyoto, Japan',lat:35.0036,lng:135.7782},Paris:{name:'Paris, France',lat:48.8566,lng:2.3522}};
 const node=(tag,text,className)=>{const e=document.createElement(tag);e.textContent=text;if(className)e.className=className;return e;};
@@ -19,6 +20,17 @@ function tab(name,focus=false){currentTab=name;for(const button of document.quer
 function preferences(){return {days:Number($('plan-days').value),budget:$('plan-budget').value,interests:$('plan-interests').value.trim()};}
 function liveContext(){const prefs=preferences();return {...context,...prefs,interests:prefs.interests.split(/[,\n]/).map(x=>x.trim().slice(0,100)).filter(Boolean).slice(0,12),flightState:context.mode||'exploring'};}
 function clearPlan(){planning?.abort();planning=null;plan=null;$('plan-result').replaceChildren();$('plan-sources').replaceChildren();$('download-plan').hidden=true;$('plan-status').textContent='';$('generate-plan').disabled=false;$('generate-plan').textContent='Plan my trip ↗';}
+function hideTravelTransition(){document.body.classList.remove('long-flight');$('travel-transition').hidden=true;}
+function updateTravelTransition(flight){
+  if(!flight.stage||!(flight.routeDistanceMeters>=50000)){hideTravelTransition();return;}
+  document.body.classList.add('long-flight');$('travel-transition').hidden=false;
+  const stage=flightStages[flight.stage]||'On our way';
+  if($('travel-stage').textContent!==stage)$('travel-stage').textContent=stage;
+  $('travel-origin').textContent=flight.from?.name||'Your starting point';
+  $('travel-destination').textContent=flight.to?.name||context.destination.name;
+  $('travel-distance').textContent=`${Math.round(flight.routeDistanceMeters/1000).toLocaleString()} km`;
+  $('travel-progress').style.width=`${Math.max(0,Math.min(1,flight.progress||0))*100}%`;
+}
 function renderPlan(text){
   const fragment=document.createDocumentFragment();
   const inline=(target,content)=>{const pattern=/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|\*\*([^*\n]+)\*\*/g;let from=0;for(const match of content.matchAll(pattern)){target.append(document.createTextNode(content.slice(from,match.index)));if(match[3])target.append(node('strong',match[3]));else{const href=safeUrl(match[2]);if(href){const a=node('a',match[1]);a.href=href;a.target='_blank';a.rel='noopener noreferrer';target.append(a);}else target.append(document.createTextNode(match[0]));}from=match.index+match[0].length;}target.append(document.createTextNode(content.slice(from)));};
@@ -37,11 +49,16 @@ function refreshContext(next){
   const changed=identity(next.destination)!==identity(context.destination);
   const spotChanged=identity(next.spot)!==identity(context.spot);
   context={...emptyContext,...next};
+  if(context.mode!=='arriving'||!context.flightStage)hideTravelTransition();
   if(changed||spotChanged){scene=null;$('reopen-scene').hidden=true;$('step-look').classList.remove('active');generation?.abort();generation=null;if($('panorama-dialog').open)$('panorama-dialog').close();clearPlan();}
   if(changed){searchSerial++;spotSerial++;$('destination-results').replaceChildren();$('spot-results').replaceChildren();$('instagram-hashtag').value=context.destination.name.split(',')[0].replace(/[^\p{L}\p{N}_]/gu,'').toLowerCase();instagramSerial++;$('instagram-refresh').disabled=false;$('instagram-posts').replaceChildren();$('instagram-status').textContent=capabilities.instagram?'Refresh to discover this destination’s recent hashtag posts.':'Connect Instagram through Meta to see recent public hashtag photos.';}
-  $('destination-label').textContent=context.destination.name.toUpperCase();
-  $('journey-destination').textContent=context.destination.name;
-  $('journey-state').textContent=context.spot?`Landed at ${context.spot.name}`:context.mode==='arriving'?'Your crow is on its way…':context.mode==='landing'?'Your crow is coming in to land…':context.mode==='taking-off'?'Your crow is lifting off from its perch…':'Choose a specific spot below, or pick one on the map.';
+  const findingStart=!context.mapReady&&context.locationStatus==='locating';
+  $('destination-label').textContent=findingStart?'FINDING YOUR LOCATION':context.destination.name.toUpperCase();
+  $('journey-destination').textContent=findingStart?'Finding your starting point…':context.destination.name;
+  $('journey-state').textContent=context.spot?`Landed at ${context.spot.name}`:context.mode==='arriving'?(flightStages[context.flightStage]||'Your crow is on its way…'):context.mode==='landing'?'Your crow is coming in to land…':context.mode==='taking-off'?'Your crow is lifting off from its perch…':'Choose a specific spot below, or pick one on the map.';
+  $('world').setAttribute('aria-label',findingStart?'Interactive 3D travel map':`Interactive 3D map near ${context.destination.name}`);
+  $('location-status').textContent=context.locationMessage||'';
+  $('use-my-location').disabled=!context.mapReady||context.locationStatus==='locating';
   $('step-land').classList.toggle('active',Boolean(context.spot));
   $('scene-description').textContent=context.spot?`Imagine the surroundings at ${context.spot.name}.`:'Land to imagine the world around your crow.';
   $('generate-scene').disabled=!context.spot||!capabilities.panorama||Boolean(generation);
@@ -173,6 +190,7 @@ for(const button of document.querySelectorAll('[data-tab]')){button.onclick=()=>
 $('destination-form').onsubmit=e=>{e.preventDefault();search($('destination-input').value.trim());};
 $('spot-form').onsubmit=e=>{e.preventDefault();search($('spot-input').value.trim(),true);};
 for(const button of document.querySelectorAll('[data-destination]'))button.onclick=()=>fly(presets[button.dataset.destination]).catch(error=>{setOpen(true);note(error.message,true);});
+$('use-my-location').onclick=async()=>{try{const result=await window.CrowMap.useCurrentLocation();if(!result?.cancelled)note(result?.locationStatus==='located'?'Your crow is back nearby. Choose a destination to explore.':result?.locationMessage||'Choose a destination to continue.');}catch(error){$('location-status').textContent=error.message;}};
 $('pick-spot').onclick=()=>{try{window.CrowMap.selectLandingMode();setOpen(false);note('Click a particular spot on the map to land.');}catch(error){note(error.message,true);}};
 $('land-here').onclick=async()=>{try{setOpen(false);await window.CrowMap.landAt(context.destination);}catch(error){setOpen(true);note(error.message,true);}};
 $('generate-scene').onclick=()=>generateScene().catch(()=>{});$('reopen-scene').onclick=()=>openScene().catch(error=>note(error.message,true));
@@ -188,6 +206,7 @@ $('voice-toggle').onclick=async()=>{if(['connecting','connected'].includes(liveS
 $('voice-mute').onclick=()=>live.setMuted(!liveState.muted);$('voice-audio').onclick=()=>live.resumeAudio();
 for(const id of ['plan-days','plan-budget','plan-interests'])$(id).addEventListener('input',()=>{clearPlan();live.updateContext(liveContext());});
 for(const event of ['crow:ready','crow:destination','crow:context'])document.addEventListener(event,e=>refreshContext(e.detail));
+document.addEventListener('crow:flight',e=>updateTravelTransition(e.detail));
 document.addEventListener('crow:landing-selected',e=>refreshContext({...e.detail,spot:null}));
 document.addEventListener('crow:landed',e=>{refreshContext(e.detail);setOpen(true);tab('explore');note(`Landed at ${context.spot?.name||'your chosen spot'}.`);if($('auto-scene').checked&&capabilities.panorama)generateScene().catch(()=>{});if(capabilities.instagram)instagram();});
 window.addEventListener('pagehide',()=>{generation?.abort();planning?.abort();viewer?.destroy();live.stop();});

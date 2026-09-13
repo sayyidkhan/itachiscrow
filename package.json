@@ -5,9 +5,10 @@
   "scripts": {
     "dev": "node --watch server/index.mjs",
     "start": "node server/index.mjs",
-    "test": "node --test server/server.test.mjs scripts/verify-live.mjs && node scripts/verify-map-contract.mjs",
+    "test": "node --test server/server.test.mjs scripts/verify-live.mjs scripts/verify-location.mjs && node scripts/verify-map-contract.mjs",
     "verify:scout": "node scripts/verify-scout.mjs",
     "verify:journey": "node scripts/verify-journey.mjs",
+    "verify:location": "node scripts/verify-location-journey.mjs",
     "verify:live-api": "node scripts/verify-live-api.mjs",
     "build:studio": "esbuild src/customise.js --bundle --minify --format=esm --external:./crow-design.js --outfile=dist/customise.js",
     "verify:studio": "node scripts/verify-studio.mjs",
