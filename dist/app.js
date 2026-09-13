@@ -58,12 +58,20 @@ async function searchDestinations(query){
  const {places=[]}=await Place.searchByText({textQuery:query.trim().slice(0,250),fields:['id','displayName','formattedAddress','location'],maxResultCount:6});
  return places.filter(p=>p.location).map(normalizeDestination);
 }
+async function searchCafes(){
+ if(!ready)throw Error('The map is still loading. Try again shortly.');
+ await ensurePlaces();
+ const center=landingSpot||destination;
+ const {places=[]}=await Place.searchByText({textQuery:'cafes near '+center.name,includedType:'cafe',locationBias:{center:{lat:center.lat,lng:center.lng},radius:2000},fields:['id','displayName','formattedAddress','location','rating','userRatingCount','googleMapsURI','photos'],maxResultCount:6});
+ return places.filter(p=>p.location).map(p=>({...normalizeDestination(p),rating:p.rating,ratingCount:p.userRatingCount,mapsUrl:p.googleMapsURI,photo:p.photos?.[0]?{url:p.photos[0].getURI({maxWidth:480}),authors:p.photos[0].authorAttributions||[]}:null}));
+}
 // Mesh-relative placement follows terrain and rooftops in cities at any elevation.
 // CameraOptions.altitudeMode is handled by flyCameraTo; map.center itself is absolute.
 function scoutCamera(position,landing=false,altitudeBase=scoutAltitudeBase){
  return {center:{lat:position.lat,lng:position.lng,altitude:position.altitude+1.8+(altitudeBase??0)},altitudeMode:altitudeBase===null?'RELATIVE_TO_MESH':'ABSOLUTE',heading:crowHeading,
- tilt:landing?72:high?48:65,range:landing?22:high?100:52,roll:0,fov:50};
+ tilt:landing?72:high?48:isEiffelView()&&['arriving','hovering'].includes(scoutMode)?85:65,range:landing?22:high?100:52,roll:0,fov:50};
 }
+function isEiffelView(){return /eiffel/i.test(destination.name)&&Math.abs(destination.lat-48.85837)<.01&&Math.abs(destination.lng-2.294481)<.01;}
 function poseScout(position,fold=0,altitudeBase=null){
  scoutPosition={...position};scoutAltitudeBase=altitudeBase;
  const flap=(8+30*Math.sin(flightTime*Math.PI*2*1.6))*(1-fold);
@@ -98,7 +106,11 @@ function animateJourney({duration,delay=0,from,to,landing=false,serial,onComplet
     const longitudeDelta=((to.lng-from.lng+540)%360)-180;
     const position=path?path(fraction):{lat:from.lat+(to.lat-from.lat)*eased,lng:((from.lng+longitudeDelta*eased+540)%360)-180,altitude:from.altitude+(to.altitude-from.altitude)*eased};
     const fold=foldAt?foldAt(fraction):landing?Math.max(0,(fraction-.55)/.45):0;
-    poseScout(position,fold,altitudeBaseAt?.(fraction)??null);map.flyCameraTo({endCamera:scoutCamera(position,landing),durationMillis:0});updateProgress(fraction);
+    poseScout(position,fold,altitudeBaseAt?.(fraction)??null);
+    const cam=scoutCamera(position,landing);
+    if(isEiffelView()&&scoutMode==='arriving'){map.center=cam.center;map.heading=cam.heading;map.tilt=cam.tilt;map.range=cam.range;map.roll=cam.roll;map.fov=cam.fov;}
+    else map.flyCameraTo({endCamera:cam,durationMillis:0});
+    updateProgress(fraction);
     if(fraction<1){state.frame=requestAnimationFrame(step);return;}
     journey=null;playing=false;transitioning=false;setFlightView(false);onComplete();emitCrow('context');resolve(getCrowContext());
    };
@@ -111,11 +123,12 @@ function flyTo(value){
  let target;try{target=normalizeDestination(value)}catch(error){return Promise.reject(error)}
  stop();cancelLandingMode();$('details').close();detailSerial++;clearNearby();
  destination=target;landingSpot=null;landedSurfaceAltitude=null;scoutMode='arriving';transitioning=true;setFlightView(true);bank=0;
- const serial=journeySerial,approach={...relativeOffset(target,-105,-75),altitude:72},arrival={lat:target.lat,lng:target.lng,altitude:64};
- crowHeading=bearing(approach,target);poseScout(approach);updateProgress(0);
+ const arrival=isEiffelView()?{...relativeOffset(target,-500,-300),altitude:180}:{lat:target.lat,lng:target.lng,altitude:64};
+ const serial=journeySerial,approach={...relativeOffset(arrival,-105,-75),altitude:arrival.altitude+8};
+ crowHeading=bearing(approach,target);poseScout(approach,0,isEiffelView()?0:null);updateProgress(0);
  $('fly').textContent='Pause flight Ⅱ';status('Flying to '+target.name);hint('Arriving above your destination. Choose a precise spot to land.');
  map.flyCameraTo({endCamera:scoutCamera(approach),durationMillis:1800});emitCrow('destination');
- return animateJourney({duration:2600,delay:1850,from:approach,to:arrival,serial,onComplete(){
+ return animateJourney({duration:2600,delay:1850,from:approach,to:arrival,serial,altitudeBaseAt:isEiffelView()?()=>0:undefined,onComplete(){
   scoutMode='hovering';$('fly').textContent='Fly again ↗';status('Arrived · '+destination.name);hint('Choose a landing spot, or open a place and select Land here.');emitCrow('destination');
  }});
 }
@@ -165,7 +178,7 @@ function takeOff(){
   onComplete(){scoutMode='hovering';$('fly').textContent='Fly again ↗';status('Airborne · '+destination.name);hint('The crow is clear of the rooftop. Choose another spot to land.');}
  });
 }
-window.CrowMap=Object.freeze({searchDestinations,flyTo,selectLandingMode,cancelLandingMode,landAt,takeOff,getContext:getCrowContext,pause(){stop();return getCrowContext();}});
+window.CrowMap=Object.freeze({searchDestinations,searchCafes,flyTo,selectLandingMode,cancelLandingMode,landAt,takeOff,getContext:getCrowContext,pause(){stop();return getCrowContext();}});
 
 // Prepared street-centre loop; rounded junctions keep camera turns continuous.
 const corners=[{lat:40.74440,lng:-73.99505},{lat:40.74288,lng:-73.99298},{lat:40.74225,lng:-73.99343},{lat:40.74378,lng:-73.99551}];

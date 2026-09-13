@@ -16,8 +16,8 @@ test('Sites adapter preserves assets, configuration, validation and provider con
   const env2={...env};
   const calls=[];
   globalThis.fetch=async(url,options)=>{
-    calls.push({url,body:JSON.parse(options.body)});assert.equal(options.headers.Authorization,'Bearer test-server-secret');
-    return Response.json(url.endsWith('/images/generations')?{data:[{b64_json:'YWJj'}]}:{session:{id:'test-session'},transport:{type:'webrtc',sdp:'v=0\r\n'}});
+    calls.push({url,body:options.body instanceof FormData?{imageSize:options.body.get('image[]').size}:JSON.parse(options.body)});assert.equal(options.headers.Authorization,'Bearer test-server-secret');
+    return Response.json(url.includes('/images/')?{data:[{b64_json:'YWJj'}]}:{session:{id:'test-session'},transport:{type:'webrtc',sdp:'v=0\r\n'}});
   };
   try{
     const spot={name:'Chelsea',lat:40.74,lng:-73.99};
@@ -26,5 +26,10 @@ test('Sites adapter preserves assets, configuration, validation and provider con
     const live=await worker.fetch(request('/api/live/session',{sdp:'v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n'}),env2);
     assert.equal(live.status,201);assert.equal((await live.json()).session.id,'test-session');
     assert.equal(calls[0].body.model,'gpt-image-2.5-flare');assert.equal(calls[1].body.session.model,'gpt-live-1');
+    const portrait=await worker.fetch(request('/api/portrait',{destination:spot,photo:'data:image/jpeg;base64,/9j/4AAQ'}),env2);
+    assert.equal(portrait.status,200);assert.equal((await portrait.json()).synthetic,true);
+    assert.equal(calls[2].url,'https://api.openai.com/v1/images/edits');assert.equal(calls[2].body.imageSize,6);
+    const missing=await worker.fetch(request('/api/portrait',{destination:spot,useSavedPhoto:true}),{...env2,CROW_OWNER_PHOTO:'/private/reference.jpg'});
+    assert.equal(missing.status,400);
   }finally{globalThis.fetch=originalFetch;}
 });

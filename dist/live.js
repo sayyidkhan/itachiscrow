@@ -10,6 +10,8 @@
  */
 
 const ACTIONS = Object.freeze({
+  picture_me_here: { field: null },
+  find_cafes: { field: 'request', limit: 1200 },
   fly_to: { field: 'destination', limit: 240 },
   land_at: { field: 'spot', limit: 240 },
   take_off: { field: null },

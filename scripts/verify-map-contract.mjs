@@ -176,6 +176,16 @@ await pendingNearby;
 assert.equal(elements.get('places').children.length, 0, 'Stale results from the last destination must not reappear');
 api.pause(); assert.equal((await newFlight).cancelled, true);
 
+const parisFlight=api.flyTo({name:'Eiffel Tower, Paris, France',lat:48.85837,lng:2.294481});
+advance(5000);await parisFlight;
+assert.equal(maps.range,52);
+assert.equal(maps.tilt,85);
+assert.equal(parts[0].altitudeMode,'ABSOLUTE');
+assert.equal(maps.center.lat,parts[0].position.lat);
+assert.equal(maps.center.lng,parts[0].position.lng);
+assert(Math.abs(maps.center.altitude-parts[0].position.altitude-1.8)<1e-6);
+assert(parts[0].position.lat<48.85837,'The crow approaches from a viewpoint facing the tower');
+
 elements.get('restart').onclick();
 assert.equal(api.getContext().mode, 'demo');
 assert.equal(api.getContext().spot, null);

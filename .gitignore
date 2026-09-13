@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 crow-geometry.png
 _debug/
+.private/
 node_modules/
 .env
 .env.*

@@ -17,6 +17,7 @@ core = core.replaceAll('env = process.env', 'env = {}')
   .replaceAll('Buffer.from(suppliedState)', 'new TextEncoder().encode(suppliedState)');
 if (/\b(?:Buffer|process|resolve|serveStatic)\b/.test(core)) throw Error('Unexpected Node dependency in API adapter.');
 const helpers = `
+async function readOwnerPhoto() { throw new HttpError(400, 'invalid_request', 'Upload a photo in this browser.'); }
 function decodeChunks(chunks) { const data = new Uint8Array(chunks.reduce((n,c)=>n+c.length,0)); let offset=0; for(const chunk of chunks){data.set(chunk,offset);offset+=chunk.length;} return new TextDecoder().decode(data); }
 function randomBytes(n) { const data=crypto.getRandomValues(new Uint8Array(n)); return {toString(){return Array.from(data,b=>b.toString(16).padStart(2,'0')).join('')}}; }
 function timingSafeEqual(a,b) { if(a.length!==b.length)return false; let diff=0; for(let i=0;i<a.length;i++)diff|=a[i]^b[i]; return diff===0; }
@@ -31,5 +32,6 @@ for (const entry of await readdir('dist')) {
 const adapter = await readFile('worker/adapter.mjs','utf8');
 await writeFile('dist/server/index.js', helpers + core + '\n' + adapter);
 await mkdir('dist/.openai', { recursive: true });
-await cp('.openai/hosting.json', 'dist/.openai/hosting.json');
+try { await cp('.openai/hosting.json', 'dist/.openai/hosting.json'); }
+catch(error) { if(error.code!=='ENOENT')throw error;console.log('No GPT Sites hosting configuration present; built bundles are available for local verification.'); }
 console.log('Built Sites Worker and browser assets.');

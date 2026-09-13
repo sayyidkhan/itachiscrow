@@ -10,6 +10,18 @@ This is a travel exploration prototype. The repository now includes a Node API s
 
 ## Explore a destination
 
+### Voice → landmark → personal portrait → cafés
+
+Choose **Talk** and say “Take me to Paris”. Paris resolves to the Eiffel Tower, with an arrival viewpoint facing the landmark. Other city and landmark searches remain available. Then say “Picture me here” to create an imagined travel portrait from your reference photo, or “Find cafés and good deals nearby” to display Google café photos, ratings, original Maps links and a separate sourced offer search. The same actions are available as buttons in **Explore** and **Around you**.
+
+Upload a JPEG, PNG or WebP under 5 MB in **Picture yourself here**. The upload stays in the current tab and is sent to the server and OpenAI only when generation is requested; it is not saved to disk by the upload endpoint. The result is labelled AI-generated and has a download link. Changing destinations or removing the photo cancels pending portrait generation and discards stale results. Generated portraits are separate from the Google map and 360° panorama.
+
+Google café cards are independent of the AI search: they can still work if offer research fails. Promotions require a source returned by web search and an explicit unexpired validity date; otherwise the UI reports that no current promotions were verified. Venue terms and availability still need confirmation. Instagram remains an optional, separately connected Meta hashtag feed, not a substitute for verified offers.
+
+The owner-only Zo preview may set `CROW_OWNER_PHOTO` to an absolute path outside `dist/` (for example `.private/traveller.jpg`). This enables an explicit **Use my saved preview photo** option without exposing a photo-download endpoint. The fallback is disabled unless `PUBLIC_ORIGIN` is an HTTPS `.zo.computer` origin. Keep the Zo service private and remove this setting before changing visibility or deploying to a shared host. `.private/` is excluded from Git; neither reference photos nor generated personal portraits belong in commits. Normal deployments use per-tab uploads.
+
+New server routes: `POST /api/portrait` (multipart image edits sent to OpenAI) and `POST /api/discover` (Responses web search). Deploy `travel.js` and `travel.css` alongside the existing `dist/` files and restart the Node server, or rebuild the GPT Sites Worker bundle. Existing OpenAI and Google Places configuration is reused. Static-only hosting retains map/Studio features, but the AI flow needs the Node backend or GPT Sites Worker. The Worker supports uploaded photos; the owner's server reference is always disabled there.
+
 1. Start the local app and open **Explore**. Search for a city, landmark, or address, then select a result to fly there.
 2. Search for a specific landing spot, select **Pick on the map**, or choose **Land at destination**.
 3. With **Generate a 360° scene when I land** enabled, landing creates a panorama. You can also use **Generate scene**. Drag to look around, scroll to zoom, use arrow keys to turn, or save the image.
@@ -231,5 +243,7 @@ The initial export came from Sites source commit `cebef75b960610f945f18e1a58216c
 `npm run build` prepares `dist/server/index.js` and `dist/client/` for the existing GPT Site. `scripts/build-sites.mjs` adapts the Node API handler to Web Requests and Responses, preserving request validation, provider calls, origin checks, and local rate limits. `worker/adapter.mjs` serves the browser Maps configuration from `CROW_MAPS_KEY`; the OpenAI key stays in the hosted `OPENAI_API_KEY` secret. The original `npm start` development flow remains available.
 
 Set `PUBLIC_ORIGIN` to the exact published origin. Publish through GPT Sites after changing source or runtime secrets. Run `npm run build && node --test worker/adapter.test.mjs` to check the adapter with mocked providers. These checks do not verify real provider quota, voice audio, or GPU rendering.
+
+Local builds can run without the platform-provided `.openai/hosting.json`; publication still needs the GPT Sites hosting configuration. When it is present, the build copies it into the output.
 
 Instagram credentials are optional and have not been configured on GPT Sites. The inherited in-memory Instagram OAuth sessions and local rate limits are per Worker isolate, not durable or global; reliable multi-isolate Instagram login requires a shared session store before enabling it.

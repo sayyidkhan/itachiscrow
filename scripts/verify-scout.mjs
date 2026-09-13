@@ -7,7 +7,7 @@ import { chromium } from 'playwright-core';
 // traffic and microphone capture are intercepted; no provider calls are made.
 const output = new URL('../_debug/scout-verification/', import.meta.url);
 await mkdir(output, { recursive: true });
-const files = new Set(['index.html', 'style.css', 'scout.css', 'layout.css', 'scout.js', 'live.js', 'panorama.js', 'music.js', 'music.css']);
+const files = new Set(['index.html', 'style.css', 'scout.css', 'layout.css', 'scout.js', 'travel.js', 'travel.css', 'live.js', 'panorama.js', 'music.js', 'music.css']);
 const server = createServer(async (request, response) => {
   const name = new URL(request.url, 'http://localhost').pathname.slice(1) || 'index.html';
   if (name === 'app.js' || name === 'config.js') { response.writeHead(200, { 'Content-Type': 'text/javascript' }); response.end('/* replaced by deterministic test Maps contract */'); return; }
@@ -51,6 +51,7 @@ try {
       resolveSearch: null };
     window.CrowMap = {
       getContext: clone,
+      async searchCafes() { return [{ name:'Test café',address:'Near the landmark',lat:48.858,lng:2.295,rating:4.4,ratingCount:20,mapsUrl:'https://maps.google.com/' }]; },
       async searchDestinations(query) {
         window.__crowMock.searches.push(query);
         if (query.includes('Slow')) return new Promise(resolve => { window.__crowMock.resolveSearch = resolve; });
@@ -111,7 +112,9 @@ try {
       instagramConnection = { ...instagramConnection, connection: 'not_connected', accounts: [], selectedAccount: null };
       capabilities = { ...capabilities, instagram: false };
     }
-    const result = name === 'status' ? { capabilities, instagram: instagramConnection }
+    const result = name === 'status' ? { capabilities, instagram: instagramConnection, traveller: {portrait:true,discovery:true,savedPhoto:true} }
+      : name === 'portrait' ? { imageUrl, synthetic:true }
+      : name === 'discover' ? { summary:'Nearby cafés with [source](https://cafe.example/). <script>bad()</script>',offers:[],sources:[{title:'Café source',url:'https://cafe.example/'}],checkedAt:'2026-09-13T00:00:00Z' }
       : name === 'panorama' ? { imageUrl, notice: 'AI-generated impression', generatedAt: '2026-09-13T00:00:00Z' }
       : name === 'plan' ? planResult
       : name === 'instagram' ? { posts: [{ permalink: 'https://www.instagram.com/p/crowtest/', imageUrl: 'https://images.example.test/post.png', caption: 'Morning market light', timestamp: '2026-09-13T00:00:00Z' }, { permalink: 'javascript:alert(1)', imageUrl: 'https://images.example.test/bad.png', caption: 'Rejected' }] }
@@ -343,6 +346,39 @@ try {
         review?.viewer.destroy(); review?.dialog.close(); review?.dialog.remove(); delete window.__generatedPanoramaReview;
       });
     }
+  });
+  await check('Paris preset targets the Eiffel Tower and personal portraits use the selected reference', async () => {
+    await page.locator('#tab-explore').click();
+    await page.locator('[data-destination="Paris"]').click();
+    assert.match(await page.locator('#journey-destination').textContent(),/Eiffel Tower/);
+    await page.locator('#picture-me').click();
+    await page.waitForFunction(()=>!document.getElementById('portrait-result').hidden);
+    const body=report.apiRequests.findLast(x=>x.path==='/api/portrait').body;
+    assert.equal(body.useSavedPhoto,true);assert.match(body.destination.name,/Eiffel Tower/);
+    assert.equal(await page.locator('#portrait-download').getAttribute('href'),imageUrl);
+    await page.locator('#use-saved-photo').uncheck();
+    assert(await page.locator('#picture-me').isDisabled());
+    await page.locator('#traveller-photo').setInputFiles({name:'reference.png',mimeType:'image/png',buffer:Buffer.from(imageUrl.split(',')[1],'base64')});
+    await page.waitForFunction(()=>!document.getElementById('picture-me').disabled);
+    await page.locator('#picture-me').click();
+    await page.waitForFunction(()=>!document.getElementById('portrait-result').hidden);
+    assert.equal(report.apiRequests.findLast(x=>x.path==='/api/portrait').body.photo,imageUrl);
+    await page.locator('#remove-photo').click();assert(await page.locator('#picture-me').isDisabled());
+  });
+  await check('Cafés display Google links and source search explicitly reports no verified promotions', async () => {
+    await page.locator('#tab-social').click();await page.locator('#find-cafes').click();
+    await page.waitForFunction(()=>!document.getElementById('find-cafes').disabled);
+    assert.match(await page.locator('#cafe-results').textContent(),/Test café/);
+    assert.match(await page.locator('#offer-status').textContent(),/No current promotions verified/);
+    assert.equal(await page.locator('#offer-summary script').count(),0);
+    assert.equal(await page.locator('#offer-sources a').getAttribute('href'),'https://cafe.example/');
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  });
+  await check('Changing destination aborts a pending portrait and suppresses stale results', async () => {
+    await page.locator('#tab-explore').click();await page.locator('#use-saved-photo').check();
+    const hold=holdNext('portrait');await page.locator('#picture-me').click();await hold.wait;
+    await page.evaluate(()=>window.__crowMock.change({name:'Tokyo',lat:35.68,lng:139.69}));hold.release();
+    await page.waitForTimeout(80);assert(await page.locator('#portrait-result').isHidden());
   });
   await check('Browser integration has no uncaught JavaScript errors or unmocked external requests', async () => {
     assert.deepEqual(report.pageErrors, []);

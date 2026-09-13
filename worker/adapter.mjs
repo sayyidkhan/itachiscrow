@@ -20,7 +20,7 @@ export default {
     // Environment bindings are server-only. Never serialize them into responses.
     if (!handler || activeEnv !== env) {
       activeEnv = env;
-      handler = createHandler({env:{...env, PUBLIC_ORIGIN:env.PUBLIC_ORIGIN || publicOrigin}});
+      handler = createHandler({env:{...env, CROW_OWNER_PHOTO:'', PUBLIC_ORIGIN:env.PUBLIC_ORIGIN || publicOrigin}});
     }
     const reqEvents = new EventTarget(), resEvents = new EventTarget();
     const req = {

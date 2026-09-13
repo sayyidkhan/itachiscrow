@@ -1,5 +1,6 @@
 import { PanoramaViewer } from './panorama.js';
 import { CrowLive } from './live.js';
+import { createTravelExperience } from './travel.js';
 
 const $ = id => document.getElementById(id);
 const emptyContext = {mapReady:false,destination:{name:'Chelsea, New York',lat:40.74334,lng:-73.99423},spot:null,savedPlaces:[]};
@@ -9,7 +10,7 @@ let generation = null, planning = null, searchSerial = 0, spotSerial = 0, instag
 let currentTab = 'explore', liveState = {status:'idle',muted:false};
 let instagramConnection = {}, oauthPopup = null;
 const transcripts = new Map();
-const presets={Singapore:{name:'Singapore',lat:1.2868,lng:103.8545},Kyoto:{name:'Kyoto, Japan',lat:35.0036,lng:135.7782},Paris:{name:'Paris, France',lat:48.8566,lng:2.3522}};
+const presets={Singapore:{name:'Singapore',lat:1.2868,lng:103.8545},Kyoto:{name:'Kyoto, Japan',lat:35.0036,lng:135.7782},Paris:{name:'Eiffel Tower, Paris, France',lat:48.85837,lng:2.294481}};
 const node=(tag,text,className)=>{const e=document.createElement(tag);e.textContent=text;if(className)e.className=className;return e;};
 const note=(text,error=false)=>{$('scout-message').textContent=text;$('scout-message').classList.toggle('error',error);};
 function safeUrl(value){try{const u=new URL(value);return ['http:','https:'].includes(u.protocol)?u.href:null;}catch{return null;}}
@@ -19,11 +20,11 @@ function tab(name,focus=false){currentTab=name;for(const button of document.quer
 function preferences(){return {days:Number($('plan-days').value),budget:$('plan-budget').value,interests:$('plan-interests').value.trim()};}
 function liveContext(){const prefs=preferences();return {...context,...prefs,interests:prefs.interests.split(/[,\n]/).map(x=>x.trim().slice(0,100)).filter(Boolean).slice(0,12),flightState:context.mode||'exploring'};}
 function clearPlan(){planning?.abort();planning=null;plan=null;$('plan-result').replaceChildren();$('plan-sources').replaceChildren();$('download-plan').hidden=true;$('plan-status').textContent='';$('generate-plan').disabled=false;$('generate-plan').textContent='Plan my trip ↗';}
-function renderPlan(text){
+function renderPlan(text,target=$('plan-result')){
   const fragment=document.createDocumentFragment();
   const inline=(target,content)=>{const pattern=/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|\*\*([^*\n]+)\*\*/g;let from=0;for(const match of content.matchAll(pattern)){target.append(document.createTextNode(content.slice(from,match.index)));if(match[3])target.append(node('strong',match[3]));else{const href=safeUrl(match[2]);if(href){const a=node('a',match[1]);a.href=href;a.target='_blank';a.rel='noopener noreferrer';target.append(a);}else target.append(document.createTextNode(match[0]));}from=match.index+match[0].length;}target.append(document.createTextNode(content.slice(from)));};
   for(const line of text.split('\n')){const heading=/^#{1,4}\s+(.+)/.exec(line);const e=node(heading?'h4':'p','');inline(e,heading?heading[1]:line);fragment.append(e);}
-  $('plan-result').replaceChildren(fragment);
+  target.replaceChildren(fragment);
 }
 async function request(path,body,signal){
   let response;
@@ -31,12 +32,14 @@ async function request(path,body,signal){
   catch(error){if(error.name==='AbortError')throw error;throw Error('The travel service could not be reached. Check your connection and try again.');}
   const data=await response.json().catch(()=>null);
   if(!response.ok||!data)throw Error(data?.error?.message||'The travel service is unavailable. Please try again shortly.');
+  if(path==='/api/status')travel.configure(data.traveller||{});
   return data;
 }
 function refreshContext(next){
   const changed=identity(next.destination)!==identity(context.destination);
   const spotChanged=identity(next.spot)!==identity(context.spot);
   context={...emptyContext,...next};
+  travel.updateContext(context);
   if(changed||spotChanged){scene=null;$('reopen-scene').hidden=true;$('step-look').classList.remove('active');generation?.abort();generation=null;if($('panorama-dialog').open)$('panorama-dialog').close();clearPlan();}
   if(changed){searchSerial++;spotSerial++;$('destination-results').replaceChildren();$('spot-results').replaceChildren();$('instagram-hashtag').value=context.destination.name.split(',')[0].replace(/[^\p{L}\p{N}_]/gu,'').toLowerCase();instagramSerial++;$('instagram-refresh').disabled=false;$('instagram-posts').replaceChildren();$('instagram-status').textContent=capabilities.instagram?'Refresh to discover this destination’s recent hashtag posts.':'Connect Instagram through Meta to see recent public hashtag photos.';}
   $('destination-label').textContent=context.destination.name.toUpperCase();
@@ -64,7 +67,7 @@ async function search(query,landing=false){
   output.replaceChildren(node('p','Looking for places…'));
   try{
     if(!context.mapReady)throw Error('The 3D map needs a working Google Maps key before you can search for places.');
-    const results=await window.CrowMap.searchDestinations(landing?`${query}, ${context.destination.name}`:query);
+    const results=await window.CrowMap.searchDestinations(landing?`${query}, ${context.destination.name}`:landmarkQuery(query));
     if(serial!==(landing?spotSerial:searchSerial))return;
     output.replaceChildren();
     if(!results.length){output.append(node('p','No places found. Try a more specific name.'));return;}
@@ -131,6 +134,8 @@ async function instagram(){
   }catch(error){if(serial===instagramSerial)$('instagram-status').textContent=error.message;}
   finally{if(serial===instagramSerial)$('instagram-refresh').disabled=false;}
 }
+const landmarkQuery=query=>/^paris(?:,?\s+france)?[.!?]?$/i.test(query.trim())?'Eiffel Tower, Paris, France':query;
+const travel = createTravelExperience({getContext:()=>context,request,renderText:renderPlan,open:()=>{setOpen(true);tab('explore');},openSocial:()=>{setOpen(true);tab('social');},fly});
 const live = new CrowLive({
   onState(state){liveState=state;const active=['connecting','connected'].includes(state.status);$('voice-toggle').disabled=state.status==='closing';$('voice-toggle').textContent=state.status==='closing'?'Ending…':active?'End call':'Talk ↗';$('voice-toggle').setAttribute('aria-label',active?'End live voice guide':'Start live voice guide');$('voice-orb').classList.toggle('connected',state.status==='connected');$('voice-state').textContent=state.pendingAction?'Your guide is working…':state.status==='connecting'?'Connecting to GPT-Live…':state.status==='connected'?(state.muted?'Connected · Microphone muted':'Connected · Listening'):'GPT-Live · Voice companion';$('voice-controls').hidden=state.status!=='connected';$('voice-mute').textContent=state.muted?'Unmute mic':'Mute mic';$('voice-mute').setAttribute('aria-pressed',String(state.muted));$('voice-audio').hidden=!state.playbackBlocked;},
   onError(error){$('voice-error').textContent=error.message;},
@@ -138,7 +143,7 @@ const live = new CrowLive({
   async onAction(name,args,{signal}={}){
     if(signal?.aborted)return {status:'cancelled'};
     if(name==='fly_to'||name==='land_at'){
-      const query=name==='fly_to'?args.destination:`${args.spot}, ${context.destination.name}`;
+      const query=name==='fly_to'?landmarkQuery(args.destination):`${args.spot}, ${context.destination.name}`;
       if(!context.mapReady)throw Error('The map is not ready. Ask the user to configure Google Maps.');
       const places=await window.CrowMap.searchDestinations(query);
       if(signal?.aborted)return {status:'cancelled'};
@@ -147,6 +152,8 @@ const live = new CrowLive({
       try{if(name==='fly_to')return await fly(places[0]);const result=await window.CrowMap.landAt(places[0]);return {status:result?.cancelled?'cancelled':'landed',spot:places[0]};}finally{signal?.removeEventListener('abort',cancel);}
     }
     if(name==='generate_panorama')return generateScene(signal);
+    if(name==='picture_me_here')return travel.portrait(signal);
+    if(name==='find_cafes')return travel.discover(args.request,signal);
     if(name==='plan_trip')return generatePlan(args.request,signal);
     if(name==='take_off'){
       if(!context.spot)throw Error('The crow needs to land before it can take off.');

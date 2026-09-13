@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { once } from 'node:events';
 import { request as httpRequest } from 'node:http';
-import { createConfig, createLiveSession, fetchInstagram, generatePanorama, generatePlan, getStatus, startServer } from './index.mjs';
+import { createConfig, createLiveSession, fetchInstagram, generatePanorama, generatePortrait, discoverOffers, generatePlan, getStatus, startServer } from './index.mjs';
 
 const place = { name: 'Gardens by the Bay', lat: 1.2816, lng: 103.8636, address: 'Singapore' };
 const config = createConfig({ OPENAI_API_KEY: 'sk-test-secret', INSTAGRAM_ACCESS_TOKEN: 'meta-secret', INSTAGRAM_USER_ID: '123456' });
@@ -113,7 +113,7 @@ test('GPT-Live sends the current Live session schema with bounded server-defined
   assert.equal(request.body.session.type, undefined);
   assert.equal(request.body.session.delegation.type, 'responses');
   assert.equal(request.body.session.delegation.responses.parallel_tool_calls, false);
-  assert.deepEqual(request.body.session.delegation.responses.tools.slice(1).map(tool => tool.name), ['fly_to', 'land_at', 'take_off', 'generate_panorama', 'plan_trip']);
+  assert.deepEqual(request.body.session.delegation.responses.tools.slice(1).map(tool => tool.name), ['picture_me_here', 'find_cafes', 'fly_to', 'land_at', 'take_off', 'generate_panorama', 'plan_trip']);
   const takeOff = request.body.session.delegation.responses.tools.find(tool => tool.name === 'take_off');
   assert.deepEqual(takeOff.parameters, { type: 'object', properties: {}, required: [], additionalProperties: false });
   assert.deepEqual(result, { session: { id: 'live_123' }, transport: { type: 'webrtc', sdp: 'v=0\r\nanswer' } });
@@ -123,6 +123,45 @@ test('Instagram reports a connection requirement honestly and rejects invalid ha
   const options = { config: createConfig({}), fetchImpl: () => assert.fail('No external call should be made') };
   assert.equal((await fetchInstagram('singapore', options)).status, 'not_configured');
   await assert.rejects(fetchInstagram('two tags', options), error => error.status === 400);
+});
+
+test('travel portrait passes reference bytes to image edits and rejects invalid uploads before provider use', async () => {
+  const bytes = Buffer.from([255,216,255,224,0,16]);
+  let calls = 0;
+  const options = { config, fetchImpl: async (url, request) => {
+    calls++; assert.equal(url, 'https://api.openai.com/v1/images/edits');
+    assert(request.body instanceof FormData);
+    assert.deepEqual(Buffer.from(await request.body.get('image[]').arrayBuffer()), bytes);
+    assert.match(request.body.get('prompt'), /Preserve their facial identity/);
+    assert.equal(request.headers['Content-Type'], undefined);
+    return ok({data:[{b64_json:'aW1hZ2U='}]});
+  } };
+  const result = await generatePortrait({destination:place,photo:`data:image/jpeg;base64,${bytes.toString('base64')}`}, options);
+  assert.equal(result.synthetic,true);
+  for (const photo of ['https://example.test/photo.jpg','data:image/jpeg;base64,aW1hZ2U=','data:image/svg+xml;base64,aW1hZ2U=']) await assert.rejects(generatePortrait({destination:place,photo},options), error=>error.status===400);
+  await assert.rejects(generatePortrait({destination:place,useSavedPhoto:true},options),error=>error.status===400);
+  assert.equal(calls,1);
+  assert.equal(createConfig({CROW_OWNER_PHOTO:'/private/photo.jpg',PUBLIC_ORIGIN:'https://public.example'}).ownerPhoto,'');
+});
+
+test('offer discovery drops expired, undated and unsourced discounts', async () => {
+  const sourceUrl='https://cafe.example/promotion';
+  const offer={venue:'Example café',offer:'Coffee offer',conditions:'With breakfast',validUntil:'2099-01-01',sourceUrl};
+  const result=await discoverOffers({destination:place}, {config,fetchImpl:async(_url,options)=>{
+    const body=JSON.parse(options.body);assert.equal(body.tool_choice,'required');assert.equal(body.text.format.strict,true);
+    return ok({status:'completed',output:[{type:'web_search_call',action:{sources:[{url:sourceUrl,title:'Café terms'}]}},{type:'message',content:[{type:'output_text',text:JSON.stringify({summary:'A researched summary',offers:[offer,{...offer,validUntil:'2001-01-01'},{...offer,validUntil:''},{...offer,sourceUrl:'https://invented.example'}]})}]}]});
+  }});
+  assert.deepEqual(result.offers,[offer]);assert.equal(result.sources.length,1);
+});
+
+test('portrait HTTP route accepts bounded photos over the ordinary API limit without exposing private files', async t => {
+  const bytes=Buffer.alloc(120000);bytes.set([255,216,255]);
+  const base=await start(t,{config,fetchImpl:async()=>ok({data:[{b64_json:'aW1hZ2U='}]})});
+  const response=await post(base,'/api/portrait',{destination:place,photo:`data:image/jpeg;base64,${bytes.toString('base64')}`});
+  assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');
+  assert.equal((await response.json()).synthetic,true);
+  assert.equal((await post(base,'/api/portrait',{destination:place,useSavedPhoto:true})).status,400);
+  assert.equal((await fetch(base+'/.private/traveller.jpg')).status,404);
 });
 
 test('Instagram searches the official hashtag edge, returns images and carousel photos with original attribution, and excludes videos and unsafe links', async () => {
