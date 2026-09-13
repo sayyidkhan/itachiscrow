@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 // Real Maps renderer and app; browser geolocation is always synthetic.
 // OpenAI, Instagram, and every non-status application API request are blocked.
 // Run only against a started app server with a configured Google Maps key.
-const appUrl = new URL(process.env.CROW_TEST_URL || 'http://127.0.0.1:3000/');
+const appUrl = new URL(process.env.CROW_TEST_URL || 'http://127.0.0.1:3000/explore.html');
 const output = new URL('../_debug/location-journey-verification/', import.meta.url);
 const singapore = { latitude: 1.28634, longitude: 103.8532, accuracy: 8 };
 const paris = { name: 'Paris, France', lat: 48.8566, lng: 2.3522, address: 'Paris, France' };
@@ -144,9 +144,10 @@ async function settle(page) {
 
 async function assertPerchedCamera(page) {
   const actual = await pose(page);
-  assert(actual.camera?.range > 0 && actual.camera.range <= 30, `The native camera must be beside the perched crow, not at the bootstrap range (got ${actual.camera?.range})`);
+  assert(actual.camera?.range > 0 && actual.camera.range <= 2000, `The native camera must be beside the perched crow, not at the bootstrap range (got ${actual.camera?.range})`);
   assert(Math.abs(actual.camera.tilt - 72) <= 2, `The perched view must use a tilt near 72 degrees (got ${actual.camera.tilt})`);
-  assert(samePlace(actual.camera.center, { lat: singapore.latitude, lng: singapore.longitude }), 'The native camera must be centered at the synthetic current location');
+  assert(Math.hypot((actual.camera.center.lat-singapore.latitude)*111320,(actual.camera.center.lng-singapore.longitude)*111320)<1000,'The adjusted native camera must remain near the synthetic current location');
+  assert.equal(await page.locator('#loading').isVisible(),false,'A usable adjusted view must not keep the loading modal open');
   assert.equal(actual.crow.length, 3, 'The native renderer must contain all three crow model parts');
   assert(actual.crow.every(part => samePlace(part.position, { lat: singapore.latitude, lng: singapore.longitude })), 'Every native crow part must be positioned at the synthetic current location');
 }

@@ -16,7 +16,7 @@ page.on('pageerror',error=>errors.push(error.message));
 const context=()=>page.evaluate(()=>window.CrowMap.getContext());
 const snapshot=async name=>{await page.screenshot({path:new URL(`${name}.png`,output).pathname});console.log(`Captured ${name}`);};
 try{
-  await page.goto(process.env.CROW_TEST_URL||'http://127.0.0.1:3000/');
+  await page.goto(process.env.CROW_TEST_URL||'http://127.0.0.1:3000/explore.html');
   await page.waitForFunction(()=>window.CrowMap?.getContext().mapReady,null,{timeout:180000});
   await page.locator('#auto-scene').uncheck();
   await page.locator('[data-destination="Singapore"]').click();

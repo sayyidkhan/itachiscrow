@@ -264,7 +264,7 @@ assert.equal(parts[0].position.lat, rooftop.lat);
 assert(Math.abs(parts[0].position.lng - rooftop.lng) < 1e-10);
 assert.equal(parts[0].altitudeMode, 'RELATIVE_TO_MESH', 'Without a resolved rooftop height, stay over the same roof');
 
-async function locationCase(locate, key = 'test', nativeAnimationEnd = false) {
+async function locationCase(locate, key = 'test', nativeAnimationEnd = false, adjustedCamera = false) {
   const nodes = new Map();
   const isolatedDocument = Object.assign(new EventTarget(), {
     baseURI: document.baseURI, currentScript: document.currentScript, head: new Element(), body: new Element(), activeElement: null,
@@ -285,6 +285,7 @@ async function locationCase(locate, key = 'test', nativeAnimationEnd = false) {
       advance(20);
       assert.equal(maps.range, 22);
       assert.equal(maps.tilt, 72);
+      if(adjustedCamera){maps.range=131.75;maps.center={...maps.center,lat:maps.center.lat-.00054,lng:maps.center.lng+.00077};}
       assert.equal(isolatedWindow.CrowMap.getContext().mapReady, false, 'The close camera must finish or remain stable before ready');
       maps.dispatchEvent(Object.assign(new Event('gmp-steadychange'), { isSteady: false }));
       if (nativeAnimationEnd) maps.dispatchEvent(new Event('gmp-animationend'));
@@ -356,3 +357,8 @@ assert.equal(locationCalls, callsBeforeNoKey);
 assert.equal(noKey.document.head.children.length, 0);
 assert.equal(noKey.api.getContext().mapReady, false);
 console.log('Map contract passed: search, staged country travel, spherical/date-line routes, reduced motion, startup location, stale location prevention, location reset, saved places, rooftop takeoff, cancellation and demo fallback.');
+
+const adjusted = await locationCase(async()=>({status:'located',place:singapore,message:'Located.'}),'test',false,true);
+assert.equal(adjusted.api.getContext().mapReady,true,'A renderer-adjusted camera near buildings must release the loader');
+assert.equal(adjusted.map.range,131.75,'Do not force the renderer back to the impossible exact requested camera');
+assert.deepEqual(adjusted.emitted.map(event=>event.name),['ready']);

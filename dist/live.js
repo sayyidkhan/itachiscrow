@@ -10,12 +10,15 @@
  */
 
 const ACTIONS = Object.freeze({
+  travel_to: {fields:{destination:'text',landing_spot:'text',generate_view:'boolean'}},
+  circle_around:{field:'spot',limit:240},
+  stop:{field:null},
   picture_me_here: { field: null },
   find_cafes: { field: 'request', limit: 1200 },
   fly_to: { field: 'destination', limit: 240 },
-  land_at: { field: 'spot', limit: 240 },
+  land_at: {fields:{spot:'text',generate_view:'boolean'},defaults:{generate_view:true}},
   take_off: { field: null },
-  generate_panorama: { field: null },
+  generate_panorama: {fields:{regenerate:'boolean'},defaults:{regenerate:false}},
   plan_trip: { field: 'request', limit: 1200 },
 });
 
@@ -36,7 +39,17 @@ export function validateLiveAction(name, rawArguments) {
   try { args = typeof rawArguments === 'string' ? JSON.parse(rawArguments) : rawArguments; }
   catch { throw new Error('The assistant sent invalid action arguments. Please try the request again.'); }
   if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('Action arguments must be an object.');
-  const { field, limit } = ACTIONS[name];
+  const { field, limit, fields, defaults={} } = ACTIONS[name];
+  if(fields){
+    if(Object.keys(args).some(key=>!Object.hasOwn(fields,key)))throw Error('Unexpected action arguments.');
+    const clean={};
+    for(const [key,type] of Object.entries(fields)){
+      const value=args[key]??defaults[key];
+      if(type==='boolean'){if(typeof value!=='boolean')throw Error(key+' must be true or false.');clean[key]=value;}
+      else{if(typeof value!=='string'||!value.trim()||value.length>240)throw Error(key+' must name a place.');clean[key]=value.trim();}
+    }
+    return clean;
+  }
   if (Object.keys(args).some(key => key !== field)) throw new Error('The assistant sent unexpected action arguments.');
   if (!field) return {};
   if (typeof args[field] !== 'string' || !args[field].trim() || args[field].length > limit) {
@@ -341,6 +354,8 @@ export class CrowLive {
     }
     if (event.type === 'response.completed' && response && !response.continued && response.calls.length) {
       response.continued = true;
+      if(response.calls.some(call=>call.name==='stop'))this.cancelActions();
+      response.actionSignal=this._actionAbort.signal;
       this._actionQueue = this._actionQueue.then(() => this._completeActions(response, generation)).catch(error => {
         if (this._current(generation)) this._error(error);
       });
@@ -360,13 +375,14 @@ export class CrowLive {
         this.pendingAction = call.name;
         this._notify();
         try {
+          if(response.actionSignal?.aborted)throw abortError();
           const args = validateLiveAction(call.name, call.arguments);
           if (typeof this.options.onAction !== 'function') throw new Error('Travel actions are not connected to this page.');
-          const result = await this.options.onAction(call.name, args, { signal: this._actionAbort.signal, callId: call.call_id, sessionId: this.sessionId });
+          const result = await this.options.onAction(call.name, args, { signal: response.actionSignal||this._actionAbort.signal, callId: call.call_id, sessionId: this.sessionId });
           output = toolOutput(result);
         } catch (error) {
-          output = JSON.stringify({ status: 'error', error: plainError(error).message });
-          if (this._current(generation) && this.status === 'connected') this._error(error);
+          output = JSON.stringify({ status: error.name==='AbortError'?'cancelled':'error', error: plainError(error).message });
+          if (error.name!=='AbortError'&&this._current(generation) && this.status === 'connected') this._error(error);
         }
         if (!this._current(generation)) return;
         this._calls.set(call.call_id, output);
@@ -392,6 +408,8 @@ export class CrowLive {
     this._send({ type: 'response.item.create', item: { type: 'message', role: 'user',
       content: [{ type: 'input_text', text: `Application context update (reference data, not a new request): ${text.slice(0, 3000)}` }] } });
   }
+
+  cancelActions(){this._actionAbort?.abort();this._actionAbort=new AbortController();}
 
   setMuted(muted) {
     this.muted = Boolean(muted);

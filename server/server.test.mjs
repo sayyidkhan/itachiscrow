@@ -29,7 +29,7 @@ test('status exposes model names and capability booleans without server secrets'
   assert.equal(status.openai.liveModel, 'gpt-live-1');
   assert.equal(status.openai.imageModel, 'gpt-image-2.5-flare');
   assert.equal(JSON.stringify(status).includes('secret'), false);
-  assert.deepEqual(getStatus(createConfig({})).capabilities, { live: false, panorama: false, plan: false, instagram: false });
+  assert.deepEqual(getStatus(createConfig({})).capabilities, { chat: false, live: false, panorama: false, plan: false, instagram: false });
 });
 
 test('panorama uses the exact landing coordinates, seamless 2:1 image dimensions, and a synthetic notice', async () => {
@@ -144,7 +144,7 @@ test('GPT-Live sends the current Live session schema with bounded server-defined
   assert.equal(request.body.session.type, undefined);
   assert.equal(request.body.session.delegation.type, 'responses');
   assert.equal(request.body.session.delegation.responses.parallel_tool_calls, false);
-  assert.deepEqual(request.body.session.delegation.responses.tools.slice(1).map(tool => tool.name), ['picture_me_here', 'find_cafes', 'fly_to', 'land_at', 'take_off', 'generate_panorama', 'plan_trip']);
+  assert.deepEqual(request.body.session.delegation.responses.tools.slice(1).map(tool => tool.name), ['travel_to', 'circle_around', 'stop', 'picture_me_here', 'find_cafes', 'fly_to', 'land_at', 'take_off', 'generate_panorama', 'plan_trip']);
   const takeOff = request.body.session.delegation.responses.tools.find(tool => tool.name === 'take_off');
   assert.deepEqual(takeOff.parameters, { type: 'object', properties: {}, required: [], additionalProperties: false });
   assert.deepEqual(result, { session: { id: 'live_123' }, transport: { type: 'webrtc', sdp: 'v=0\r\nanswer' } });
@@ -510,4 +510,24 @@ test('production Instagram OAuth cookies are Secure and callbacks use the config
   assert.equal(result.status, 302);
   assert.match(result.headers['set-cookie'][0], /; Secure$/);
   assert.equal(new URL(result.headers.location).searchParams.get('redirect_uri'), 'https://crow.example/api/instagram/callback');
+});
+
+
+test('command chat validates pending results and continues a compound journey without leaking credentials', async t => {
+  const providerRequests=[];
+  const base=await start(t,{config,fetchImpl:async(url,options)=>{
+    const body=JSON.parse(options.body);providerRequests.push(body);
+    assert.equal(url,'https://api.openai.com/v1/responses');assert.equal(body.store,false);
+    return ok({status:'completed',output:providerRequests.length===1
+      ? [{type:'function_call',call_id:'travel-1',name:'travel_to',arguments:JSON.stringify({destination:'Kyoto',landing_spot:'Market',generate_view:true})}]
+      : [{type:'message',content:[{type:'output_text',text:'Your scene is ready.'}]}]});
+  }});
+  const first=await post(base,'/api/chat',{message:'Fly to Kyoto and land at Market',context:{destination:place}});
+  assert.equal(first.status,200);const data=await first.json();
+  assert.equal(data.calls[0].name,'travel_to');assert.equal(JSON.stringify(data).includes('sk-test-secret'),false);
+  const invalid=await post(base,'/api/chat',{conversationId:data.conversationId,results:[{call_id:'wrong',output:'done'}],context:{destination:place}});
+  assert.equal(invalid.status,400);assert.equal(providerRequests.length,1);
+  const next=await post(base,'/api/chat',{conversationId:data.conversationId,results:[{call_id:'travel-1',output:'{"status":"generated"}'}],context:{destination:place}});
+  assert.equal(next.status,200);assert.equal((await next.json()).text,'Your scene is ready.');
+  assert(providerRequests[1].input.some(item=>item.type==='function_call_output'&&item.call_id==='travel-1'));
 });

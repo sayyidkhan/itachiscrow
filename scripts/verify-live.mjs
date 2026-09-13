@@ -120,7 +120,7 @@ test('collects nested completed function items and sends all results before cont
   responseEvent(channel, { type: 'response.completed', response: { id: 'r1', output: [] } });
   responseEvent(channel, { type: 'response.completed', response: { id: 'r1', output: [] } });
   await tick();
-  assert.deepEqual(actions, [{ name: 'fly_to', args: { destination: 'Kyoto' } }, { name: 'land_at', args: { spot: 'Nishiki Market' } }]);
+  assert.deepEqual(actions, [{ name: 'fly_to', args: { destination: 'Kyoto' } }, { name: 'land_at', args: { spot: 'Nishiki Market', generate_view: true } }]);
   const results = channel.sent.filter(event => event.item?.type === 'function_call_output');
   assert.deepEqual(results.map(event => event.item.call_id), ['call1', 'call2']);
   assert.equal(channel.sent.at(-1).type, 'response.create');
@@ -133,7 +133,7 @@ test('validates the tool allowlist and converts malformed arguments into recover
   assert.throws(() => validateLiveAction('constructor', '{}'), /Unsupported/);
   assert.throws(() => validateLiveAction('fly_to', '{"destination":"Kyoto","url":"https://example.com"}'), /unexpected/);
   assert.throws(() => validateLiveAction('land_at', '[]'), /object/);
-  assert.deepEqual(validateLiveAction('generate_panorama', '{}'), {});
+  assert.deepEqual(validateLiveAction('generate_panorama', '{}'), { regenerate: false });
   assert.deepEqual(validateLiveAction('take_off', '{}'), {});
   assert.throws(() => validateLiveAction('take_off', '{"altitude":200}'), /unexpected/);
   const f = fixture({ onAction: () => assert.fail('invalid tool must not reach application code') });

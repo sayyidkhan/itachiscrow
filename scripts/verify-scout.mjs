@@ -7,7 +7,7 @@ import { chromium } from 'playwright-core';
 // traffic and microphone capture are intercepted; no provider calls are made.
 const output = new URL('../_debug/scout-verification/', import.meta.url);
 await mkdir(output, { recursive: true });
-const files = new Set(['index.html', 'style.css', 'scout.css', 'layout.css', 'scout.js', 'travel.js', 'travel.css', 'live.js', 'panorama.js', 'panorama-journey.js', 'panorama-journey.css', 'music.js', 'music.css', 'location.js']);
+const files = new Set(['index.html', 'home.css', 'home.js', 'explore.html', 'simple.css', 'conversation.css', 'chat.js', 'style.css', 'scout.css', 'layout.css', 'scout.js', 'travel.js', 'travel.css', 'live.js', 'panorama.js', 'panorama-journey.js', 'panorama-journey.css', 'music.js', 'music.css', 'location.js']);
 const server = createServer(async (request, response) => {
   const name = new URL(request.url, 'http://localhost').pathname.slice(1) || 'index.html';
   if (name === 'app.js' || name === 'config.js') { response.writeHead(200, { 'Content-Type': 'text/javascript' }); response.end('/* replaced by deterministic test Maps contract */'); return; }
@@ -18,7 +18,7 @@ const server = createServer(async (request, response) => {
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const report = { checks: [], failures: [], pageErrors: [], blockedExternalRequests: [], apiRequests: [] };
-let browser;
+let browser, page;
 let imageUrl;
 let failExplore=false;
 let capabilities = { live: true, panorama: true, plan: true, instagram: false };
@@ -32,7 +32,14 @@ function holdNext(name) {
   return { wait, release };
 }
 async function check(name, operation) {
-  try { await operation(); report.checks.push(name); console.log('PASS ' + name); }
+  try {
+    const manual=/^(Destination search|Landing search|Planner|Unconfigured Instagram|Changing destination|Changing location|Instagram renders|Changing destination during|390px|Paris preset|Cafés)/.test(name);
+    if(manual){
+      if(await page.locator('#result-dialog').isVisible())await page.locator('#result-close').click();
+      if(!await page.locator('#scout-panel').isVisible())await page.locator('#scout-open').click();
+    }
+    if(name.startsWith('Live UI')&&await page.locator('#scout-panel').isVisible())await page.locator('#scout-close').click();
+    await operation(); report.checks.push(name); console.log('PASS ' + name); }
   catch (error) { report.failures.push({ name, message: error.message }); console.error('FAIL ' + name + ': ' + error.message); }
 }
 
@@ -40,7 +47,8 @@ try {
   browser = await chromium.launch({ executablePath: process.env.CROW_BROWSER_EXECUTABLE || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true,
     args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const browserContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-  const page = await browserContext.newPage();
+  page = await browserContext.newPage();
+  page.setDefaultTimeout(5000);
   page.on('pageerror', error => report.pageErrors.push(error.message));
   await page.addInitScript(() => {
     const state = { mapReady: true, mode: 'demo', destination: { name: 'Chelsea, New York', lat: 40.74334, lng: -73.99423 }, spot: null, savedPlaces: [] };
@@ -86,7 +94,7 @@ try {
       close() {}
     }
     window.RTCPeerConnection = FakePeer;
-    document.addEventListener('DOMContentLoaded', () => { document.getElementById('loading').hidden = true; document.getElementById('status').textContent = 'Map test double ready'; });
+    document.addEventListener('DOMContentLoaded', () => { if(document.getElementById('loading')){document.getElementById('loading').hidden = true; document.getElementById('status').textContent = 'Map test double ready';} });
   });
   const planResult = { text: '# Kyoto days\n\nVisit [Nishiki Market](https://kyoto.travel/en/see-and-do/nishiki-market.html).\n\n<script>bad()</script>',
     sources: [{ title: 'Kyoto tourism', url: 'https://kyoto.travel/en/' }, { title: 'Unsafe source', url: 'javascript:alert(1)' }] };
@@ -114,7 +122,8 @@ try {
       capabilities = { ...capabilities, instagram: false };
     }
     if(name==='explore'&&failExplore){await route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({error:{message:'Test image service unavailable.'}})});return;}
-    const result = name === 'status' ? { capabilities, instagram: instagramConnection, traveller: {portrait:true,discovery:true,savedPhoto:true} }
+    const result = name === 'chat' ? (body.results ? {conversationId:'chat-test',text:'Arrived and ready to look around.',calls:[]} : {conversationId:'chat-test',calls:[{call_id:'journey-test',name:'travel_to',arguments:JSON.stringify({destination:'Kyoto',landing_spot:'Market',generate_view:true})}]})
+      : name === 'status' ? { capabilities, instagram: instagramConnection, traveller: {portrait:true,discovery:true,savedPhoto:true} }
       : name === 'portrait' ? { imageUrl, synthetic:true }
       : name === 'discover' ? { summary:'Nearby cafés with [source](https://cafe.example/). <script>bad()</script>',offers:[],sources:[{title:'Café source',url:'https://cafe.example/'}],checkedAt:'2026-09-13T00:00:00Z' }
       : name === 'panorama' || name === 'explore' ? { imageUrl, notice: 'AI-generated impression', generatedAt: '2026-09-13T00:00:00Z' }
@@ -123,7 +132,37 @@ try {
       : name === 'session' ? { session: { id: 'live_browser_mock' }, transport: { type: 'webrtc', sdp: 'v=0\r\nanswer' } } : {};
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(result) }).catch(() => {});
   });
-  await page.goto(origin, { waitUntil: 'networkidle' });
+  await check('Landing page introduces the features without loading Maps or calling providers', async()=>{
+    await page.goto(origin,{waitUntil:'networkidle'});
+    assert.equal(await page.locator('.feature-grid article').count(),6);
+    assert.equal(await page.locator('.hero .button').getAttribute('href'),'explore.html');
+    assert.equal(report.apiRequests.length,0);
+    await page.screenshot({path:new URL('landing-desktop.png',output).pathname,fullPage:true});
+    await page.setViewportSize({width:390,height:844});
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await page.screenshot({path:new URL('landing-mobile.png',output).pathname,fullPage:true});
+    await page.setViewportSize({width:1280,height:900});
+  });
+  await page.goto(origin + '/explore.html', { waitUntil: 'networkidle' });
+  await check('Conversation opens with manual tools hidden',async()=>{
+    for(const id of ['landing-tools','scene-tools','portrait-tools']) assert.equal(await page.locator('#'+id).getAttribute('open'),null);
+    assert.equal(await page.locator('#destination-input').isVisible(),false);
+    assert(await page.locator('#chat-input').isVisible());
+    assert(await page.locator('#voice-toggle').isVisible());
+    await page.screenshot({path:new URL('simple-sidebar.png',output).pathname});
+  });
+
+  await check('Landing feature links reveal the intended tool without starting a paid action',async()=>{
+    const requestsBefore=report.apiRequests.filter(x=>x.path!=='/api/status').length;
+    for(const [tool,id] of [['scene','command-status'],['portrait','portrait-tools-body'],['nearby','panel-social'],['trip','panel-plan'],['voice','voice-toggle']]){
+      await page.goto(origin+'/explore.html?tool='+tool,{waitUntil:'networkidle'});
+      assert(await page.locator('#'+id).isVisible());
+      if(tool==='scene')assert.match(await page.locator('#command-status').textContent(),/360/);
+      assert.equal(await page.evaluate(()=>window.__crowMock.microphoneCalls),0);
+    }
+    assert.equal(report.apiRequests.filter(x=>x.path!=='/api/status').length,requestsBefore);
+    await page.goto(origin+'/explore.html',{waitUntil:'networkidle'});
+  });
   imageUrl = await page.evaluate(() => {
     const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 256;
     const paint = canvas.getContext('2d'); const gradient = paint.createLinearGradient(0, 0, 512, 0);
@@ -133,11 +172,11 @@ try {
     return canvas.toDataURL('image/png');
   });
   await check('Scout initializes without automatic microphone access or a fake voice connection', async () => {
-    assert.equal(await page.locator('#scout-panel').isVisible(), true);
+    assert.equal(await page.locator('#scout-panel').isVisible(), false);
     assert.equal(await page.locator('#generate-scene').isDisabled(), true);
     assert.equal(await page.locator('#voice-controls').isVisible(), false);
     assert.equal(await page.evaluate(() => window.__crowMock.microphoneCalls), 0);
-    assert.match(await page.locator('#voice-state').textContent(), /Voice companion/);
+    assert.match(await page.locator('#voice-state').textContent(), /voice/i);
   });
   await check('Destination search flies to the selected result', async () => {
     await page.locator('#destination-input').fill('Kyoto'); await page.locator('#destination-search').click();
@@ -146,7 +185,7 @@ try {
     assert.equal(await page.evaluate(() => window.__crowMock.flights.length), 1);
   });
   await check('Landing search automatically generates exactly one panorama for the chosen spot', async () => {
-    await page.locator('#spot-input').fill('Market'); await page.locator('#spot-form button').click();
+    await page.locator('#landing-tools').evaluate(el=>el.open=true); await page.locator('#spot-input').fill('Market'); await page.locator('#spot-form button').click();
     await page.locator('#spot-results button').first().click();
     await page.locator('#panorama-dialog').waitFor({ state: 'visible' });
     assert.equal(report.apiRequests.filter(item => item.path === '/api/panorama').length, 1);
@@ -164,7 +203,7 @@ try {
     assert.equal(await page.locator('#panorama-view canvas').count(), 0);
   });
   await check('Panorama drags rotate without generation, while taps ask for confirmation without a provider request', async()=>{
-    await page.locator('#reopen-scene').click();
+    await page.locator('#scene-open').click();
     const canvas=page.locator('#panorama-view canvas');await canvas.waitFor();
     const rect=await canvas.boundingBox();
     await page.mouse.move(rect.x+100,rect.y+100);await page.mouse.down();await page.mouse.move(rect.x+150,rect.y+100,{steps:5});await page.mouse.up();
@@ -259,7 +298,7 @@ try {
     assert.equal(await page.locator('#generate-plan').isDisabled(), false);
   });
   await check('Changing destination invalidates pending landing search results', async () => {
-    await page.locator('#tab-explore').click(); await page.locator('#spot-input').fill('Slow market'); await page.locator('#spot-form button').click();
+    await page.locator('#tab-explore').click(); await page.locator('#landing-tools').evaluate(el=>el.open=true); await page.locator('#spot-input').fill('Slow market'); await page.locator('#spot-form button').click();
     await page.waitForFunction(() => Boolean(window.__crowMock.resolveSearch));
     await page.evaluate(() => {
       window.__crowMock.change({ name: 'Tokyo', lat: 35.67, lng: 139.65 });
@@ -303,7 +342,7 @@ try {
       oauthAvailable: true, connection: 'account_selection_required', selectedAccount: null,
       accounts: [{ id: '178400000000001', name: 'Crow Travels', username: 'crowtravels' }, { id: '178400000000002', name: 'Crow Field Notes', username: 'crowfieldnotes' }],
     };
-    await page.goto(origin + '/?instagram=select_account&reason=fixture', { waitUntil: 'networkidle' });
+    await page.goto(origin + '/explore.html?instagram=select_account&reason=fixture', { waitUntil: 'networkidle' });
     await page.waitForFunction(() => document.getElementById('instagram-accounts').querySelectorAll('button').length === 2);
     assert.equal(await page.locator('#panel-social').isVisible(), true);
     assert.equal(await page.locator('#instagram-connect').isDisabled(), false);
@@ -403,7 +442,8 @@ try {
     await page.locator('#tab-explore').click();
     await page.locator('[data-destination="Paris"]').click();
     assert.match(await page.locator('#journey-destination').textContent(),/Eiffel Tower/);
-    await page.locator('#picture-me').click();
+    await page.locator('#scout-open').click();
+    await page.locator('#portrait-tools').evaluate(el=>el.open=true); await page.locator('#picture-me').click();
     await page.waitForFunction(()=>!document.getElementById('portrait-result').hidden);
     const body=report.apiRequests.findLast(x=>x.path==='/api/portrait').body;
     assert.equal(body.useSavedPhoto,true);assert.match(body.destination.name,/Eiffel Tower/);
@@ -412,7 +452,7 @@ try {
     assert(await page.locator('#picture-me').isDisabled());
     await page.locator('#traveller-photo').setInputFiles({name:'reference.png',mimeType:'image/png',buffer:Buffer.from(imageUrl.split(',')[1],'base64')});
     await page.waitForFunction(()=>!document.getElementById('picture-me').disabled);
-    await page.locator('#picture-me').click();
+    await page.locator('#portrait-tools').evaluate(el=>el.open=true); await page.locator('#picture-me').click();
     await page.waitForFunction(()=>!document.getElementById('portrait-result').hidden);
     assert.equal(report.apiRequests.findLast(x=>x.path==='/api/portrait').body.photo,imageUrl);
     await page.locator('#remove-photo').click();assert(await page.locator('#picture-me').isDisabled());
@@ -428,9 +468,34 @@ try {
   });
   await check('Changing destination aborts a pending portrait and suppresses stale results', async () => {
     await page.locator('#tab-explore').click();await page.locator('#use-saved-photo').check();
-    const hold=holdNext('portrait');await page.locator('#picture-me').click();await hold.wait;
+    const hold=holdNext('portrait');await page.locator('#portrait-tools').evaluate(el=>el.open=true); await page.locator('#picture-me').click();await hold.wait;
     await page.evaluate(()=>window.__crowMock.change({name:'Tokyo',lat:35.68,lng:139.69}));hold.release();
     await page.waitForTimeout(80);assert(await page.locator('#portrait-result').isHidden());
+  });
+  await check('Typed journey flies, lands and generates one scene, then reopens without regeneration',async()=>{
+    if(await page.locator('#result-dialog').isVisible())await page.locator('#result-close').click();
+    if(await page.locator('#scout-panel').isVisible())await page.locator('#scout-close').click();
+    const before=report.apiRequests.filter(x=>x.path==='/api/panorama').length;
+    await page.locator('#chat-input').fill('Fly to Kyoto, land at Market and show me around');
+    await page.locator('#chat-send').click();
+    await page.locator('#panorama-dialog').waitFor({state:'visible'});
+    await page.waitForFunction(()=>!document.getElementById('chat-send').disabled);
+    assert.equal(report.apiRequests.filter(x=>x.path==='/api/panorama').length,before+1);
+    assert.equal(report.apiRequests.filter(x=>x.path==='/api/chat').length,2);
+    await page.locator('#panorama-close').click();
+    await page.locator('#scene-open').click();
+    assert.equal(report.apiRequests.filter(x=>x.path==='/api/panorama').length,before+1);
+    await page.locator('#panorama-close').click();
+    assert.match(await page.locator('#voice-transcript').textContent(),/Arrived and ready/);
+    for(const width of [1280,390,320]){
+      await page.setViewportSize({width,height:844});
+      assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+      await page.screenshot({path:new URL('conversation-'+width+'.png',output).pathname});
+    }
+    const calls=report.apiRequests.length;
+    await page.locator('#chat-input').fill('stop');await page.locator('#chat-send').click();
+    assert.equal(report.apiRequests.length,calls);
+    assert.match(await page.locator('#command-status').textContent(),/Stopped/);
   });
   await check('Browser integration has no uncaught JavaScript errors or unmocked external requests', async () => {
     assert.deepEqual(report.pageErrors, []);

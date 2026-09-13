@@ -95,7 +95,7 @@ try {
   await capture('08-mobile-controls');
   console.log('Studio controls, colour save/reload, orbit, zoom and mobile layout pass. Testing native map…');
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page.goto(url);
+  await page.goto(new URL('explore.html', url).href);
   console.log('Waiting for Google’s city renderer to settle.');
   await page.waitForFunction(() => typeof ready !== 'undefined' && ready, null, { timeout: 240000 });
   const sources = await page.evaluate(() => crowParts.map(part => String(part.src)));

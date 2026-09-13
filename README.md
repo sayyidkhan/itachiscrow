@@ -10,9 +10,19 @@ This is a travel exploration prototype. The repository now includes a Node API s
 
 ## Explore a destination
 
-### Voice → landmark → personal portrait → cafés
+### Tell the crow where to go
 
-Choose **Talk** and say “Take me to Paris”. Paris resolves to the Eiffel Tower, with an arrival viewpoint facing the landmark. Other city and landmark searches remain available. Then say “Picture me here” to create an imagined travel portrait from your reference photo, or “Find cafés and good deals nearby” to display Google café photos, ratings, original Maps links and a separate sourced offer search. The same actions are available as buttons in **Explore** and **Around you**.
+Open the map and type a request or choose **Talk**. The conversation window is the default interface; **Debug** opens the manual flight, landing, image, discovery, and planning controls.
+
+- “Fly to Osaka, land at Shinsaibashi” runs one connected journey and opens an AI-generated 360° view after landing.
+- “Circle around the Eiffel Tower in Paris” flies there if needed and completes one orbit. Reduced motion uses a stationary overview.
+- “Land here without an image” lands without generating a panorama.
+- “Picture me here”, “Find cafés nearby”, and “Plan three days here focused on food” open the corresponding result.
+- Say **Stop**, type **Stop**, or select **Stop current action** to cancel pending work. A completed image is reused unless you ask for a new version.
+
+Typed and spoken commands share validated application tools. The model chooses actions, waits for their results, and reports cancellations or partial failures. A landing requests a generated view by default. The microphone starts only when you choose Talk; text chat works without microphone access.
+
+Paris resolves to the Eiffel Tower when no more specific destination is requested. Other city and landmark searches remain available. Café results include Google photos, ratings, original Maps links and a separate sourced offer search.
 
 Upload a JPEG, PNG or WebP under 5 MB in **Picture yourself here**. The upload stays in the current tab and is sent to the server and OpenAI only when generation is requested; it is not saved to disk by the upload endpoint. The result is labelled AI-generated and has a download link. Changing destinations or removing the photo cancels pending portrait generation and discards stale results. Generated portraits are separate from the Google map and 360° panorama.
 
@@ -22,12 +32,11 @@ The owner-only Zo preview may set `CROW_OWNER_PHOTO` to an absolute path outside
 
 New server routes: `POST /api/portrait` (multipart image edits sent to OpenAI) and `POST /api/discover` (Responses web search). Deploy `travel.js` and `travel.css` alongside the existing `dist/` files and restart the Node server, or rebuild the GPT Sites Worker bundle. Existing OpenAI and Google Places configuration is reused. Static-only hosting retains map/Studio features, but the AI flow needs the Node backend or GPT Sites Worker. The Worker supports uploaded photos; the owner's server reference is always disabled there.
 
-1. Start the local app and allow browser location access to place the crow near you. Open **Explore**, search for a city, landmark, or address, then select a result to fly there.
-2. Search for a specific landing spot, select **Pick on the map**, or choose **Land at destination**.
-3. With **Generate a 360° scene when I land** enabled, landing creates a panorama. You can also use **Generate scene**. Drag to look around, scroll to zoom, use arrow keys to turn, or save the image.
-4. Open **Around you**, choose **Connect Instagram**, and sign in through Facebook with the account linked to your professional Instagram profile. Choose an account if more than one is available, then load recent public hashtag photos.
-5. Open **Your trip**, set 1–14 days, travel style, and interests, then choose **Plan my trip**. Saved places inform the itinerary. Read its source links or save the plan.
-6. Choose **Talk** to speak with the GPT-Live guide. Ask it to fly somewhere, land at a landmark, take off, generate a panorama, or plan a trip. Microphone access starts from this action; the call has mute and end controls.
+1. Start the app, choose **Let’s explore**, and allow location access to place the crow nearby.
+2. Tell the guide your destination and landing spot in one sentence. Flight, landing, and the generated view happen in sequence. Drag the 360° view to look around, scroll to zoom, or save the image.
+3. Ask for a portrait, local cafés, or a travel plan. Results appear in their own window with a link in the conversation to reopen them.
+4. To connect Instagram, follow **Find the local favourites** on the landing page, or open **Debug → Around you**. Choose **Connect Instagram** and sign in through Facebook with the linked professional account.
+5. For manual control, open **Debug** to search destinations, pick a rooftop on the map, adjust image settings, or edit trip preferences.
 
 To launch from a building, land using a place’s **Land here** action, the landing search, or **Pick on the map** on its rooftop. Select **Take off ↗** or ask the guide to take off. The crow spreads its wings, eases into a climb, then moves forward after gaining rooftop clearance. The camera follows continuously from your current view and gradually pulls back. Takeoff locks the resolved rooftop elevation so crossing its edge does not drop the bird. If elevation is unavailable, the crow stays above the launch coordinates. Pause interrupts the ascent; Reset returns to the starting point. Reduced motion keeps the camera angle and zoom fixed during a shorter ascent.
 
@@ -39,7 +48,7 @@ Flights over 50 km pull the camera up from the departure point, follow a curved 
 
 The original Chelsea flight remains the fallback starting route. Its controls support start, pause, resume, restart, speed changes, camera height, map labels, and nearby place discovery.
 
-On desktop, Explore opens in a full-height sidebar beside the map; closing it expands the map. On phones, the map opens first and Explore opens a drawer. Music and Crow Studio are in the top toolbar. Responsive map-page layout is defined in `dist/layout.css`; include it when deploying `dist/`.
+The map opens with a compact chat and voice window. On phones, the conversation sits near the bottom and can be collapsed. Debug opens the full manual sidebar or mobile drawer. Music and Crow Studio are in the top toolbar. Responsive map-page layout is defined in `dist/layout.css`; include it when deploying `dist/`.
 
 ## What is included
 
@@ -47,7 +56,7 @@ On desktop, Explore opens in a full-height sidebar beside the map; closing it ex
 - **A crow inside the 3D map:** separate body and articulated wing GLBs with layered feather geometry. Wingbeats, gliding, banking, swerves, and gentle vertical sway animate the flight.
 - **An independent following camera:** the view follows the route without copying each wingbeat or lateral swerve; pausing lets you orbit the scene.
 - **360° image generation:** a 2048×1024 equirectangular image generated from the destination and landing coordinates, displayed in an interactive panorama viewer.
-- **GPT-Live voice:** browser WebRTC audio with transcripts and application tools for flying, landing, taking off, image generation, and planning. The server creates the session using its own OpenAI key.
+- **Chat and GPT-Live voice:** typed Responses conversations and browser WebRTC audio with shared tools for connected journeys, orbiting, landing, taking off, image generation, and planning. The server creates the session using its own OpenAI key.
 - **Sourced travel guidance:** OpenAI Responses with web search produces an itinerary around the destination, landing spot, saved places, budget, and interests, with clickable references.
 - **Instagram photos:** the official Meta hashtag API supplies recent public images and carousel photos, with links to the original posts. Missing credentials, empty results, and provider errors have explicit states.
 - **Place discovery and session saves:** nearby businesses and available address, opening hours, website, and phone details. Shortlisted places remain available while the page stays open.
@@ -102,7 +111,7 @@ Edit `.env` and set `OPENAI_API_KEY`. Keep OpenAI and Meta credentials only in t
 npm run dev
 ```
 
-Open [localhost:3000](http://localhost:3000). `npm start` runs the same server. It loads `.env`, serves `dist/`, and provides `/api/*` on the same origin. Restart it after changing server configuration. The app uses no npm runtime dependencies and needs no frontend build.
+Open [localhost:3000](http://localhost:3000) for the feature overview, or [the map](http://localhost:3000/explore.html) to explore directly. `npm start` runs the same server. It loads `.env`, serves `dist/`, and provides `/api/*` on the same origin. Restart it after changing server configuration. The app uses no npm runtime dependencies and needs no frontend build.
 
 A Python static server can display the map, but it cannot provide the AI or Instagram endpoints. Use the Node server for the complete experience.
 
@@ -153,6 +162,7 @@ See Meta’s [server-side login flow](https://developers.facebook.com/docs/faceb
 | Place search and details | Google Places library |
 | 360° viewer | WebGL equirectangular panorama viewer |
 | API server | Node built-ins; bounded requests, origin checks, provider timeouts, and sanitized errors |
+| Typed commands | `POST /api/chat`, Responses function calling, bounded server-side conversation history |
 | Live voice | `POST /v1/live/sessions`, WebRTC audio, and Responses delegation |
 | Images | OpenAI Image API, 2048×1024 JPEG, medium quality |
 | Travel planning | OpenAI Responses API with web search and source citations |
@@ -171,7 +181,10 @@ The OpenAI integration follows the official [GPT-Live WebRTC flow](https://devel
 
 | Path | Purpose |
 | --- | --- |
-| `dist/index.html`, `dist/style.css` | Map, flight controls, and place-detail dialogs |
+| `dist/index.html`, `dist/home.css`, `dist/home.js` | Landing page, feature links, and legacy sign-in return routing |
+| `dist/explore.html`, `dist/conversation.css` | Chat and voice interface, result windows, and optional Debug controls |
+| `dist/style.css`, `dist/simple.css` | Map styling and manual control disclosures |
+| `dist/chat.js` | Typed conversation, validated tool execution, and cancellation |
 | `dist/app.js` | Maps setup, flight animation, destination and landing controls |
 | `dist/location.js` | Browser location permission, validation, and bounded retries |
 | `dist/scout.js`, `dist/scout.css` | Travel scout, Instagram, panorama, and trip-planning UI |
@@ -202,10 +215,10 @@ npm ci
 npm test
 npm run verify:models
 npm run verify:scout
-CROW_BROWSER_EXECUTABLE=/path/to/chromium CROW_TEST_URL=http://127.0.0.1:3000/ npm run verify:browser
+CROW_BROWSER_EXECUTABLE=/path/to/chromium CROW_TEST_URL=http://127.0.0.1:3000/explore.html npm run verify:browser
 CROW_BROWSER_EXECUTABLE=/path/to/chromium npm run verify:journey
 CROW_BROWSER_EXECUTABLE=/path/to/chromium npm run verify:location
-CROW_BROWSER_EXECUTABLE=/path/to/chromium CROW_TEST_URL=http://127.0.0.1:3000/ node scripts/verify-takeoff.mjs
+CROW_BROWSER_EXECUTABLE=/path/to/chromium CROW_TEST_URL=http://127.0.0.1:3000/explore.html node scripts/verify-takeoff.mjs
 ```
 
 `npm test` covers server request validation, provider contracts, secrets handling, cancellation, citations, Instagram normalization and OAuth sessions, and static-file boundaries using mocked providers. OAuth tests cover state validation/replay, browser isolation, account selection, expiry, disconnect, and Secure production cookies. Browser checks require a suitable Chromium executable or debugging connection; the full map check also requires configured Google Maps access. Mocked checks do not establish that external accounts have access to the configured models or Meta permissions.
@@ -244,6 +257,8 @@ The complete application needs **API endpoints and browser assets on the same or
 Run `npm start` with server-side environment variables. The server binds to loopback by default. For public access, put it behind an authenticated HTTPS reverse proxy and set `PUBLIC_ORIGIN` to the exact browser origin. The proxy can preserve the external `Host` or connect over loopback using the server's own local hostname and listening port, as Zo does. When supplied on a local proxy request, `X-Forwarded-Host` must match `PUBLIC_ORIGIN`. Browser origin checks, secure cookies and OAuth redirects still use the configured external origin. Its origin checks and local rate limits do not authenticate users; protect access to the billable endpoints at the proxy or add application authentication before exposing them publicly.
 
 Keep `.env` and provider credentials outside published browser assets. Publish or serve the full `dist/` directory with its environment-specific Maps configuration and all four `models/*.glb` assets, including the studio's perched crow, plus the music and studio bundles. Keep model URLs on the same origin and use plain URLs ending in `.glb`: adding `?v=4` reproduced an invisible model despite HTTP 200 in the earlier tested renderer.
+
+Typed chat history is held in server memory for up to 30 minutes of inactivity, with bounded history and up to 64 active conversations. Its random conversation ID stays in tab memory; provider reasoning is retained on the server for tool continuation and is not returned to the browser. Reloading starts a new chat. Chat requires sticky routing or shared protected storage across server instances.
 
 Instagram login state and sessions are currently held in memory. A deployment with multiple Node workers needs sticky sessions or a shared protected session store. Register the deployed callback URL in Meta before enabling sign-in.
 

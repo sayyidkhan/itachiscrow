@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright-core';
 
 const output = new URL('../_debug/takeoff/', import.meta.url);
-const appUrl = new URL(process.env.CROW_TEST_URL || 'http://127.0.0.1:8806/');
+const appUrl = new URL(process.env.CROW_TEST_URL || 'http://127.0.0.1:8806/explore.html');
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   executablePath: process.env.CROW_BROWSER_EXECUTABLE,
@@ -54,6 +54,8 @@ try {
   await page.goto(appUrl.href, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.CrowMap?.getContext().mapReady || (typeof startupFailed !== 'undefined' && startupFailed), null, { timeout: 240000 });
   assert.equal(await page.evaluate(() => window.CrowMap?.getContext().mapReady), true, 'Google Maps must finish loading before takeoff verification');
+  await page.locator('#scout-open').click();
+  await page.locator('#scene-tools').evaluate(element => element.open = true);
   await page.locator('#auto-scene').uncheck();
   await capture('01-perched');
   await launch();
