@@ -216,7 +216,7 @@ On macOS it builds its speech fixture with `say` and `afconvert`. Elsewhere, sup
 
 ## Deployment
 
-The complete application needs the **Node server and browser assets on the same origin**. A static-only upload of `dist/` will not enable GPT-Live, image generation, travel planning, or Instagram. The existing GPT Sites demo is an earlier static deployment; GitHub commits do not redeploy it.
+The complete application needs **API endpoints and browser assets on the same origin**. A static-only upload of `dist/` will not enable GPT-Live, image generation, travel planning, or Instagram. GPT Sites uses the Worker adapter described below; GitHub commits do not redeploy it.
 
 Run `npm start` with server-side environment variables. The server binds to loopback by default. For public access, put it behind an authenticated HTTPS reverse proxy, preserve the external `Host`, and set `PUBLIC_ORIGIN` to the exact browser origin. Its origin checks and local rate limits do not authenticate users; protect access to the billable endpoints at the proxy or add application authentication before exposing them publicly.
 
@@ -225,3 +225,11 @@ Keep `.env` and provider credentials outside published browser assets. Publish o
 Instagram login state and sessions are currently held in memory. A deployment with multiple Node workers needs sticky sessions or a shared protected session store. Register the deployed callback URL in Meta before enabling sign-in.
 
 The initial export came from Sites source commit `cebef75b960610f945f18e1a58216c5a37333e80`, with the browser Maps key moved into local configuration.
+
+### GPT Sites deployment
+
+`npm run build` prepares `dist/server/index.js` and `dist/client/` for the existing GPT Site. `scripts/build-sites.mjs` adapts the Node API handler to Web Requests and Responses, preserving request validation, provider calls, origin checks, and local rate limits. `worker/adapter.mjs` serves the browser Maps configuration from `CROW_MAPS_KEY`; the OpenAI key stays in the hosted `OPENAI_API_KEY` secret. The original `npm start` development flow remains available.
+
+Set `PUBLIC_ORIGIN` to the exact published origin. Publish through GPT Sites after changing source or runtime secrets. Run `npm run build && node --test worker/adapter.test.mjs` to check the adapter with mocked providers. These checks do not verify real provider quota, voice audio, or GPU rendering.
+
+Instagram credentials are optional and have not been configured on GPT Sites. The inherited in-memory Instagram OAuth sessions and local rate limits are per Worker isolate, not durable or global; reliable multi-isolate Instagram login requires a shared session store before enabling it.

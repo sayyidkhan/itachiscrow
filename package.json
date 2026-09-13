@@ -12,9 +12,12 @@
     "build:studio": "esbuild src/customise.js --bundle --minify --format=esm --external:./crow-design.js --outfile=dist/customise.js",
     "verify:studio": "node scripts/verify-studio.mjs",
     "verify:browser": "node scripts/verify-browser.mjs",
-    "verify:models": "node scripts/verify-models.mjs"
+    "verify:models": "node scripts/verify-models.mjs",
+    "build": "node scripts/build-sites.mjs"
   },
-  "engines": {"node": ">=22.6.0"},
+  "engines": {
+    "node": ">=22.6.0"
+  },
   "devDependencies": {
     "esbuild": "0.28.2",
     "gltf-validator": "2.0.0-dev.3.10",
