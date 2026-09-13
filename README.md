@@ -22,7 +22,7 @@ The owner-only Zo preview may set `CROW_OWNER_PHOTO` to an absolute path outside
 
 New server routes: `POST /api/portrait` (multipart image edits sent to OpenAI) and `POST /api/discover` (Responses web search). Deploy `travel.js` and `travel.css` alongside the existing `dist/` files and restart the Node server, or rebuild the GPT Sites Worker bundle. Existing OpenAI and Google Places configuration is reused. Static-only hosting retains map/Studio features, but the AI flow needs the Node backend or GPT Sites Worker. The Worker supports uploaded photos; the owner's server reference is always disabled there.
 
-1. Start the local app and open **Explore**. Search for a city, landmark, or address, then select a result to fly there.
+1. Start the local app and allow browser location access to place the crow near you. Open **Explore**, search for a city, landmark, or address, then select a result to fly there.
 2. Search for a specific landing spot, select **Pick on the map**, or choose **Land at destination**.
 3. With **Generate a 360° scene when I land** enabled, landing creates a panorama. You can also use **Generate scene**. Drag to look around, scroll to zoom, use arrow keys to turn, or save the image.
 4. Open **Around you**, choose **Connect Instagram**, and sign in through Facebook with the account linked to your professional Instagram profile. Choose an account if more than one is available, then load recent public hashtag photos.
@@ -33,7 +33,11 @@ To launch from a building, land using a place’s **Land here** action, the land
 
 Generated scenes are imaginative impressions, with the crow centered in the initial forward view. They are not live photographs or verified reconstructions of the exact surroundings. Instagram photos are recent hashtag matches and can come from outside the chosen location.
 
-The original Chelsea flight remains available as a starting route. Its controls support start, pause, resume, restart, speed changes, camera height, map labels, and nearby place discovery.
+Location access requires localhost or HTTPS. If access is declined or unavailable, the app opens the Chelsea demo and explains the fallback. **Use my location** retries or brings the crow back nearby; restart returns to the session’s starting location. Coordinates stay in page memory and are used to render Google Maps. Starting nearby does not automatically generate a paid scene.
+
+Flights over 50 km pull the camera up from the departure point, follow a curved path around the globe, then descend into the destination and approach with the crow. A route card shows the flight stage and distance. Pause or map interaction cancels the transition. The browser’s reduced-motion preference skips the sweeping camera movement.
+
+The original Chelsea flight remains the fallback starting route. Its controls support start, pause, resume, restart, speed changes, camera height, map labels, and nearby place discovery.
 
 On desktop, Explore opens in a full-height sidebar beside the map; closing it expands the map. On phones, the map opens first and Explore opens a drawer. Music and Crow Studio are in the top toolbar. Responsive map-page layout is defined in `dist/layout.css`; include it when deploying `dist/`.
 
@@ -169,6 +173,7 @@ The OpenAI integration follows the official [GPT-Live WebRTC flow](https://devel
 | --- | --- |
 | `dist/index.html`, `dist/style.css` | Map, flight controls, and place-detail dialogs |
 | `dist/app.js` | Maps setup, flight animation, destination and landing controls |
+| `dist/location.js` | Browser location permission, validation, and bounded retries |
 | `dist/scout.js`, `dist/scout.css` | Travel scout, Instagram, panorama, and trip-planning UI |
 | `dist/live.js` | GPT-Live WebRTC client and application tool handling |
 | `dist/panorama.js` | Interactive 360° viewer |
@@ -199,6 +204,7 @@ npm run verify:models
 npm run verify:scout
 CROW_BROWSER_EXECUTABLE=/path/to/chromium CROW_TEST_URL=http://127.0.0.1:3000/ npm run verify:browser
 CROW_BROWSER_EXECUTABLE=/path/to/chromium npm run verify:journey
+CROW_BROWSER_EXECUTABLE=/path/to/chromium npm run verify:location
 ```
 
 `npm test` covers server request validation, provider contracts, secrets handling, cancellation, citations, Instagram normalization and OAuth sessions, and static-file boundaries using mocked providers. OAuth tests cover state validation/replay, browser isolation, account selection, expiry, disconnect, and Secure production cookies. Browser checks require a suitable Chromium executable or debugging connection; the full map check also requires configured Google Maps access. Mocked checks do not establish that external accounts have access to the configured models or Meta permissions.
@@ -206,6 +212,8 @@ CROW_BROWSER_EXECUTABLE=/path/to/chromium npm run verify:journey
 For the full map check, set `CROW_SOFTWARE_GL=1` to use Chromium’s SwiftShader WebGL2 renderer on a machine without a GPU, or set `CROW_CDP_URL` to attach to an existing Chromium debugging endpoint. It renders and reads back a WebGL2 pixel, then exercises the real map, model requests, flight controls, Places, and a 390×844 viewport. Screenshots and a redacted report are written under `_debug/verification/`. Inspect the screenshots: state assertions alone do not prove visibility. Mobile viewport coverage is not physical iPhone testing.
 
 `verify:journey` checks a real flight to Singapore, rooftop landing at the Fullerton Hotel, continuous takeoff, and mobile layout without calling image or planning APIs. `verify:scout` uses mocked providers to check the interface, live controls, source links, request cancellation, panoramas, and Instagram sign-in/account selection.
+
+`verify:location` uses synthetic browser coordinates with the real 3D renderer to check location startup, a Singapore–Paris flight, cancellation, reduced motion, and permission fallback/retry. It intercepts AI requests and saves screenshots and its report under `_debug/location-journey-verification/`.
 
 An optional **paid** voice test exercises the real GPT-Live service using synthesized speech, without accessing your microphone or normal browser profile:
 

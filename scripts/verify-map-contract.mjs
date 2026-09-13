@@ -47,7 +47,7 @@ class Place {
   static async searchNearby(request) { lastNearbyRequest = request; return nearbyResponse ?? { places: [testPlace] }; }
 }
 class Map3DElement extends Element {
-  constructor(options) { super(); Object.assign(this, options); maps = this; }
+  constructor(options) { super(); Object.assign(this, options); this.initialOptions = options; maps = this; }
   flyCameraTo(options) {
     cameraCalls.push(options); Object.assign(this, options.endCamera);
     if (options.endCamera.altitudeMode === 'RELATIVE_TO_MESH') this.center = { ...this.center, altitude: this.center.altitude + 1422 };
@@ -66,7 +66,7 @@ const sandbox = vm.createContext({ document, window, google, URL, Event, CustomE
   fetch: async () => ({ ok: true, arrayBuffer: async () => data }), location: { reload() {} }, console });
 vm.runInContext(await readFile(new URL('../dist/app.js', import.meta.url), 'utf8'), sandbox);
 const events = [];
-for (const name of ['ready', 'destination', 'landing-selected', 'landed', 'context']) {
+for (const name of ['ready', 'destination', 'landing-selected', 'landed', 'context', 'flight']) {
   document.addEventListener('crow:' + name, event => events.push({ name, detail: event.detail }));
 }
 await window.initCrow();
@@ -83,10 +83,24 @@ await assert.rejects(api.searchDestinations('x'), /city, landmark/);
 await assert.rejects(api.flyTo({ name: 'Invalid', lat: NaN, lng: 0 }), /valid map coordinates/);
 
 const kathmandu = { name: 'Kathmandu', lat: 27.7172, lng: 85.324 };
+const sourcePose = JSON.stringify(vm.runInContext('crowParts[0].position', sandbox));
+const sourceCamera = JSON.stringify(maps.center);
 const arrival = api.flyTo(kathmandu);
 assert.equal(api.getContext().mode, 'arriving');
-advance(5000);
+assert.equal(JSON.stringify(vm.runInContext('crowParts[0].position', sandbox)), sourcePose, 'Do not move the crow before pulling the camera away');
+assert.equal(JSON.stringify(maps.center), sourceCamera, 'A long journey begins at the current camera');
+advance(1000);
+assert.equal(api.getContext().flightStage, 'departing');
+assert(maps.range > 52);
+advance(3000);
+assert.equal(api.getContext().flightStage, 'cruising');
+assert(maps.range > 50000);
+advance(12000);
 assert.equal((await arrival).mode, 'hovering');
+assert.equal(api.getContext().flightStage, null);
+assert(api.getContext().routeDistanceMeters > 50000);
+assert.deepEqual([...new Set(events.filter(event => event.name === 'flight').map(event => event.detail.stage))], ['departing', 'cruising', 'descending', 'approaching', null]);
+assert(events.filter(event => event.name === 'flight').every(event => event.detail.range <= 12000000), 'Globe framing stays within the intended camera range cap');
 assert.equal(api.getContext().destination.name, 'Kathmandu');
 assert.equal(cameraCalls.at(-1).endCamera.altitudeMode, 'RELATIVE_TO_MESH');
 assert(Math.abs(cameraCalls.at(-1).endCamera.center.lat - kathmandu.lat) < 1e-6);
@@ -174,10 +188,15 @@ assert.equal(marker.removed, true);
 resolveNearby({ places: [testPlace] });
 await pendingNearby;
 assert.equal(elements.get('places').children.length, 0, 'Stale results from the last destination must not reappear');
+advance(4000); assert.equal(api.getContext().flightStage, 'cruising');
 api.pause(); assert.equal((await newFlight).cancelled, true);
+const cancelledCamera = JSON.stringify(maps.center); advance(13000);
+assert.equal(JSON.stringify(maps.center), cancelledCamera, 'Cancelled country travel must freeze the camera and never arrive later');
+assert.equal(api.getContext().flightStage, null);
+assert.equal(events.filter(event => event.name === 'flight').at(-1).detail.cancelled, true);
 
 const parisFlight=api.flyTo({name:'Eiffel Tower, Paris, France',lat:48.85837,lng:2.294481});
-advance(5000);await parisFlight;
+advance(16000);await parisFlight;
 assert.equal(maps.range,52);
 assert.equal(maps.tilt,85);
 assert.equal(parts[0].altitudeMode,'ABSOLUTE');
@@ -193,4 +212,111 @@ assert.equal(api.getContext().destination.name, 'Chelsea, New York');
 assert.equal(api.getContext().savedPlaces[0].name, 'Mountain Cafe');
 assert(parts.every(part => part.altitudeMode === 'ABSOLUTE' && part.scale === 2.2));
 assert.equal(maps.range, 48);
-console.log('Map contract passed: destination search, terrain-relative arrival, nearby cache, saved context, click landing, wing fold, continuous rooftop takeoff, departure elevation, cancellation, stale responses, demo reset.');
+
+const arcMidpoint = vm.runInContext('sphericalPoint({lat:10,lng:179},{lat:10,lng:-179},.5)', sandbox);
+assert(Math.abs(arcMidpoint.lng) > 179, 'Date-line travel must follow the short route');
+for (const t of [0, .25, .5, .75, 1]) {
+  const point = vm.runInContext(`sphericalPoint({lat:0,lng:0},{lat:0,lng:180},${t})`, sandbox);
+  assert(Number.isFinite(point.lat) && Number.isFinite(point.lng), 'Antipodal routes must remain finite');
+}
+window.matchMedia = () => ({ matches: true });
+const cameraCount = cameraCalls.length;
+const reduced = await api.flyTo({ name: 'Tokyo', lat: 35.67, lng: 139.65 });
+assert.equal(reduced.mode, 'hovering');
+assert.equal(reduced.flightStage, null);
+assert.equal(cameraCalls.length, cameraCount + 1);
+assert.equal(cameraCalls.at(-1).durationMillis, 0, 'Reduced motion skips globe sweeps');
+delete window.matchMedia;
+
+async function locationCase(locate, key = 'test', nativeAnimationEnd = false) {
+  const nodes = new Map();
+  const isolatedDocument = Object.assign(new EventTarget(), {
+    baseURI: document.baseURI, currentScript: document.currentScript, head: new Element(), body: new Element(), activeElement: null,
+    getElementById(id) { if (!nodes.has(id)) nodes.set(id, new Element()); return nodes.get(id); }, createElement() { return new Element(); },
+  });
+  const isolatedWindow = Object.assign(new EventTarget(), { CROW_MAPS_KEY: key, CrowLocation: { locate } });
+  const isolated = vm.createContext({ ...sandbox, document: isolatedDocument, window: isolatedWindow });
+  const emitted = [];
+  for (const name of ['ready', 'landed']) isolatedDocument.addEventListener('crow:' + name, event => emitted.push({ name, detail: event.detail }));
+  vm.runInContext(await readFile(new URL('../dist/app.js', import.meta.url), 'utf8'), isolated);
+  if (key) {
+    await isolatedWindow.initCrow();
+    const usesLocation = isolatedWindow.CrowMap.getContext().hasUserLocation;
+    if (usesLocation) assert.equal(maps.range, 20000, 'Location startup must await the native initial scene before framing');
+    maps.dispatchEvent(Object.assign(new Event('gmp-steadychange'), { isSteady: true }));
+    if (usesLocation) {
+      assert.equal(isolatedWindow.CrowMap.getContext().mapReady, false, 'The initial 20km scene is not ready for the user');
+      advance(20);
+      assert.equal(maps.range, 22);
+      assert.equal(maps.tilt, 72);
+      assert.equal(isolatedWindow.CrowMap.getContext().mapReady, false, 'The close camera must finish or remain stable before ready');
+      maps.dispatchEvent(Object.assign(new Event('gmp-steadychange'), { isSteady: false }));
+      if (nativeAnimationEnd) maps.dispatchEvent(new Event('gmp-animationend'));
+      else {
+        advance(250);
+        assert.equal(isolatedWindow.CrowMap.getContext().mapReady, false, 'Do not accept an unsettled close camera');
+        advance(200);
+      }
+      assert.equal(isolatedWindow.CrowMap.getContext().mapReady, true, 'Camera completion must not wait indefinitely for mesh steady');
+      assert.equal(vm.runInContext('sceneSteady', isolated), false);
+    }
+  }
+  return { api: isolatedWindow.CrowMap, window: isolatedWindow, document: isolatedDocument, sandbox: isolated, map: maps, nodes, emitted };
+}
+let locationCalls = 0;
+const singapore = { name: 'Your location', lat: 1.2868, lng: 103.8545 };
+const located = await locationCase(async () => { locationCalls++; return { status: 'located', place: singapore, accuracy: 12, message: 'Starting at your browser location.' }; });
+assert.equal(locationCalls, 1);
+assert.equal(located.api.getContext().locationStatus, 'located');
+assert.equal(located.api.getContext().hasUserLocation, true);
+assert.equal(located.api.getContext().mode, 'landed');
+assert.equal(located.api.getContext().spot.lat, singapore.lat);
+assert.equal(located.map.initialOptions.center.lat, singapore.lat, 'The initial map must never flash Chelsea before locating the user');
+assert.equal(located.map.initialOptions.center.lng, singapore.lng);
+assert.equal(located.map.range, 22, 'Ready means the crow is framed nearby, never the bootstrap 20km camera');
+assert.equal(located.map.tilt, 72);
+assert.equal(vm.runInContext('crowParts[0].position.altitude', located.sandbox), 1.2);
+assert.equal(vm.runInContext('crowParts[0].altitudeMode', located.sandbox), 'RELATIVE_TO_MESH');
+assert.deepEqual(located.emitted.map(event => event.name), ['ready'], 'Located startup does not auto-generate a panorama');
+let finishLocation;
+located.window.CrowLocation.locate = () => new Promise(resolve => { finishLocation = resolve; });
+const staleLocation = located.api.useCurrentLocation();
+assert.equal(located.api.getContext().locationStatus, 'locating');
+const chosenDestination = located.api.flyTo({ name: 'Paris', lat: 48.8566, lng: 2.3522 });
+finishLocation({ status: 'located', place: { name: 'Late location', lat: 2, lng: 104 }, message: 'Located.' });
+assert.equal((await staleLocation).cancelled, true);
+assert.equal(located.api.getContext().destination.name, 'Paris');
+located.api.pause(); await chosenDestination;
+located.nodes.get('restart').onclick();
+assert.equal(located.api.getContext().spot.lat, singapore.lat, 'Reset returns to the saved starting location');
+const resetPending = located.api.useCurrentLocation();
+located.nodes.get('restart').onclick();
+finishLocation({ status: 'located', place: { name: 'Stale after reset', lat: 3, lng: 105 }, message: 'Located.' });
+assert.equal((await resetPending).cancelled, true);
+assert.equal(located.api.getContext().spot.lat, singapore.lat);
+const pausePending = located.api.useCurrentLocation(); located.api.pause();
+finishLocation({ status: 'located', place: { name: 'Stale after pause', lat: 4, lng: 106 }, message: 'Located.' });
+assert.equal((await pausePending).cancelled, true, 'Pause cancels pending location placement as well as active flight');
+assert.equal(located.api.getContext().spot.lat, singapore.lat);
+const responses = [];
+located.window.CrowLocation.locate = () => new Promise(resolve => responses.push(resolve));
+const older = located.api.useCurrentLocation(), newer = located.api.useCurrentLocation();
+responses[1]({ status: 'located', place: { name: 'Your location', lat: 35.67, lng: 139.65 }, message: 'Location refreshed.' });
+await newer;
+responses[0]({ status: 'located', place: singapore, message: 'Older result.' });
+assert.equal((await older).cancelled, true);
+assert.equal(located.api.getContext().spot.lat, 35.67, 'Only the last location request may reposition the crow');
+assert.deepEqual(located.emitted.map(event => event.name), ['ready']);
+const animationEnded = await locationCase(async () => ({ status: 'located', place: singapore, message: 'Located.' }), 'test', true);
+assert.equal(animationEnded.api.getContext().mapReady, true, 'Native animation completion also confirms the close camera');
+const denied = await locationCase(async () => ({ status: 'denied', place: null, message: 'Location permission denied. Try the Chelsea demo.' }));
+assert.equal(denied.api.getContext().locationStatus, 'denied');
+assert.equal(denied.api.getContext().hasUserLocation, false);
+assert.equal(denied.api.getContext().mode, 'demo');
+assert.match(denied.api.getContext().locationMessage, /denied/);
+const callsBeforeNoKey = locationCalls;
+const noKey = await locationCase(() => { locationCalls++; throw Error('Location must not be requested without Maps configuration'); }, '');
+assert.equal(locationCalls, callsBeforeNoKey);
+assert.equal(noKey.document.head.children.length, 0);
+assert.equal(noKey.api.getContext().mapReady, false);
+console.log('Map contract passed: search, staged country travel, spherical/date-line routes, reduced motion, startup location, stale location prevention, location reset, saved places, rooftop takeoff, cancellation and demo fallback.');

@@ -7,7 +7,7 @@ import { chromium } from 'playwright-core';
 // traffic and microphone capture are intercepted; no provider calls are made.
 const output = new URL('../_debug/scout-verification/', import.meta.url);
 await mkdir(output, { recursive: true });
-const files = new Set(['index.html', 'style.css', 'scout.css', 'layout.css', 'scout.js', 'travel.js', 'travel.css', 'live.js', 'panorama.js', 'music.js', 'music.css']);
+const files = new Set(['index.html', 'style.css', 'scout.css', 'layout.css', 'scout.js', 'travel.js', 'travel.css', 'live.js', 'panorama.js', 'music.js', 'music.css', 'location.js']);
 const server = createServer(async (request, response) => {
   const name = new URL(request.url, 'http://localhost').pathname.slice(1) || 'index.html';
   if (name === 'app.js' || name === 'config.js') { response.writeHead(200, { 'Content-Type': 'text/javascript' }); response.end('/* replaced by deterministic test Maps contract */'); return; }
