@@ -26,7 +26,7 @@
 .explorer .header-actions #scout-open { order: -1; color: var(--accent); background: #80ecd50d; border-color: #80ecd52b; }
 .explorer .header-actions #scout-open[aria-expanded=true] { background: #80ecd51b; }
 .explorer .header-actions #info { order: 3; width: 40px; padding: 0; }
-.explorer .header-actions #music-open { position: static; margin: 0; min-height: 40px; padding: 9px 13px; border: 1px solid #ffffff14; border-radius: 10px; background: transparent; color: var(--muted); font: 500 12px/1.5 system-ui; }
+.explorer .header-actions #music-open { order: 4; position: static; margin: 0; min-height: 40px; padding: 9px 13px; border: 1px solid #ffffff14; border-radius: 10px; background: transparent; color: var(--muted); font: 500 12px/1.5 system-ui; }
 .explorer .studio-link { max-width: none; }
 .explorer .scout-panel {
   top: var(--header-height);
@@ -95,14 +95,14 @@
 @media (max-width: 760px) {
   .explorer { --header-height: calc(114px + env(safe-area-inset-top)); --map-left: 0px !important; }
   .explorer .topbar { display: grid; grid-template-columns: 1fr; gap: 10px; padding: calc(10px + env(safe-area-inset-top)) 14px 10px; }
-  .explorer .brand { align-self: start; }
+  .explorer .brand { align-self: start; max-width: calc(100% - 90px); }
   .explorer .brand h1 { font-size: 20px; }
   .explorer .brand .eye { font-size: 24px; }
-  .explorer .brand p { font-size: 8px; max-width: 220px; }
+  .explorer .brand p { font-size: 8px; max-width: min(220px, calc(100vw - 160px)); }
   .explorer .header-actions { display: flex; gap: 6px; }
   .explorer .header-actions > :is(button, a) { min-height: 36px; font-size: 11px; padding: 7px 10px; }
-  .explorer .header-actions #music-open { min-height: 36px; font-size: 11px; padding: 7px 10px; }
-  .explorer .header-actions #info { position: absolute; top: calc(13px + env(safe-area-inset-top)); right: 14px; width: 34px; min-height: 34px; }
+  .explorer .header-actions #music-open { position: absolute; inset: calc(10px + env(safe-area-inset-top)) 14px auto auto; min-height: 40px; font-size: 11px; padding: 7px 10px; }
+  .explorer .header-actions #info { position: static; width: 34px; min-height: 36px; }
   .explorer .header-actions #scout-open { flex: 1; }
   .explorer .scout-panel { top: calc(var(--header-height) + 10px); left: 10px; right: 10px; bottom: calc(38px + env(safe-area-inset-bottom)) !important; width: auto; border: 1px solid #ffffff22; border-radius: 16px; box-shadow: 0 15px 60px #0008; }
   .explorer .scout-heading { padding: 16px 18px 12px; }

@@ -13,7 +13,7 @@ audio.preload = 'none';
 audio.loop = true;
 audio.volume = typeof saved?.volume === 'number' && Number.isFinite(saved.volume) ? Math.max(0, Math.min(1, saved.volume)) : 0.35;
 audio.muted = saved?.muted === true;
-const launcher = document.createElement('button');
+const launcher = document.getElementById('music-open') || document.createElement('button');
 launcher.id = 'music-open';
 launcher.type = 'button';
 launcher.textContent = '♫ Music';
