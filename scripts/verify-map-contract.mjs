@@ -136,21 +136,36 @@ const rooftop = { ...api.getContext().spot };
 const restingPosition = { ...parts[0].position }, foldedWidth = parts[1].scale.x;
 const destinationBeforeTakeoff = JSON.stringify(api.getContext().destination);
 const destinationEvents = events.filter(event => event.name === 'destination').length;
+const cameraBeforeTakeoff = JSON.stringify({center:maps.center,range:maps.range,tilt:maps.tilt,heading:maps.heading});
+const callsBeforeTakeoff = cameraCalls.length;
 const takeoff = api.takeOff();
 assert.equal(api.getContext().mode, 'taking-off');
 assert.equal(api.getContext().spot, null);
 assert.equal(JSON.stringify(parts[0].position), JSON.stringify(restingPosition), 'Takeoff must begin at the exact landed position');
 assert(Math.abs(parts[1].scale.x - foldedWidth) < 1e-6);
-advance(1200);
-assert(parts[0].position.altitude > restingPosition.altitude);
+assert.equal(JSON.stringify({center:maps.center,range:maps.range,tilt:maps.tilt,heading:maps.heading}), cameraBeforeTakeoff, 'No pre-launch camera jump');
+const takeoffSamples = [];
+for (let frame = 0; frame < 72; frame++) {
+  advance(1000 / 60);
+  takeoffSamples.push({ altitude: parts[0].position.altitude, cameraAltitude: maps.center.altitude, range: maps.range, wing: parts[1].scale.x });
+}
+assert(parts[0].position.altitude > 1422 + restingPosition.altitude);
 assert(parts[1].scale.x > foldedWidth, 'Wings unfold during the lift');
 assert.equal(parts[0].position.lat, restingPosition.lat);
 assert.equal(parts[0].position.lng, restingPosition.lng);
-advance(1800);
-assert(parts[0].position.altitude > 45, 'Gain rooftop clearance before moving forward');
+for (let frame = 0; frame < 108; frame++) {
+  advance(1000 / 60);
+  takeoffSamples.push({ altitude: parts[0].position.altitude, cameraAltitude: maps.center.altitude, range: maps.range, wing: parts[1].scale.x });
+}
+assert(parts[0].position.altitude > 1450, 'Gain rooftop clearance before moving forward');
 assert.equal(parts[0].position.lat, restingPosition.lat);
 assert.equal(parts[0].position.lng, restingPosition.lng);
-advance(2300);
+for (let frame = 0; frame < 180; frame++) {
+  advance(1000 / 60);
+  takeoffSamples.push({ altitude: parts[0].position.altitude, cameraAltitude: maps.center.altitude, range: maps.range, wing: parts[1].scale.x });
+  assert.equal(parts[0].altitudeMode, 'ABSOLUTE', 'Keep one rooftop height throughout the departure');
+  if (parts[0].position.lat !== restingPosition.lat) assert(parts[0].position.altitude > 1465, 'Clear the rooftop before crossing its edge');
+}
 assert.equal((await takeoff).mode, 'hovering');
 assert.equal(parts[0].altitudeMode, 'ABSOLUTE', 'Forward departure keeps a fixed elevation over the roof edge');
 assert(Math.abs(parts[0].position.altitude - 1472) < 1e-6);
@@ -158,6 +173,14 @@ assert.notEqual(parts[0].position.lat, restingPosition.lat);
 assert.equal(parts[1].scale.x, 2.2);
 assert.equal(JSON.stringify(api.getContext().destination), destinationBeforeTakeoff);
 assert.equal(events.filter(event => event.name === 'destination').length, destinationEvents);
+assert.equal(cameraCalls.length, callsBeforeTakeoff, 'Takeoff must not restart native camera animations each frame');
+assert.equal(maps.range, 42);
+assert(takeoffSamples.filter((sample, i) => i && sample.range !== takeoffSamples[i-1].range).length > 25, 'Camera advances at display cadence during pullback');
+for (let i = 1; i < takeoffSamples.length; i++) {
+  assert(Math.abs(takeoffSamples[i].cameraAltitude - takeoffSamples[i-1].cameraAltitude) < .6, 'No vertical camera snaps at lift-off');
+  assert(Math.abs(takeoffSamples[i].range - takeoffSamples[i-1].range) < .3, 'Camera pullback is gradual');
+  assert(Math.abs(takeoffSamples[i].wing - takeoffSamples[i-1].wing) < .06, 'Wing spread eases into flight');
+}
 await assert.rejects(api.takeOff(), /Land on a spot/);
 
 const cancelledLanding = api.landAt({ name: 'Other square', lat: 27.718, lng: 85.323 });
@@ -226,7 +249,20 @@ assert.equal(reduced.mode, 'hovering');
 assert.equal(reduced.flightStage, null);
 assert.equal(cameraCalls.length, cameraCount + 1);
 assert.equal(cameraCalls.at(-1).durationMillis, 0, 'Reduced motion skips globe sweeps');
+const reducedLanding = api.landAt(rooftop); advance(5500); await reducedLanding;
+const reducedCamera = { range: maps.range, tilt: maps.tilt, heading: maps.heading };
+const reducedTakeoff = api.takeOff(); advance(1500);
+assert.equal((await reducedTakeoff).mode, 'hovering');
+assert.deepEqual({ range: maps.range, tilt: maps.tilt, heading: maps.heading }, reducedCamera, 'Reduced-motion takeoff keeps the view angle and zoom');
 delete window.matchMedia;
+
+const unknownLanding = api.landAt(rooftop); advance(5500); await unknownLanding;
+vm.runInContext('landedSurfaceAltitude=null;map.center={lat:0,lng:0,altitude:0}', sandbox);
+const unknownTakeoff = api.takeOff(); advance(6500);
+assert.equal((await unknownTakeoff).mode, 'hovering');
+assert.equal(parts[0].position.lat, rooftop.lat);
+assert(Math.abs(parts[0].position.lng - rooftop.lng) < 1e-10);
+assert.equal(parts[0].altitudeMode, 'RELATIVE_TO_MESH', 'Without a resolved rooftop height, stay over the same roof');
 
 async function locationCase(locate, key = 'test', nativeAnimationEnd = false) {
   const nodes = new Map();

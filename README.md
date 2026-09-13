@@ -29,7 +29,7 @@ New server routes: `POST /api/portrait` (multipart image edits sent to OpenAI) a
 5. Open **Your trip**, set 1–14 days, travel style, and interests, then choose **Plan my trip**. Saved places inform the itinerary. Read its source links or save the plan.
 6. Choose **Talk** to speak with the GPT-Live guide. Ask it to fly somewhere, land at a landmark, take off, generate a panorama, or plan a trip. Microphone access starts from this action; the call has mute and end controls.
 
-To launch from a building, land using a place’s **Land here** action, the landing search, or **Pick on the map** on its rooftop. Select **Take off ↗** or ask the guide to take off. The crow rises from that spot, unfolds its wings, and moves forward without changing destinations. Pause interrupts the ascent.
+To launch from a building, land using a place’s **Land here** action, the landing search, or **Pick on the map** on its rooftop. Select **Take off ↗** or ask the guide to take off. The crow spreads its wings, eases into a climb, then moves forward after gaining rooftop clearance. The camera follows continuously from your current view and gradually pulls back. Takeoff locks the resolved rooftop elevation so crossing its edge does not drop the bird. If elevation is unavailable, the crow stays above the launch coordinates. Pause interrupts the ascent; Reset returns to the starting point. Reduced motion keeps the camera angle and zoom fixed during a shorter ascent.
 
 Generated scenes are imaginative impressions, with the crow centered in the initial forward view. They are not live photographs or verified reconstructions of the exact surroundings. Instagram photos are recent hashtag matches and can come from outside the chosen location.
 
@@ -205,6 +205,7 @@ npm run verify:scout
 CROW_BROWSER_EXECUTABLE=/path/to/chromium CROW_TEST_URL=http://127.0.0.1:3000/ npm run verify:browser
 CROW_BROWSER_EXECUTABLE=/path/to/chromium npm run verify:journey
 CROW_BROWSER_EXECUTABLE=/path/to/chromium npm run verify:location
+CROW_BROWSER_EXECUTABLE=/path/to/chromium CROW_TEST_URL=http://127.0.0.1:3000/ node scripts/verify-takeoff.mjs
 ```
 
 `npm test` covers server request validation, provider contracts, secrets handling, cancellation, citations, Instagram normalization and OAuth sessions, and static-file boundaries using mocked providers. OAuth tests cover state validation/replay, browser isolation, account selection, expiry, disconnect, and Secure production cookies. Browser checks require a suitable Chromium executable or debugging connection; the full map check also requires configured Google Maps access. Mocked checks do not establish that external accounts have access to the configured models or Meta permissions.
@@ -212,6 +213,8 @@ CROW_BROWSER_EXECUTABLE=/path/to/chromium npm run verify:location
 For the full map check, set `CROW_SOFTWARE_GL=1` to use Chromium’s SwiftShader WebGL2 renderer on a machine without a GPU, or set `CROW_CDP_URL` to attach to an existing Chromium debugging endpoint. It renders and reads back a WebGL2 pixel, then exercises the real map, model requests, flight controls, Places, and a 390×844 viewport. Screenshots and a redacted report are written under `_debug/verification/`. Inspect the screenshots: state assertions alone do not prove visibility. Mobile viewport coverage is not physical iPhone testing.
 
 `verify:journey` checks a real flight to Singapore, rooftop landing at the Fullerton Hotel, continuous takeoff, and mobile layout without calling image or planning APIs. `verify:scout` uses mocked providers to check the interface, live controls, source links, request cancellation, panoramas, and Instagram sign-in/account selection.
+
+`scripts/verify-takeoff.mjs` checks WebGL2 pixel readback, then uses the real Google renderer with a synthetic Singapore starting location. It captures desktop and mobile takeoff, pause and reset under `_debug/takeoff/`, records camera samples and GLB responses, and stubs application APIs to prevent AI calls. `CROW_SOFTWARE_GL=1` enables SwiftShader. Inspect the captures separately from the assertions; this is not physical iPhone or Safari testing.
 
 `verify:location` uses synthetic browser coordinates with the real 3D renderer to check location startup, a Singapore–Paris flight, cancellation, reduced motion, and permission fallback/retry. It intercepts AI requests and saves screenshots and its report under `_debug/location-journey-verification/`.
 

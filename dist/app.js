@@ -17,7 +17,7 @@ function finishLoading(){
  }else if(!sceneSteady)return;
  clearTimeout(startupTimer);clearTimeout(sceneTimer);clearTimeout(startupCameraTimer);cancelAnimationFrame(startupCameraFrame);ready=true;
  $('loading').hidden=true;for(const id of ['fly','restart','speed','height','nearby'])$(id).disabled=false;
- if(startLocation){$('fly').textContent='Take off ↗';updateProgress(0);}
+ if(startLocation){landedSurfaceAltitude=surfaceAltitudeAtCrow();$('fly').textContent='Take off ↗';updateProgress(0);}
  status(startLocation?'Ready · Your location':'Ready · Chelsea demo');hint(colourWarning||(startLocation?'Your crow is perched nearby. Take off or choose a destination.':locationMessage));registerTools();emitCrow('ready');
 }
 function initialPerchMatches(){
@@ -148,14 +148,14 @@ function scoutCamera(position,landing=false,altitudeBase=scoutAltitudeBase){
  tilt:landing?72:high?48:isEiffelView()&&['arriving','hovering'].includes(scoutMode)?85:65,range:landing?22:high?100:52,roll:0,fov:50};
 }
 function isEiffelView(){return /eiffel/i.test(destination.name)&&Math.abs(destination.lat-48.85837)<.01&&Math.abs(destination.lng-2.294481)<.01;}
-function poseScout(position,fold=0,altitudeBase=null){
+function poseScout(position,fold=0,altitudeBase=null,pitch=0){
  scoutPosition={...position};scoutAltitudeBase=altitudeBase;
  const flap=(8+30*Math.sin(flightTime*Math.PI*2*1.6))*(1-fold);
  crowParts.forEach((part,i)=>{
   part.altitudeMode=altitudeBase===null?'RELATIVE_TO_MESH':'ABSOLUTE';part.position={...position,altitude:position.altitude+(altitudeBase??0)};
   // Sweep the extended wings backwards and narrow their spread as the crow settles.
   part.scale=i===0?2.2:{x:2.2*(1-.67*fold),y:2.2,z:2.2};
-  part.orientation={heading:wrapAngle(crowHeading+(i===1?-67*fold:i===2?67*fold:0)),tilt:wrapAngle(-12*fold),roll:wrapAngle(i===1?flap:i===2?-flap:0)};
+  part.orientation={heading:wrapAngle(crowHeading+(i===1?-67*fold:i===2?67*fold:0)),tilt:wrapAngle(-12*fold+pitch),roll:wrapAngle(i===1?flap:i===2?-flap:0)};
  });
 }
 function relativeOffset(point,north,east){
@@ -168,7 +168,7 @@ function selectLandingMode(){
  status('Choose a landing spot');hint('Click a rooftop, square, or path to land. Press Escape to cancel.');emitCrow('context');
  return getCrowContext();
 }
-function animateJourney({duration,delay=0,from,to,landing=false,serial,onComplete,path,foldAt,altitudeBaseAt}){
+function animateJourney({duration,delay=0,from,to,landing=false,serial,onComplete,path,foldAt,altitudeBaseAt,cameraAt,pitchAt,frameInterval=FRAME_INTERVAL}){
  return new Promise(resolve=>{
   const state={resolve,frame:0,timer:0};journey=state;
   state.timer=setTimeout(()=>{
@@ -176,16 +176,16 @@ function animateJourney({duration,delay=0,from,to,landing=false,serial,onComplet
    map.stopCameraAnimation?.();let elapsed=0,previous=performance.now();
    const step=now=>{
     if(serial!==journeySerial)return;
-    if(now-previous<FRAME_INTERVAL){state.frame=requestAnimationFrame(step);return;}
+    if(now-previous<frameInterval){state.frame=requestAnimationFrame(step);return;}
     const dt=Math.max(0,Math.min((now-previous)/1000,.1));previous=now;elapsed+=dt;flightTime+=dt;
     const fraction=Math.min(1,elapsed/(duration/1000)),eased=fraction*fraction*(3-2*fraction);
     // Use the shortest longitude span when an approach crosses the date line.
     const longitudeDelta=((to.lng-from.lng+540)%360)-180;
     const position=path?path(fraction):{lat:from.lat+(to.lat-from.lat)*eased,lng:((from.lng+longitudeDelta*eased+540)%360)-180,altitude:from.altitude+(to.altitude-from.altitude)*eased};
     const fold=foldAt?foldAt(fraction):landing?Math.max(0,(fraction-.55)/.45):0;
-    poseScout(position,fold,altitudeBaseAt?.(fraction)??null);
-    const cam=scoutCamera(position,landing);
-    if(isEiffelView()&&scoutMode==='arriving'){map.center=cam.center;map.heading=cam.heading;map.tilt=cam.tilt;map.range=cam.range;map.roll=cam.roll;map.fov=cam.fov;}
+    poseScout(position,fold,altitudeBaseAt?.(fraction)??null,pitchAt?.(fraction)??0);
+    const cam=cameraAt?cameraAt(fraction,position):scoutCamera(position,landing);
+    if(cameraAt||isEiffelView()&&scoutMode==='arriving'){map.center=cam.center;map.heading=cam.heading;map.tilt=cam.tilt;map.range=cam.range;map.roll=cam.roll;map.fov=cam.fov;}
     else map.flyCameraTo({endCamera:cam,durationMillis:0});
     const flightProgress=flightInfo&&scoutMode==='arriving'?.4+.6*fraction:fraction;updateProgress(flightProgress);
     if(flightInfo&&scoutMode==='arriving')reportFlight('approaching',flightProgress,map.range);
@@ -311,20 +311,29 @@ function surfaceAltitudeAtCrow(){
 function takeOff(){
  if(!ready)return Promise.reject(Error('Wait for the map to finish loading.'));
  if(scoutMode!=='landed'||!landingSpot||!scoutPosition)return Promise.reject(Error('Land on a spot before taking off.'));
- const source={...landingSpot},from={...scoutPosition},surface=surfaceAltitudeAtCrow()??landedSurfaceAltitude;
+ const source={...landingSpot},from={...scoutPosition},surface=surfaceAltitudeAtCrow()??landedSurfaceAltitude,initialCamera=cameraSnapshot();
  invalidateLocationRequest();stop();cancelLandingMode();$('details').close();detailSerial++;landingSpot=null;scoutMode='taking-off';transitioning=true;setFlightView(true);bank=0;
- const serial=journeySerial,riseFraction=.65,climbAltitude=Math.max(50,from.altitude),departure=relativeOffset(from,Math.cos(crowHeading*radians)*55,Math.sin(crowHeading*radians)*55);
- // Hold the exact rooftop coordinates while gaining clearance. Once clear, use
- // its resolved elevation as a fixed altitude base so crossing the roof edge
- // cannot pull the crow down to the ground with RELATIVE_TO_MESH.
- const to={...(surface===null?from:departure),altitude:climbAltitude},smooth=t=>t*t*(3-2*t);
+ const serial=journeySerial,climbAltitude=Math.max(50,from.altitude),departure=relativeOffset(from,Math.cos(crowHeading*radians)*40,Math.sin(crowHeading*radians)*40);
+ const to={...(surface===null?from:departure),altitude:climbAltitude};
+ const smooth=value=>{const t=Math.max(0,Math.min(1,value));return t*t*t*(t*(t*6-15)+10);},blend=(a,b,t)=>a+(b-a)*t;
+ const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+ flightTime=0;
  poseScout(from,1);updateProgress(0);$('fly').textContent='Pause takeoff Ⅱ';status('Taking off · '+source.name);hint('Spreading wings and climbing clear of the rooftop.');
- map.flyCameraTo({endCamera:scoutCamera(from),durationMillis:350});emitCrow('context');
- return animateJourney({duration:4600,delay:400,from,to,serial,
-  foldAt:fraction=>1-Math.min(1,fraction/.3),
-  altitudeBaseAt:fraction=>fraction>=riseFraction?surface:null,
+ emitCrow('context');
+ return animateJourney({duration:reducedMotion?1200:5600,from,to,serial,frameInterval:0,
+  foldAt:fraction=>1-smooth(fraction/.28),
+  altitudeBaseAt:()=>surface,
+  pitchAt:fraction=>reducedMotion?0:-10*Math.sin(Math.PI*smooth((fraction-.08)/.92)),
+  cameraAt(fraction,position){
+   const follow=smooth(fraction/.55),pullback=reducedMotion?0:smooth((fraction-.12)/.88);
+   const altitude=surface===null?initialCamera.center.altitude+position.altitude-from.altitude:surface+position.altitude+1.8;
+   const longitudeDelta=((position.lng-initialCamera.center.lng+540)%360)-180;
+   return {center:{lat:blend(initialCamera.center.lat,position.lat,follow),lng:((initialCamera.center.lng+longitudeDelta*follow+540)%360)-180,altitude:blend(initialCamera.center.altitude,altitude,follow)},
+    heading:wrapAngle(initialCamera.heading+angleDelta(crowHeading,initialCamera.heading)*(reducedMotion?0:follow)),
+    range:blend(initialCamera.range,high?100:42,pullback),tilt:blend(initialCamera.tilt,high?48:65,pullback),roll:blend(initialCamera.roll,0,pullback),fov:blend(initialCamera.fov,50,pullback)};
+  },
   path(fraction){
-   const rise=smooth(Math.min(1,fraction/riseFraction)),forward=smooth(Math.max(0,(fraction-riseFraction)/(1-riseFraction)));
+   const rise=smooth((fraction-.08)/.72),forward=smooth((fraction-.62)/.38);
    const longitudeDelta=((to.lng-from.lng+540)%360)-180;
    return {lat:from.lat+(to.lat-from.lat)*forward,lng:forward===0?from.lng:((from.lng+longitudeDelta*forward+540)%360)-180,altitude:from.altitude+(climbAltitude-from.altitude)*rise};
   },
