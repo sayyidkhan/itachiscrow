@@ -2,157 +2,205 @@
 
 **Scout a city before you arrive.**
 
-A browser-based travel exploration prototype that lets you follow an animated 3D crow through a real city, look around the neighbourhood, and investigate nearby businesses.
+Fly an animated 3D crow to a destination, land at a particular spot, and explore an AI-generated 360° view of its surroundings. Talk to a GPT-Live travel companion, discover recent Instagram hashtag photos, and turn saved places and travel preferences into a sourced itinerary.
 
-[Launch the live demo](https://itachis-crow.promptalchemistlabs.chatgpt.site) · [Report a bug or suggest an idea](https://github.com/sayyidkhan/itachiscrow/issues)
+[Earlier map demo](https://itachis-crow.promptalchemistlabs.chatgpt.site) · [Report a bug or suggest an idea](https://github.com/sayyidkhan/itachiscrow/issues)
 
-> **Status:** Hackathon prototype · **Demo location:** Chelsea, New York · **Hosting:** GPT Sites
+This is a travel exploration prototype. The repository now includes a Node API server for the AI and Instagram features; the earlier hosted demo is not automatically updated by repository changes.
 
-## The idea
+## Explore a destination
 
-Choosing somewhere to visit involves more than knowing its address. What does the neighbourhood look like? What is nearby? Does the area fit the experience you want?
+1. Start the local app and open **Explore**. Search for a city, landmark, or address, then select a result to fly there.
+2. Search for a specific landing spot, select **Pick on the map**, or choose **Land at destination**.
+3. With **Generate a 360° scene when I land** enabled, landing creates a panorama. You can also use **Generate scene**. Drag to look around, scroll to zoom, use arrow keys to turn, or save the image.
+4. Open **Around you**, choose **Connect Instagram**, and sign in through Facebook with the account linked to your professional Instagram profile. Choose an account if more than one is available, then load recent public hashtag photos.
+5. Open **Your trip**, set 1–14 days, travel style, and interests, then choose **Plan my trip**. Saved places inform the itinerary. Read its source links or save the plan.
+6. Choose **Talk** to speak with the GPT-Live guide. Ask it to fly somewhere, land at a landmark, take off, generate a panorama, or plan a trip. Microphone access starts from this action; the call has mute and end controls.
 
-Itachi’s Crow explores a more visual way to answer those questions: fly through the city with a crow as your guide, pause when something catches your attention, and inspect places along the way.
+To launch from a building, land using a place’s **Land here** action, the landing search, or **Pick on the map** on its rooftop. Select **Take off ↗** or ask the guide to take off. The crow rises from that spot, unfolds its wings, and moves forward without changing destinations. Pause interrupts the ascent.
 
-The longer-term vision is an AI travel scout that adapts exploration to your interests and helps turn discoveries into an itinerary. The current release implements the 3D flight and place-discovery foundation.
+Generated scenes are imaginative impressions, with the crow centered in the initial forward view. They are not live photographs or verified reconstructions of the exact surroundings. Instagram photos are recent hashtag matches and can come from outside the chosen location.
 
-## Try the experience
+The original Chelsea flight remains available as a starting route. Its controls support start, pause, resume, restart, speed changes, camera height, map labels, and nearby place discovery.
 
-1. Open the [live demo](https://itachis-crow.promptalchemistlabs.chatgpt.site) and let the city load.
-2. Select **Start flight** to follow the crow around the prepared Chelsea loop.
-3. Pause or drag the map to explore from another angle.
-4. Select **Places**, or a supported business label, to investigate a location.
-5. Save places during your session, then resume the flight.
+## What is included
 
-| Control | What it does |
-| --- | --- |
-| Start / Pause / Resume | Follow the crow or pause to explore |
-| Restart ↺ | Return to the beginning of the route |
-| Speed | Switch between 0.5×, 1× and 1.5× |
-| Higher / Lower view | Change the camera viewpoint |
-| Place labels | Show or hide the map’s labels |
-| Places | Find nearby businesses and open their details |
-
-## What works today
-
-- **A crow inside the 3D map:** three GLB model parts form its body and articulated wings, with layered feather geometry.
-- **Animated flight:** wingbeats, gliding phases and overlapping swerves up to 4.3 metres either side of the prepared route. The crow points along its own path and banks according to its speed and turn curvature, with gentle vertical sway.
-- **A following camera:** the view follows the route centre independently of the crow's swerves and wingbeat bob, so lateral movement stays visible without shaking the view; pausing lets you orbit the scene.
-- **Place discovery:** nearby business search and available details such as address, opening hours, website and phone number.
-- **Session saves:** shortlist places while the page remains open.
-- **Responsive controls:** a layout designed for phones and desktop browsers; secondary panels hide during flight.
-
-## How it works
-
-The app loads Google’s 3D map, places the crow’s model parts at geographic coordinates, and updates their positions and rotations during flight. A moving camera follows the route. Flight updates are capped at 24 per second, and controls wait for the renderer’s steady-state event before enabling. The Places library loads when business information is requested.
-
-| Component | Implementation |
-| --- | --- |
-| Interface and flight logic | HTML, CSS and vanilla JavaScript |
-| City rendering | Google Maps JavaScript API, `maps3d` library |
-| Crow rendering | Native `Model3DElement` objects with GLB assets |
-| Business information | Google Places library |
-| Asset generation | Python, NumPy, trimesh and Matplotlib |
-| Live hosting | GPT Sites |
-
-The renderer loads the crow GLBs from the application's own `models/` directory. Deploy the three assets together with the HTML and JavaScript. Google makes credentialed model requests: a successful ordinary download from a wildcard-CORS host does not prove the renderer can load that URL.
-
-The supplied city imagery is rendered by Google. The app does not generate a new city replica, and the current release does not call an AI model for recommendations.
+- **Destination flight and landing:** Google Places search, map selection, and a visual flight to the selected location.
+- **A crow inside the 3D map:** separate body and articulated wing GLBs with layered feather geometry. Wingbeats, gliding, banking, swerves, and gentle vertical sway animate the flight.
+- **An independent following camera:** the view follows the route without copying each wingbeat or lateral swerve; pausing lets you orbit the scene.
+- **360° image generation:** a 2048×1024 equirectangular image generated from the destination and landing coordinates, displayed in an interactive panorama viewer.
+- **GPT-Live voice:** browser WebRTC audio with transcripts and application tools for flying, landing, taking off, image generation, and planning. The server creates the session using its own OpenAI key.
+- **Sourced travel guidance:** OpenAI Responses with web search produces an itinerary around the destination, landing spot, saved places, budget, and interests, with clickable references.
+- **Instagram photos:** the official Meta hashtag API supplies recent public images and carousel photos, with links to the original posts. Missing credentials, empty results, and provider errors have explicit states.
+- **Place discovery and session saves:** nearby businesses and available address, opening hours, website, and phone details. Shortlisted places remain available while the page stays open.
 
 ## Run locally
 
 ### Requirements
 
-- Git and Python 3.
-- A browser and device capable of rendering Google’s 3D Maps.
-- Internet access and a Google Maps browser API key with access to the 3D Maps and Places features used by the app.
+- Node.js 22.6 or newer.
+- A browser and device capable of rendering Google’s 3D Maps and WebGL. Voice requires microphone permission on localhost or HTTPS.
+- A Google Maps browser API key with the Maps and Places access used by the app.
+- An OpenAI project API key with access to the configured models for voice, image generation, and planning.
+- Optional Meta app configuration for Instagram sign-in. The map and other configured features work without Instagram.
 
 ### Setup
 
 ```bash
 git clone https://github.com/sayyidkhan/itachiscrow.git
 cd itachiscrow
+cp dist/config.example.js dist/config.js
+cp .env.example .env
 ```
 
-Copy `dist/config.example.js` to `dist/config.js`, then edit the new file:
+Edit `dist/config.js` with your restricted Google Maps **browser** key:
 
 ```javascript
 window.CROW_MAPS_KEY = 'YOUR_GOOGLE_MAPS_BROWSER_KEY';
 ```
 
-Start a local server from the repository root:
+Edit `.env` and set `OPENAI_API_KEY`. Keep OpenAI and Meta credentials only in this server-side file or your server’s environment. Both `.env` and `dist/config.js` are ignored by Git. Never place an OpenAI or Meta token in `dist/`.
 
 ```bash
-python3 -m http.server 8000 --directory dist
+npm run dev
 ```
 
-Open [localhost:8000](http://localhost:8000).
+Open [localhost:3000](http://localhost:3000). `npm start` runs the same server. It loads `.env`, serves `dist/`, and provides `/api/*` on the same origin. Restart it after changing server configuration. The app uses no npm runtime dependencies and needs no frontend build.
 
-`dist/config.js` is ignored by Git. Browser API keys are visible to visitors; use website and API restrictions appropriate to your local and deployed addresses. Available features depend on the key’s permissions and quota.
+A Python static server can display the map, but it cannot provide the AI or Instagram endpoints. Use the Node server for the complete experience.
 
-Alternatively, set `CROW_MAPS_KEY` through your environment's secret configuration and run `python3 scripts/configure.py` to generate the same ignored configuration without putting the key in command-line arguments.
+Browser Maps keys are visible to visitors. Apply website and API restrictions appropriate to the local and deployed addresses. Alternatively, export `CROW_MAPS_KEY` in your shell or deployment environment and run `python3 scripts/configure.py` to generate the ignored `dist/config.js` without including the key in command-line arguments. This script requires Python; the Node server does not automatically turn `.env` values into browser Maps configuration.
 
-No npm build, Unreal Engine or Blender installation is needed to run the app.
+### Server configuration
+
+| Variable | Purpose / default |
+| --- | --- |
+| `OPENAI_API_KEY` | Server-only project key enabling voice, images, and plans |
+| `OPENAI_LIVE_MODEL` | `gpt-live-1` |
+| `OPENAI_TEXT_MODEL` | `gpt-5.6-terra`, used for travel plans and Live Responses delegation |
+| `OPENAI_IMAGE_MODEL` | `gpt-image-2.5-flare`; overrides must support 2048×1024 output |
+| `PORT` | `3000` |
+| `META_APP_ID` | Meta developer app ID enabling the Instagram sign-in button |
+| `META_APP_SECRET` | Server-only Meta developer app secret used to exchange authorization codes |
+| `INSTAGRAM_ACCESS_TOKEN` | Optional manual fallback Facebook User token; unnecessary when using sign-in |
+| `INSTAGRAM_USER_ID` | Optional manual fallback Instagram professional account ID |
+| `INSTAGRAM_GRAPH_VERSION` | `v25.0` |
+| `PUBLIC_ORIGIN` | Exact external origin when running behind an authenticated HTTPS reverse proxy |
+
+The status endpoint reports whether credentials are configured; it does not guarantee that the provider has granted model access, permissions, or available quota. Provider calls may incur charges. No provider calls are made by the server unit tests.
+
+### Connect Instagram
+
+This integration uses **Instagram API with Facebook Login**. The app owner configures a Meta developer app once; travelers then use **Connect Instagram** instead of entering tokens.
+
+1. Add Facebook Login to your Meta app and enable the Instagram API with Facebook Login. Configure the required `instagram_basic`, `pages_show_list`, and `pages_read_engagement` permissions and **Instagram Public Content Access**. Meta app review or advanced access can be required for people outside your app’s test roles.
+2. In Facebook Login settings, register the exact **Valid OAuth redirect URI**: `http://localhost:3000/api/instagram/callback` for the default local URL, or `https://your-app.example/api/instagram/callback` for deployment. If you open the app at `127.0.0.1`, register that exact origin as well. Set `PUBLIC_ORIGIN` for the public HTTPS deployment.
+3. Put `META_APP_ID` and `META_APP_SECRET` in the server’s `.env` or environment, then restart. Keep the app secret out of the browser.
+4. In **Around you**, select **Connect Instagram** and sign in through Facebook. The signed-in user needs access to the Facebook Page connected to the Instagram professional account. If several eligible accounts are returned, the app asks which one to use.
+
+The server exchanges the authorization code and keeps the User token in an isolated browser session. The browser receives only an opaque HttpOnly cookie. Sessions expire when the token expires or after eight hours, whichever comes first, and are lost when the server restarts. **Disconnect Instagram** clears that browser’s connection. OAuth state expires after ten minutes and cannot be reused. Public deployment uses Secure cookies and HTTPS.
+
+The optional `INSTAGRAM_ACCESS_TOKEN` and `INSTAGRAM_USER_ID` variables retain a manually configured server account as a fallback. Leave them blank for sign-in-only behavior. Disconnecting an OAuth session does not disable this independently configured fallback.
+
+The server first resolves the hashtag through `ig_hashtag_search`, then reads its `recent_media` edge. Meta returns public posts published within the last 24 hours and limits queries to 30 unique hashtags in a rolling 7-day period. Results may not be chronological. Hashtag media does not expose usernames, so cards attribute content to Instagram and link directly to each original post. Only image posts and available carousel images are displayed. This is not an exact GPS feed or continuous live stream, and the app does not scrape Instagram.
+
+See Meta’s [server-side login flow](https://developers.facebook.com/docs/facebook-login/guides/advanced/manual-flow/), [Instagram account discovery](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-facebook-login/get-started/), [hashtag search requirements](https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-hashtag-search/), and [recent media fields and limits](https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-hashtag/recent-media/).
+
+## How it works
+
+| Component | Implementation |
+| --- | --- |
+| Interface and flight logic | HTML, CSS, and vanilla JavaScript |
+| City rendering | Google Maps JavaScript API, `maps3d` library |
+| Crow rendering | Native `Model3DElement` objects with GLB assets |
+| Place search and details | Google Places library |
+| 360° viewer | WebGL equirectangular panorama viewer |
+| API server | Node built-ins; bounded requests, origin checks, provider timeouts, and sanitized errors |
+| Live voice | `POST /v1/live/sessions`, WebRTC audio, and Responses delegation |
+| Images | OpenAI Image API, 2048×1024 JPEG, medium quality |
+| Travel planning | OpenAI Responses API with web search and source citations |
+| Instagram | Facebook Login code exchange, isolated browser sessions, and Meta Graph API hashtag search |
+| Crow asset generation | Python, NumPy, trimesh, and Matplotlib |
+
+The app positions the crow’s three model parts at geographic coordinates and updates their transforms during flight. Animation updates are capped at 24 per second. The renderer’s steady-state event gates the original flight controls, and Places loads when needed.
+
+The map city imagery comes from Google. The generated panorama is a separate view built from the selected location context; it does not replace Google’s map imagery. The prompt requests a seamless full-sphere scene, but AI output may still contain perspective or seam artifacts.
+
+The renderer loads GLBs from the app’s own `models/` directory. Deploy all three assets together. Google makes credentialed model requests: a successful ordinary download from a wildcard-CORS host does not prove that its native renderer can load the model.
+
+The OpenAI integration follows the official [GPT-Live WebRTC flow](https://developers.openai.com/api/docs/guides/voice-webrtc), [Live delegation and tools](https://developers.openai.com/api/docs/guides/live-delegation), [image generation guide](https://developers.openai.com/api/docs/guides/image-generation), and [Responses web search guide](https://developers.openai.com/api/docs/guides/tools-web-search).
 
 ## Repository guide
 
 | Path | Purpose |
 | --- | --- |
-| `dist/index.html` | Map container, controls and place-detail dialogs |
-| `dist/style.css` | Responsive interface styling |
-| `dist/app.js` | Map setup, flight animation and place discovery |
-| `dist/config.example.js` | Template for the local browser-key configuration |
+| `dist/index.html`, `dist/style.css` | Map, flight controls, and place-detail dialogs |
+| `dist/app.js` | Maps setup, flight animation, destination and landing controls |
+| `dist/scout.js`, `dist/scout.css` | Travel scout, Instagram, panorama, and trip-planning UI |
+| `dist/live.js` | GPT-Live WebRTC client and application tool handling |
+| `dist/panorama.js` | Interactive 360° viewer |
+| `dist/config.example.js` | Google Maps browser-key configuration template |
 | `dist/models/` | Ready-to-use body and wing GLB assets |
-| `scripts/build_crow.py` | Source for generating the crow geometry |
+| `server/index.mjs` | Static server and AI/Instagram endpoints |
+| `server/server.test.mjs` | Mocked provider and server boundary tests |
+| `.env.example` | Server configuration template with no credentials |
+| `scripts/build_crow.py` | Crow geometry generator |
 
 ### Regenerate the crow assets — optional
 
-The GLBs are already committed. Rebuilding with the pinned development dependencies requires Python 3.12 or newer (tested with Python 3.14.5):
+The GLBs are already committed. Rebuilding with the pinned development dependencies requires Python 3.12 or newer (previously tested with Python 3.14.5):
 
 ```bash
 python3 -m pip install -r scripts/requirements.txt
 python3 scripts/build_crow.py
 ```
 
-This overwrites the three GLBs in `dist/models/` and produces `_debug/crow-geometry.png` for offline geometry inspection. Mesh vertices use glTF Y-up coordinates; a shared root transform adapts them to Google's east/north/up model axes, allowing heading, pitch and wing roll to work together.
+This overwrites the three GLBs in `dist/models/` and produces `_debug/crow-geometry.png` for geometry inspection. Mesh vertices use glTF Y-up coordinates; a shared root transform adapts them to Google’s east/north/up model axes, allowing heading, pitch, and wing roll to work together.
 
-### Browser verification
-
-The application has no npm runtime dependencies. Optional development checks use Node.js and a Chromium installation:
+### Verification
 
 ```bash
 npm ci
+npm test
 npm run verify:models
-CROW_BROWSER_EXECUTABLE=/path/to/chromium CROW_TEST_URL=http://127.0.0.1:8000/ npm run verify:browser
+npm run verify:scout
+CROW_BROWSER_EXECUTABLE=/path/to/chromium CROW_TEST_URL=http://127.0.0.1:3000/ npm run verify:browser
+CROW_BROWSER_EXECUTABLE=/path/to/chromium npm run verify:journey
 ```
 
-Set `CROW_SOFTWARE_GL=1` to use Chromium's SwiftShader WebGL2 renderer on a server without a GPU. Alternatively, set `CROW_CDP_URL` to attach to an existing Chromium debugging endpoint. The test first renders and reads back a WebGL2 pixel, then exercises the real map, model requests, flight controls, Places and a 390×844 viewport. It writes screenshots and a redacted report under `_debug/verification/`. Wing extremes and the banked-turn snapshot use deterministic poses in the real native renderer; control checks run the actual animation loop. Inspect the screenshots: state assertions alone do not prove visibility. Mobile viewport coverage is not physical iPhone testing.
+`npm test` covers server request validation, provider contracts, secrets handling, cancellation, citations, Instagram normalization and OAuth sessions, and static-file boundaries using mocked providers. OAuth tests cover state validation/replay, browser isolation, account selection, expiry, disconnect, and Secure production cookies. Browser checks require a suitable Chromium executable or debugging connection; the full map check also requires configured Google Maps access. Mocked checks do not establish that external accounts have access to the configured models or Meta permissions.
 
-## Current limitations
+For the full map check, set `CROW_SOFTWARE_GL=1` to use Chromium’s SwiftShader WebGL2 renderer on a machine without a GPU, or set `CROW_CDP_URL` to attach to an existing Chromium debugging endpoint. It renders and reads back a WebGL2 pixel, then exercises the real map, model requests, flight controls, Places, and a 390×844 viewport. Screenshots and a redacted report are written under `_debug/verification/`. Inspect the screenshots: state assertions alone do not prove visibility. Mobile viewport coverage is not physical iPhone testing.
 
-- Flight follows one prepared Chelsea route. It does not provide free-flight steering, arbitrary destination routing or building collision avoidance.
-- The crow is a custom stylized model; its animation is driven by separate model-part rotations.
-- Saved places are held in memory and reset when the page reloads.
-- Google imagery may be dated or less detailed close to buildings. Place fields may be missing or restricted.
-- Photos, reviews, Instagram content, local news and AI itineraries are not included.
-- See [rendering verification](docs/verification.md) for browser evidence and device limitations.
+`verify:journey` checks a real flight to Singapore, rooftop landing at the Fullerton Hotel, continuous takeoff, and mobile layout without calling image or planning APIs. `verify:scout` uses mocked providers to check the interface, live controls, source links, request cancellation, panoramas, and Instagram sign-in/account selection.
 
-## Roadmap
+An optional **paid** voice test exercises the real GPT-Live service using synthesized speech, without accessing your microphone or normal browser profile:
 
-These are proposed directions, not available features:
+```bash
+CROW_VERIFY_LIVE_API=1 npm run verify:live-api
+```
 
-- [ ] Select additional cities and neighbourhoods.
-- [ ] Scout destinations and routes on demand.
-- [ ] Add AI guidance based on interests, time and travel preferences.
-- [ ] Introduce switchable “eyes” for food, culture and other perspectives.
-- [ ] Surface relevant local news and permitted social content with source links.
-- [ ] Turn saved discoveries into an editable itinerary.
-- [ ] Improve flight animation, navigation and device performance.
+On macOS it builds its speech fixture with `say` and `afconvert`. Elsewhere, supply `CROW_TEST_SPEECH_WAV=/path/to/speech.wav` and `CROW_BROWSER_EXECUTABLE`. Without the opt-in variable the test skips. See [the new feature verification record](docs/scout-verification.md) for observed results and remaining integration setup.
+
+## Limitations
+
+- Flight is a visual route through the map. Building collision avoidance and real-world drone navigation are not simulated.
+- The crow is a custom stylized model animated by separate model-part rotations.
+- Saved places, generated scenes, and plans are session state. Download the artifacts you want to keep before reloading.
+- Google imagery can be dated or less detailed close to buildings, and Places fields can be missing or restricted. Map coverage and performance vary by location and device.
+- Generated panoramas may invent details and cannot establish current weather, crowds, access, or exact physical surroundings.
+- Itinerary prices and transfer times can be estimates. Check current hours, transport, and reservation availability using the linked sources. No bookings are made.
+- Voice needs browser microphone permission, a usable WebRTC connection, and OpenAI model access. Instagram sign-in requires the app owner’s Meta app setup, required permissions, and an eligible professional account linked to a Facebook Page.
+- See [rendering verification](docs/verification.md) for earlier browser evidence and device limitations.
 
 ## Deployment
 
-The public demo runs on **GPT Sites**. This repository contains an export of the application source; GitHub commits do not automatically redeploy the live site.
+The complete application needs the **Node server and browser assets on the same origin**. A static-only upload of `dist/` will not enable GPT-Live, image generation, travel planning, or Instagram. The existing GPT Sites demo is an earlier static deployment; GitHub commits do not redeploy it.
 
-Publish `dist/index.html`, `dist/app.js`, `dist/style.css`, your environment-specific `dist/config.js`, and all three `dist/models/*.glb` files together. Keep model URLs on the same origin as the app; do not restore the pinned GitHub raw URLs. Use plain URLs ending in `.glb`: adding `?v=4` reproduced an invisible model even with HTTP 200 responses in the tested renderer. The preliminary download revalidates cached assets. No renderer replacement, server API, new Google API, or npm production build is required. A local Python/Zo preview is a development convenience only.
+Run `npm start` with server-side environment variables. The server binds to loopback by default. For public access, put it behind an authenticated HTTPS reverse proxy, preserve the external `Host`, and set `PUBLIC_ORIGIN` to the exact browser origin. Its origin checks and local rate limits do not authenticate users; protect access to the billable endpoints at the proxy or add application authentication before exposing them publicly.
 
-The initial export came from Sites source commit `cebef75b960610f945f18e1a58216c5a37333e80`, with the browser key moved into local configuration.
+Keep `.env` and provider credentials outside published browser assets. Publish or serve the full `dist/` directory with its environment-specific Maps configuration and all three `models/*.glb` assets. Keep model URLs on the same origin and use plain URLs ending in `.glb`: adding `?v=4` reproduced an invisible model despite HTTP 200 in the earlier tested renderer.
+
+Instagram login state and sessions are currently held in memory. A deployment with multiple Node workers needs sticky sessions or a shared protected session store. Register the deployed callback URL in Meta before enabling sign-in.
+
+The initial export came from Sites source commit `cebef75b960610f945f18e1a58216c5a37333e80`, with the browser Maps key moved into local configuration.

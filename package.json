@@ -3,9 +3,16 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "node --watch server/index.mjs",
+    "start": "node server/index.mjs",
+    "test": "node --test server/server.test.mjs scripts/verify-live.mjs && node scripts/verify-map-contract.mjs",
+    "verify:scout": "node scripts/verify-scout.mjs",
+    "verify:journey": "node scripts/verify-journey.mjs",
+    "verify:live-api": "node scripts/verify-live-api.mjs",
     "verify:browser": "node scripts/verify-browser.mjs",
     "verify:models": "node scripts/verify-models.mjs"
   },
+  "engines": {"node": ">=22.6.0"},
   "devDependencies": {
     "gltf-validator": "2.0.0-dev.3.10",
     "playwright-core": "1.61.1"
