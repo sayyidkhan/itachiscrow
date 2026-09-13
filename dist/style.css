@@ -2,5 +2,6 @@
 
 /* Keep Google attribution untouched. Reduce only our UI during flight. */
 .in-flight .brand,.in-flight .flight-state,.in-flight .side-tools,.in-flight #hint{visibility:hidden;pointer-events:none}
+.header-actions{display:flex;align-items:center;gap:8px}.studio-link{display:block;padding:11px 14px;border-radius:14px;text-decoration:none;color:var(--ink);font-size:13px;font-weight:600}.in-flight .studio-link{display:none}@media(max-width:600px){.header-actions{gap:6px}.studio-link{font-size:11px;padding:10px}.header-actions .round{width:36px;min-height:36px}.topbar .brand{gap:7px}.topbar .eye{font-size:26px}}
 .bottom{bottom:calc(45px + env(safe-area-inset-bottom))}
 @media(max-width:600px){.glass{backdrop-filter:none;box-shadow:0 4px 16px #0002}.vignette{background:none}.brand h1{font-size:21px}.brand p{font-size:11px}.bottom{bottom:calc(45px + env(safe-area-inset-bottom))}.bottom #hint{font-size:13px}}

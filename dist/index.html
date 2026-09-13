@@ -3,7 +3,7 @@
 <body>
 <main id="world" aria-label="Interactive 3D map of Chelsea"></main>
 <div class="vignette" aria-hidden="true"></div>
-<header class="topbar"><div class="brand"><span class="eye" aria-hidden="true">◉</span><div><h1>Itachi’s Crow</h1><p>CHELSEA, NEW YORK</p></div></div><button id="info" class="glass round" aria-label="About this prototype">?</button></header>
+<header class="topbar"><div class="brand"><span class="eye" aria-hidden="true">◉</span><div><h1>Itachi’s Crow</h1><p>CHELSEA, NEW YORK</p></div></div><nav class="header-actions"><a class="glass studio-link" href="customise.html">Customise crow</a><button id="info" class="glass round" aria-label="About this prototype">?</button></nav></header>
 <div class="flight-state glass"><span id="status">Preparing the city…</span><span id="progress-text">0%</span><div class="track"><div id="progress"></div></div></div>
 <div class="side-tools"><button id="height" class="glass" disabled>Higher view</button><label class="glass labels"><input id="labels" type="checkbox" checked> Place labels</label></div>
 <div id="loading" class="loading glass" role="status"><span class="spinner"></span><h2>Opening Chelsea</h2><p>Bringing the streets into view.</p><button id="reload" hidden>Try again</button></div>
@@ -11,5 +11,5 @@
 <dialog id="details"><div class="dialog-top"><span class="eyebrow">PLACE DISCOVERY</span><button id="close" aria-label="Close place details">✕</button></div><div id="detail-content"></div></dialog>
 <dialog id="about"><div class="dialog-top"><span class="eyebrow">FIRST FLIGHT</span><button id="close-about" aria-label="Close about">✕</button></div><h2>A crow’s-eye view of Chelsea.</h2><p>Follow a prepared street route through real Google 3D imagery. Pause to explore, or select a business to inspect available details.</p><p>The crow is an articulated 3D model inside the city, with flapping wings, banking turns and a following camera. It flies a prepared Chelsea route with gentle swerves. Pause and drag to view it from another angle. Building collision avoidance is not simulated.</p><p>Place information is supplied by Google. Demo access may limit available fields; photos and reviews are not requested. Imagery can be dated and less detailed close to buildings.</p><p>AI itineraries, social discovery and other cities are planned next.</p><button id="about-done" class="primary">Let’s explore</button></dialog>
 <script src="config.js"></script>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 </body></html>

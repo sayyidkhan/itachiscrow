@@ -3,11 +3,15 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build:studio": "esbuild src/customise.js --bundle --minify --format=esm --external:./crow-design.js --outfile=dist/customise.js",
+    "verify:studio": "node scripts/verify-studio.mjs",
     "verify:browser": "node scripts/verify-browser.mjs",
     "verify:models": "node scripts/verify-models.mjs"
   },
   "devDependencies": {
+    "esbuild": "0.28.2",
     "gltf-validator": "2.0.0-dev.3.10",
-    "playwright-core": "1.61.1"
+    "playwright-core": "1.61.1",
+    "three": "0.186.0"
   }
 }

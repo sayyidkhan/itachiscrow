@@ -4,14 +4,15 @@ const $=id=>document.getElementById(id);
 let map,Place,Marker,ready=false,playing=false,transitioning=false,progress=0,heading=125,speed=8,high=false,frameId,last=0,selected=null,detailSerial=0,placesLoaded=false;
 let crowParts=[], flightTime=0, bank=0, crowHeading=125;
 let startupFailed=false, sceneSteady=false, modelsMounted=false, startupTimer, sceneTimer, placesPromise;
-const MODEL_BASE=new URL('models/',document.currentScript?.src || document.baseURI);
+let MODEL_BASE=new URL('models/',document.currentScript?.src || document.baseURI);
+let colourWarning='';
 const FRAME_INTERVAL=1000/24;
 function setFlightView(active){document.body.classList.toggle('in-flight',active);}
 function finishLoading(){
  if(startupFailed||!sceneSteady||!modelsMounted||ready)return;
  clearTimeout(startupTimer);clearTimeout(sceneTimer);ready=true;
  $('loading').hidden=true;for(const id of ['fly','restart','speed','height','nearby'])$(id).disabled=false;
- status('Ready · Chelsea loop');hint('Start your flight. Pause to explore the city.');registerTools();
+ status('Ready · Chelsea loop');hint(colourWarning||'Start your flight. Pause to explore the city.');registerTools();
 }
 async function ensurePlaces(){
  if(!placesPromise)placesPromise=google.maps.importLibrary('places').then(lib=>{Place=lib.Place;return lib}).catch(error=>{placesPromise=null;throw error});
@@ -63,6 +64,8 @@ function poseCrow(s){
 }
 async function mountCrow(Model){
  if(!Model)throw Error('3D model support is unavailable');
+ try{const design=await import('./crow-design.js');MODEL_BASE=await design.flightModelBase()}
+ catch{colourWarning='Saved colours could not load here. Showing the original crow.'}
  const names=['body','left-wing','right-wing'];
  // Google's renderer uses credentialed XHR; wildcard-CORS hosts fail even when fetch succeeds.
  // Keep both downloads same-origin and end the URL in .glb; renderer query URLs fail to draw.

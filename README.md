@@ -44,6 +44,16 @@ The longer-term vision is an AI travel scout that adapts exploration to your int
 
 ## How it works
 
+### Crow studio
+
+Open `customise.html`, or choose **Customise crow** on the flight page. Rotate and zoom the actual articulated crow, inspect portrait/side/wing/eye views, toggle wingbeats, and choose plumage, flight-feather, upper-wing and iris colours. Four presets provide starting palettes. **Save my crow** stores the design in this browser for the next city flight; **Restore original colours**, followed by Save, restores the original materials. Unsaved edits warn before leaving.
+
+The studio needs WebGL2 but no Maps key. Its Three.js viewer is separate from the city, which still uses native Google models and depth occlusion. Colours are stored locally per browser and origin; they do not sync between phones, Zo preview and production. Changes apply when the flight page is opened again.
+
+Custom flight colours use a narrowly filtered service worker to serve recoloured GLBs at same-origin paths ending in `.glb`. It changes material colours only and passes all unrelated requests through normally, without offline caching. This requires HTTPS (or localhost), service-worker permission and the included `crow-sw.js`/`crow-design.js` files at the app root. The studio reports save/setup failures; flight falls back to the original crow with a notice if browser setup is unavailable. An existing service worker at the app scope is not replaced. GPT Sites production has not been redeployed or verified for service-worker support.
+
+The ready-to-deploy studio bundle is committed. To rebuild it after editing `src/customise.js`, run `npm ci && npm run build:studio`. Shared colour and GLB logic is in `dist/crow-design.js`. Run `npm run verify:studio` with the same browser environment options as the flight test to check generated GLBs, browser persistence, responsive controls and customised native city flight. Evidence is written to `_debug/studio/`.
+
 The app loads Google’s 3D map, places the crow’s model parts at geographic coordinates, and updates their positions and rotations during flight. A moving camera follows the route. Flight updates are capped at 24 per second, and controls wait for the renderer’s steady-state event before enabling. The Places library loads when business information is requested.
 
 | Component | Implementation |
@@ -153,6 +163,6 @@ These are proposed directions, not available features:
 
 The public demo runs on **GPT Sites**. This repository contains an export of the application source; GitHub commits do not automatically redeploy the live site.
 
-Publish `dist/index.html`, `dist/app.js`, `dist/style.css`, your environment-specific `dist/config.js`, and all three `dist/models/*.glb` files together. Keep model URLs on the same origin as the app; do not restore the pinned GitHub raw URLs. Use plain URLs ending in `.glb`: adding `?v=4` reproduced an invisible model even with HTTP 200 responses in the tested renderer. The preliminary download revalidates cached assets. No renderer replacement, server API, new Google API, or npm production build is required. A local Python/Zo preview is a development convenience only.
+Publish the complete `dist/` directory, including the studio HTML/CSS/JS, `crow-design.js`, `crow-sw.js`, your environment-specific `config.js`, and all three `models/*.glb` assets. Keep model URLs on the same origin as the app; do not restore the pinned GitHub raw URLs. Use plain URLs ending in `.glb`: adding `?v=4` reproduced an invisible model even with HTTP 200 responses in the tested renderer. The preliminary download revalidates cached assets. No city renderer replacement, server API, new Google API, or mandatory production build is required. A local Python/Zo preview is a development convenience only.
 
 The initial export came from Sites source commit `cebef75b960610f945f18e1a58216c5a37333e80`, with the browser key moved into local configuration.
