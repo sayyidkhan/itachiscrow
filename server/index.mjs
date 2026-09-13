@@ -470,7 +470,10 @@ function assertOrigin(req, config, allowOAuthCallback = false) {
   try { base = new URL(`http://${req.headers.host}`); } catch { throw new HttpError(403, 'origin_rejected', 'Unexpected request host.'); }
   const expected = config.publicOrigin ? new URL(config.publicOrigin) : base;
   const isLocal = ['127.0.0.1', 'localhost', '[::1]'].includes(base.hostname);
-  if (config.publicOrigin ? base.host !== expected.host : !isLocal) throw new HttpError(403, 'origin_rejected', 'Unexpected request host.');
+  const localProxy = isLocal && ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket?.remoteAddress)
+    && Number(base.port || 80) === req.socket?.localPort
+    && (!req.headers['x-forwarded-host'] || req.headers['x-forwarded-host'] === expected.host);
+  if (config.publicOrigin ? base.host !== expected.host && !localProxy : !isLocal) throw new HttpError(403, 'origin_rejected', 'Unexpected request host.');
   if (!allowOAuthCallback && (req.headers['sec-fetch-site'] === 'cross-site' || (req.headers.origin && req.headers.origin !== expected.origin))) throw new HttpError(403, 'origin_rejected', 'This endpoint accepts requests from this application only.');
   return expected;
 }

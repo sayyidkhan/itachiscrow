@@ -210,6 +210,39 @@ test('HTTP API uses precise configuration errors and rejects cross-origin reques
   assert.equal(rebindingStatus, 403);
 });
 
+test('configured public origin accepts loopback proxy hosts while rejecting unrelated hosts and origins', async t => {
+  const publicOrigin = 'https://crow.example';
+  const base = await start(t, { config: createConfig({ PUBLIC_ORIGIN: publicOrigin }), fetchImpl: () => assert.fail('Must not call provider') });
+  const request = (path, headers = {}) => new Promise((resolve, reject) => {
+    const req = httpRequest(`${base}${path}`, { headers }, response => {
+      let body = '';
+      response.on('data', chunk => { body += chunk; });
+      response.on('end', () => resolve({ status: response.statusCode, body }));
+    });
+    req.on('error', reject); req.end();
+  });
+  const homepage = await request('/');
+  assert.equal(homepage.status, 200);
+  assert.match(homepage.body, /Itachi’s Crow/);
+  assert.equal((await request('/location.js')).status, 200);
+  assert.equal((await request('/api/status', { Origin: publicOrigin })).status, 200);
+  assert.equal((await request('/api/status', { Origin: publicOrigin, 'X-Forwarded-Host': 'crow.example' })).status, 200);
+  assert.equal((await request('/api/status', { Host: 'crow.example', Origin: publicOrigin })).status, 200);
+  for (const headers of [
+    { Host: 'evil.example', 'X-Forwarded-Host': 'crow.example' },
+    { 'X-Forwarded-Host': 'evil.example' },
+    { Host: 'localhost:1' },
+    { Origin: 'https://evil.example' },
+    { Origin: base },
+    { 'Sec-Fetch-Site': 'cross-site' },
+  ]) assert.equal((await request('/api/status', headers)).status, 403);
+  const loginBase = await start(t, { config: { ...oauthConfig, publicOrigin } });
+  const login = await fetch(`${loginBase}/api/instagram/connect`, { redirect: 'manual', headers: { Origin: publicOrigin } });
+  assert.equal(login.status, 302);
+  assert.equal(new URL(login.headers.get('location')).searchParams.get('redirect_uri'), `${publicOrigin}/api/instagram/callback`);
+  assert.match(login.headers.get('set-cookie'), /; Secure$/);
+});
+
 test('HTTP input handling rejects malformed JSON, non-JSON, oversized bodies, and unsupported methods', async t => {
   const base = await start(t);
   let response = await fetch(`${base}/api/plan`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{' });
