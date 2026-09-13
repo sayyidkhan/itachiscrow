@@ -126,7 +126,7 @@ function cancelLandingMode(){
 function cancelJourney(){
  journeySerial++;
  if(journey){cancelAnimationFrame(journey.frame);clearTimeout(journey.timer);journey.resolve({cancelled:true});journey=null;}
- if(['arriving','flying','landing','taking-off'].includes(scoutMode))scoutMode='hovering';
+ if(['arriving','flying','landing','taking-off','circling'].includes(scoutMode))scoutMode='hovering';
  flightStage=null;
  if(flightInfo){emitCrow('flight',{...flightInfo,stage:null,cancelled:true});flightInfo=null;}
 }
@@ -288,6 +288,35 @@ function flyTo(value){
  map.flyCameraTo({endCamera:scoutCamera(approach,false,isEiffelView()?0:null),durationMillis:1800});
  return animateJourney({duration:2600,delay:1850,from:approach,to:arrival,serial,altitudeBaseAt:isEiffelView()?()=>0:undefined,onComplete:finishDestinationFlight});
 }
+async function circleAround(value){
+ if(!ready)throw Error('Wait for the map to finish loading.');
+ const target=normalizeDestination(value);
+ if(!scoutPosition||distance(scoutPosition,target)>700){const arrival=await flyTo(target);if(arrival?.cancelled)return arrival;}
+ const from={...(scoutPosition||flightPosition(progress))},surface=surfaceAltitudeAtCrow()??0;
+ stop();cancelLandingMode();clearNearby();destination=target;landingSpot=null;scoutMode='circling';playing=true;setFlightView(true);
+ const serial=journeySerial,startAngle=bearing(target,from)*radians,radius=180,duration=14000;
+ $('fly').textContent='Pause orbit Ⅱ';status('Circling · '+target.name);hint('Circling once. Say stop or drag the map to pause.');emitCrow('destination');
+ if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){
+  poseScout({...relativeOffset(target,-radius,0),altitude:110},0,surface);
+  map.flyCameraTo({endCamera:{center:{...target,altitude:surface+70},altitudeMode:'ABSOLUTE',heading:0,tilt:60,range:480},durationMillis:0});
+  scoutMode='hovering';playing=false;setFlightView(false);$('fly').textContent='Fly again ↗';status('View around · '+target.name);emitCrow('context');return {...getCrowContext(),reducedMotion:true};
+ }
+ return new Promise(resolve=>{
+  const state={resolve,frame:0,timer:0};journey=state;let elapsed=0,previous=performance.now();
+  const step=now=>{
+   if(serial!==journeySerial)return;
+   if(now-previous<FRAME_INTERVAL){state.frame=requestAnimationFrame(step);return;}
+   const dt=Math.min(.15,(now-previous)/1000);previous=now;elapsed+=dt*1000;flightTime+=dt;
+   const t=Math.min(1,elapsed/duration),orbitT=Math.max(0,(t-.12)/.88),angle=startAngle+orbitT*Math.PI*2;
+   const point=relativeOffset(target,Math.cos(angle)*radius,Math.sin(angle)*radius),blend=Math.min(1,t/.12),ease=blend*blend*(3-2*blend);
+   const position={...sphericalPoint(from,point,ease),altitude:from.altitude+(110-from.altitude)*ease};
+   crowHeading=wrapAngle(angle/radians+90);poseScout(position,0,surface);
+   map.flyCameraTo({endCamera:{center:{lat:target.lat,lng:target.lng,altitude:surface+70},altitudeMode:'ABSOLUTE',heading:wrapAngle(angle/radians+180),tilt:60,range:480,roll:0},durationMillis:0});updateProgress(t);
+   if(t<1){state.frame=requestAnimationFrame(step);return;}
+   journey=null;playing=false;scoutMode='hovering';setFlightView(false);$('fly').textContent='Fly again ↗';status('Orbit complete · '+target.name);emitCrow('context');resolve(getCrowContext());
+  };state.frame=requestAnimationFrame(step);
+ });
+}
 function landAt(value){
  if(!ready)return Promise.reject(Error('Wait for the map to finish loading.'));
  let target;try{target=normalizeDestination(value)}catch(error){return Promise.reject(error)}
@@ -334,7 +363,7 @@ function takeOff(){
   onComplete(){scoutMode='hovering';$('fly').textContent='Fly again ↗';status('Airborne · '+destination.name);hint('The crow is clear of the rooftop. Choose another spot to land.');}
  });
 }
-window.CrowMap=Object.freeze({searchDestinations,searchCafes,flyTo,selectLandingMode,cancelLandingMode,landAt,takeOff,useCurrentLocation,getContext:getCrowContext,pause(){stop();return getCrowContext();}});
+window.CrowMap=Object.freeze({searchDestinations,searchCafes,flyTo,selectLandingMode,cancelLandingMode,landAt,takeOff,circleAround,useCurrentLocation,getContext:getCrowContext,pause(){stop();return getCrowContext();}});
 
 // Prepared street-centre loop; rounded junctions keep camera turns continuous.
 const corners=[{lat:40.74440,lng:-73.99505},{lat:40.74288,lng:-73.99298},{lat:40.74225,lng:-73.99343},{lat:40.74378,lng:-73.99551}];

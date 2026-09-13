@@ -1,4 +1,5 @@
 import { PanoramaViewer } from './panorama.js';
+import { CrowChat } from './chat.js';
 import { CrowLive } from './live.js';
 import { createTravelExperience } from './travel.js';
 
@@ -7,16 +8,17 @@ const emptyContext = {mapReady:false,destination:{name:'Chelsea, New York',lat:4
 let context = window.CrowMap?.getContext() || emptyContext;
 let capabilities = {}, scene = null, viewer = null, plan = null;
 let generation = null, planning = null, searchSerial = 0, spotSerial = 0, instagramSerial = 0;
+let managedLandings=0, actionAbort=null, sceneTask=null, commandBusy=false;
 let currentTab = 'explore', liveState = {status:'idle',muted:false};
 let instagramConnection = {}, oauthPopup = null;
 const flightStages={departing:'Leaving the familiar',cruising:'Crossing the globe',descending:'A new place comes into view',approaching:'Almost there'};
 const transcripts = new Map();
 const presets={Singapore:{name:'Singapore',lat:1.2868,lng:103.8545},Kyoto:{name:'Kyoto, Japan',lat:35.0036,lng:135.7782},Paris:{name:'Eiffel Tower, Paris, France',lat:48.85837,lng:2.294481}};
 const node=(tag,text,className)=>{const e=document.createElement(tag);e.textContent=text;if(className)e.className=className;return e;};
-const note=(text,error=false)=>{$('scout-message').textContent=text;$('scout-message').classList.toggle('error',error);};
+const note=(text,error=false)=>{$('scout-message').textContent=text;$('scout-message').classList.toggle('error',error);$('command-status').textContent=text;$('command-status').classList.toggle('error',error);};
 function safeUrl(value){try{const u=new URL(value);return ['http:','https:'].includes(u.protocol)?u.href:null;}catch{return null;}}
 function identity(value){return value?`${value.name}|${value.lat}|${value.lng}`:'';}
-function setOpen(open){$('scout-panel').hidden=!open;$('scout-open').setAttribute('aria-expanded',String(open));document.body.classList.toggle('scout-visible',open);}
+function setOpen(open,explicit=false){if(open&&!explicit)return;$('scout-panel').hidden=!open;$('scout-open').setAttribute('aria-expanded',String(open));document.body.classList.toggle('scout-visible',open);document.body.classList.toggle('debug-open',open);}
 function tab(name,focus=false){currentTab=name;for(const button of document.querySelectorAll('[data-tab]')){const active=button.dataset.tab===name;button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;$(`panel-${button.dataset.tab}`).hidden=!active;if(active&&focus)button.focus();}}
 function preferences(){return {days:Number($('plan-days').value),budget:$('plan-budget').value,interests:$('plan-interests').value.trim()};}
 function liveContext(){const prefs=preferences();return {...context,...prefs,interests:prefs.interests.split(/[,\n]/).map(x=>x.trim().slice(0,100)).filter(Boolean).slice(0,12),flightState:context.mode||'exploring'};}
@@ -53,7 +55,7 @@ function refreshContext(next){
   context={...emptyContext,...next};
   travel.updateContext(context);
   if(context.mode!=='arriving'||!context.flightStage)hideTravelTransition();
-  if(changed||spotChanged){scene=null;$('reopen-scene').hidden=true;$('step-look').classList.remove('active');generation?.abort();generation=null;if($('panorama-dialog').open)$('panorama-dialog').close();clearPlan();}
+  if(changed||spotChanged){$('command-result').hidden=true;scene=null;$('reopen-scene').hidden=true;$('step-look').classList.remove('active');generation?.abort();generation=null;if($('panorama-dialog').open)$('panorama-dialog').close();clearPlan();}
   if(changed){searchSerial++;spotSerial++;$('destination-results').replaceChildren();$('spot-results').replaceChildren();$('instagram-hashtag').value=context.destination.name.split(',')[0].replace(/[^\p{L}\p{N}_]/gu,'').toLowerCase();instagramSerial++;$('instagram-refresh').disabled=false;$('instagram-posts').replaceChildren();$('instagram-status').textContent=capabilities.instagram?'Refresh to discover this destination’s recent hashtag posts.':'Connect Instagram through Meta to see recent public hashtag photos.';}
   const findingStart=!context.mapReady&&context.locationStatus==='locating';
   $('destination-label').textContent=findingStart?'FINDING YOUR LOCATION':context.destination.name.toUpperCase();
@@ -75,7 +77,7 @@ async function fly(destination){
   note(`Flying to ${destination.name}…`);setOpen(false);
   const result=await window.CrowMap.flyTo(destination);
   if(result?.cancelled)return {status:'cancelled'};
-  setOpen(true);tab('explore');note('You’ve arrived. Choose a spot to land.');
+  setOpen(true);tab('explore');note('You’ve arrived. Tell me where to land or what to explore.');
   return {status:'arrived',destination:context.destination};
 }
 async function search(query,landing=false){
@@ -91,10 +93,15 @@ async function search(query,landing=false){
     for(const place of results){const button=node('button',place.name);button.type='button';button.append(node('small',place.address||`${place.lat.toFixed(4)}, ${place.lng.toFixed(4)}`));button.onclick=async()=>{output.replaceChildren();try{if(landing){note(`Landing at ${place.name}…`);setOpen(false);await window.CrowMap.landAt(place);}else await fly(place);}catch(error){setOpen(true);note(error.message,true);}};output.append(button);}
   }catch(error){if(serial===(landing?spotSerial:searchSerial))output.replaceChildren(node('p',error.message,'error'));}
 }
-async function generateScene(signal){
+function generateScene(signal,regenerate=false){
+ if(sceneTask){if(!generation||generation.signal.aborted)return sceneTask.catch(()=>{}).then(()=>generateScene(signal,regenerate));return sceneTask;}
+ const task=generateSceneNow(signal,regenerate);sceneTask=task;task.finally(()=>{if(sceneTask===task)sceneTask=null;}).catch(()=>{});return task;
+}
+async function generateSceneNow(signal,regenerate=false){
   if(!context.spot)throw Error('Choose a landing spot before generating its surroundings.');
   if(!capabilities.panorama)throw Error('Image generation needs the server’s OpenAI connection.');
-  if(generation)return {status:'generating'};
+  if(scene&&!regenerate&&identity(scene.spot)===identity(context.spot)){await openScene();return {status:'generated',reused:true,summary:'The existing 360 view is open.'};}
+  if(signal?.aborted)return {status:'cancelled'};
   const controller=new AbortController();generation=controller;
   const cancel=()=>controller.abort();if(signal?.aborted)controller.abort();else signal?.addEventListener('abort',cancel,{once:true});
   const target={destination:{...context.destination},spot:{...context.spot}};
@@ -104,7 +111,7 @@ async function generateScene(signal){
     const result=await request('/api/panorama',target,controller.signal);
     if(generation!==controller||identity(target.spot)!==identity(context.spot))return {status:'cancelled'};
     if(!/^data:image\/(jpeg|png|webp);base64,/.test(result.imageUrl||''))throw Error('The image service returned an invalid scene. Please try again.');
-    scene={...result,spot:target.spot};$('reopen-scene').hidden=false;$('step-look').classList.add('active');
+    scene={...result,spot:target.spot};$('command-result').hidden=false;$('command-result').textContent='Open 360° view ↗';$('command-result').onclick=()=>openScene();$('reopen-scene').hidden=false;$('step-look').classList.add('active');
     note('Your crow’s surroundings are ready. Drag to look around.');await openScene();
     if(generation!==controller||controller.signal.aborted||identity(target.spot)!==identity(context.spot))return {status:'cancelled'};
     return {status:'generated',summary:`360-degree scene generated for ${target.spot.name}.`};
@@ -124,7 +131,7 @@ async function generatePlan(extraRequest='',signal){
   const cancel=()=>controller.abort();if(signal?.aborted)controller.abort();else signal?.addEventListener('abort',cancel,{once:true});
   const body={destination:context.destination,spot:context.spot||undefined,savedPlaces:context.savedPlaces.slice(0,20),...preferences()};
   if(extraRequest)body.request=extraRequest.slice(0,1200);
-  setOpen(true);tab('plan');$('generate-plan').disabled=true;$('generate-plan').textContent='Finding your next adventure…';
+  showResult('plan');tab('plan');$('generate-plan').disabled=true;$('generate-plan').textContent='Finding your next adventure…';
   $('plan-status').textContent='Building a plan around your interests and checking web sources…';
   $('plan-status').classList.remove('error');
   try{
@@ -152,34 +159,87 @@ async function instagram(){
   finally{if(serial===instagramSerial)$('instagram-refresh').disabled=false;}
 }
 const landmarkQuery=query=>/^paris(?:,?\s+france)?[.!?]?$/i.test(query.trim())?'Eiffel Tower, Paris, France':query;
-const travel = createTravelExperience({getContext:()=>context,request,renderText:renderPlan,open:()=>{setOpen(true);tab('explore');},openSocial:()=>{setOpen(true);tab('social');},fly});
+let resultRestore=null;
+function restoreResult(){const restore=resultRestore;resultRestore=null;restore?.();}
+function closeResult(){if($('result-dialog').open)$('result-dialog').close();restoreResult();}
+function showResult(kind){
+ closeResult();
+ const target=$(kind==='portrait'?'portrait-tools-body':kind==='plan'?'panel-plan':'panel-social');
+ const parent=target.parentNode,next=target.nextSibling,wasHidden=target.hidden;
+ resultRestore=()=>{parent.insertBefore(target,next);target.hidden=wasHidden;tab(currentTab);};
+ $('result-title').textContent=kind==='portrait'?'Picture yourself here':kind==='plan'?'Your travel plan':'Around this stop';
+ target.hidden=false;$('result-content').append(target);$('result-dialog').showModal();
+ $('command-result').hidden=false;$('command-result').textContent='Open '+(kind==='portrait'?'portrait':kind==='plan'?'travel plan':'local discoveries');$('command-result').onclick=()=>showResult(kind);
+}
+$('result-close').onclick=closeResult;
+$('result-dialog').addEventListener('close',()=>{if(!$('result-dialog').open)restoreResult();});
+function addMessage(role,text){
+ const p=node('div','',role==='user'?'chat-bubble user':'chat-bubble assistant');
+ p.append(node('b',role==='user'?'You':'Crow'));
+ const content=node('div','');renderPlan(text,content);p.append(content);$('voice-transcript').append(p);
+ while($('voice-transcript').children.length>50)$('voice-transcript').firstElementChild.remove();
+ $('voice-transcript').scrollTop=$('voice-transcript').scrollHeight;return p;
+}
+function abortActions(){actionAbort?.abort();generation?.abort();planning?.abort();window.CrowMap?.pause();}
+async function resolveCommandPlace(query,city){
+ if(/^(here|there|this place|current location)$/i.test(query.trim()))return context.spot||context.destination;
+ const places=await window.CrowMap.searchDestinations(city?`${query}, ${city}`:landmarkQuery(query));
+ if(!places.length)throw Error(`I couldn’t find ${query}. Try a landmark or a more specific address.`);
+ return places[0];
+}
+async function executeAction(name,args,{signal,sessionId}={}){
+ if(signal?.aborted)return {status:'cancelled'};
+ if(sessionId)chat.stop();
+ if(name==='stop'){abortActions();note('Stopped. Where next?');return {status:'stopped'};}
+ actionAbort?.abort();const controller=new AbortController();actionAbort=controller;
+ const abort=()=>controller.abort();signal?.addEventListener('abort',abort,{once:true});
+ const cancel=()=>window.CrowMap?.pause();controller.signal.addEventListener('abort',cancel,{once:true});
+ const active=()=>!controller.signal.aborted,guard=()=>{if(!active())throw new DOMException('Journey cancelled.','AbortError');};
+ const landAndLook=async(place,view)=>{
+   note(`Landing at ${place.name}…`);managedLandings++;
+   let result;try{result=await window.CrowMap.landAt(place);}finally{managedLandings--;}
+   if(result?.cancelled||!active())return {status:'cancelled'};
+   if(!view)return {status:'landed',spot:place};
+   try{const panorama=await generateScene(controller.signal);return {...panorama,spot:place,landed:true};}
+   catch(error){return {status:'partial',landed:true,spot:place,summary:'Landed successfully, but the 360 view could not be generated.',error:error.message};}
+ };
+ try{
+   if(['travel_to','fly_to','land_at','circle_around','take_off'].includes(name)&&!context.mapReady)throw Error('The map is still getting ready. Try again in a moment.');
+   if(name==='travel_to'){
+     closeResult();
+     note(`Finding ${args.landing_spot} in ${args.destination}…`);
+     const destination=await resolveCommandPlace(args.destination);guard();
+     const spot=await resolveCommandPlace(args.landing_spot,args.destination);guard();
+     note(`Flying to ${destination.name}…`);const arrival=await fly(destination);guard();
+     if(arrival?.status==='cancelled')return arrival;
+     return await landAndLook(spot,args.generate_view);
+   }
+   if(name==='fly_to'){closeResult();const place=await resolveCommandPlace(args.destination);guard();return await fly(place);}
+   if(name==='land_at'){closeResult();const place=await resolveCommandPlace(args.spot,context.destination.name);guard();return await landAndLook(place,args.generate_view!==false);}
+   if(name==='circle_around'){closeResult();const place=await resolveCommandPlace(args.spot);guard();note(`Circling ${place.name}…`);const result=await window.CrowMap.circleAround(place);if(result?.cancelled)return {status:'cancelled'};note(`Orbit complete around ${place.name}.`);return {status:'completed',place,reducedMotion:result.reducedMotion||false};}
+   if(name==='generate_panorama')return await generateScene(controller.signal,args.regenerate===true);
+   if(name==='picture_me_here')return await travel.portrait(controller.signal);
+   if(name==='find_cafes')return await travel.discover(args.request,controller.signal);
+   if(name==='plan_trip')return await generatePlan(args.request,controller.signal);
+   if(name==='take_off'){closeResult();const result=await window.CrowMap.takeOff();return {status:result?.cancelled?'cancelled':'airborne',destination:context.destination};}
+   throw Error('Unknown travel action.');
+ }catch(error){if(!active()||error.name==='AbortError')return {status:'cancelled'};note(error.message,true);throw error;}
+ finally{signal?.removeEventListener('abort',abort);controller.signal.removeEventListener('abort',cancel);if(actionAbort===controller)actionAbort=null;}
+}
+const travel = createTravelExperience({getContext:()=>context,request,renderText:renderPlan,open:()=>{showResult('portrait');tab('explore');},openSocial:()=>{showResult('social');tab('social');},fly});
 const live = new CrowLive({
-  onState(state){liveState=state;const active=['connecting','connected'].includes(state.status);$('voice-toggle').disabled=state.status==='closing';$('voice-toggle').textContent=state.status==='closing'?'Ending…':active?'End call':'Talk ↗';$('voice-toggle').setAttribute('aria-label',active?'End live voice guide':'Start live voice guide');$('voice-orb').classList.toggle('connected',state.status==='connected');$('voice-state').textContent=state.pendingAction?'Your guide is working…':state.status==='connecting'?'Connecting to GPT-Live…':state.status==='connected'?(state.muted?'Connected · Microphone muted':'Connected · Listening'):'GPT-Live · Voice companion';$('voice-controls').hidden=state.status!=='connected';$('voice-mute').textContent=state.muted?'Unmute mic':'Mute mic';$('voice-mute').setAttribute('aria-pressed',String(state.muted));$('voice-audio').hidden=!state.playbackBlocked;},
+  onState(state){liveState=state;$('command-stop').hidden=!state.pendingAction&&!commandBusy;const active=['connecting','connected'].includes(state.status);$('voice-toggle').disabled=state.status==='closing';$('voice-toggle').textContent=state.status==='closing'?'Ending…':active?'End call':'Talk ↗';$('voice-toggle').setAttribute('aria-label',active?'End live voice guide':'Start live voice guide');$('voice-orb').classList.toggle('connected',state.status==='connected');$('voice-state').textContent=state.pendingAction?'Your guide is working…':state.status==='connecting'?'Connecting to GPT-Live…':state.status==='connected'?(state.muted?'Connected · Microphone muted':'Connected · Listening'):'GPT-Live · Voice companion';$('voice-controls').hidden=state.status!=='connected';$('voice-mute').textContent=state.muted?'Unmute mic':'Mute mic';$('voice-mute').setAttribute('aria-pressed',String(state.muted));$('voice-audio').hidden=!state.playbackBlocked;},
   onError(error){$('voice-error').textContent=error.message;},
-  onTranscript(event){const key=event.role;let p=transcripts.get(key);if(!p){p=node('p','');transcripts.set(key,p);$('voice-transcript').append(p);}p.replaceChildren(node('b',event.role==='user'?'You: ':'Crow: '),document.createTextNode(event.text.slice(-3000)));$('voice-transcript').scrollTop=$('voice-transcript').scrollHeight;},
-  async onAction(name,args,{signal}={}){
-    if(signal?.aborted)return {status:'cancelled'};
-    if(name==='fly_to'||name==='land_at'){
-      const query=name==='fly_to'?landmarkQuery(args.destination):`${args.spot}, ${context.destination.name}`;
-      if(!context.mapReady)throw Error('The map is not ready. Ask the user to configure Google Maps.');
-      const places=await window.CrowMap.searchDestinations(query);
-      if(signal?.aborted)return {status:'cancelled'};
-      if(!places.length)return {status:'not_found',summary:'No matching place was found. Ask for a more specific location.'};
-      const cancel=()=>window.CrowMap.pause();signal?.addEventListener('abort',cancel,{once:true});
-      try{if(name==='fly_to')return await fly(places[0]);const result=await window.CrowMap.landAt(places[0]);return {status:result?.cancelled?'cancelled':'landed',spot:places[0]};}finally{signal?.removeEventListener('abort',cancel);}
-    }
-    if(name==='generate_panorama')return generateScene(signal);
-    if(name==='picture_me_here')return travel.portrait(signal);
-    if(name==='find_cafes')return travel.discover(args.request,signal);
-    if(name==='plan_trip')return generatePlan(args.request,signal);
-    if(name==='take_off'){
-      if(!context.spot)throw Error('The crow needs to land before it can take off.');
-      const cancel=()=>window.CrowMap.pause();signal?.addEventListener('abort',cancel,{once:true});
-      try{setOpen(false);const result=await window.CrowMap.takeOff();return {status:result?.cancelled?'cancelled':'airborne',destination:context.destination};}finally{signal?.removeEventListener('abort',cancel);}
-    }
-    throw Error('Unknown travel action.');
-  }
+  onTranscript(event){let entry=transcripts.get('current');if(!entry||entry.role!==event.role){entry={role:event.role,element:addMessage(event.role,''),text:''};transcripts.set('current',entry);}entry.text+=event.delta;entry.element.lastElementChild.textContent=entry.text.slice(-5000);$('voice-transcript').scrollTop=$('voice-transcript').scrollHeight;},
+  onAction:executeAction
 });
+const chat=new CrowChat({getContext:liveContext,onAction:executeAction,onMessage:addMessage,onBusy:busy=>{commandBusy=busy;$('chat-send').disabled=busy;$('chat-input').setAttribute('aria-busy',String(busy));$('command-stop').hidden=!busy&&!liveState.pendingAction;}});
+function stopCommand(){chat.stop();chat.completedConversation=null;live.cancelActions();abortActions();note('Stopped. Where next?');}
+$('command-stop').onclick=stopCommand;
+$('chat-form').onsubmit=event=>{event.preventDefault();const message=$('chat-input').value.trim();if(!message)return;$('chat-input').value='';if(/^(stop|pause|cancel)[.!]?$/i.test(message)){addMessage('user',message);stopCommand();addMessage('assistant','Stopped.');return;}live.cancelActions();abortActions();chat.send(message);};
+for(const button of document.querySelectorAll('[data-command]'))button.onclick=()=>{$('chat-input').value=button.dataset.command;$('chat-input').focus();};
+$('companion-toggle').onclick=()=>{const compact=$('companion').classList.toggle('compact');$('companion-toggle').setAttribute('aria-expanded',String(!compact));$('companion-toggle').textContent=compact?'+':'−';};
+window.addEventListener('pagehide',()=>chat.stop());
 async function connectStatus(){
   try{const status=await request('/api/status');capabilities=status.capabilities||{};instagramConnection=status.instagram||{};$('connection-status').textContent=capabilities.live?'● Voice & images ready':'Voice & images are not available yet';$('instagram-status').textContent=capabilities.instagram?'Instagram connected. Refresh to find recent public hashtag photos.':'Connect Instagram through Meta to see recent public hashtag photos.';
     $('instagram-connect').disabled=!instagramConnection.oauthAvailable;$('instagram-connect').hidden=Boolean(instagramConnection.selectedAccount);
@@ -191,7 +251,7 @@ async function connectStatus(){
   catch{$('connection-status').textContent='Travel service unavailable · Try refreshing';$('instagram-status').textContent='Photo discovery is temporarily unavailable. Please try again shortly.';}
   refreshContext(context);
 }
-$('scout-open').onclick=()=>setOpen($('scout-panel').hidden);$('scout-close').onclick=()=>{setOpen(false);$('scout-open').focus();};
+$('scout-open').onclick=()=>{closeResult();setOpen($('scout-panel').hidden,true);};$('scout-close').onclick=()=>{setOpen(false);$('scout-open').focus();};
 $('scout-panel').addEventListener('keydown',event=>{if(event.key==='Escape'){setOpen(false);$('scout-open').focus();}});
 for(const button of document.querySelectorAll('[data-tab]')){button.onclick=()=>tab(button.dataset.tab);button.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const tabs=['explore','social','plan'];const index=tabs.indexOf(currentTab);tab(e.key==='Home'?tabs[0]:e.key==='End'?tabs[2]:tabs[(index+(e.key==='ArrowRight'?1:2))%3],true);};}
 $('destination-form').onsubmit=e=>{e.preventDefault();search($('destination-input').value.trim());};
@@ -200,27 +260,28 @@ for(const button of document.querySelectorAll('[data-destination]'))button.oncli
 $('use-my-location').onclick=async()=>{try{const result=await window.CrowMap.useCurrentLocation();if(!result?.cancelled)note(result?.locationStatus==='located'?'Your crow is back nearby. Choose a destination to explore.':result?.locationMessage||'Choose a destination to continue.');}catch(error){$('location-status').textContent=error.message;}};
 $('pick-spot').onclick=()=>{try{window.CrowMap.selectLandingMode();setOpen(false);note('Click a particular spot on the map to land.');}catch(error){note(error.message,true);}};
 $('land-here').onclick=async()=>{try{setOpen(false);await window.CrowMap.landAt(context.destination);}catch(error){setOpen(true);note(error.message,true);}};
-$('generate-scene').onclick=()=>generateScene().catch(()=>{});$('reopen-scene').onclick=()=>openScene().catch(error=>note(error.message,true));
+$('generate-scene').onclick=()=>generateScene(undefined,true).catch(()=>{});$('reopen-scene').onclick=()=>openScene().catch(error=>note(error.message,true));
 $('panorama-close').onclick=()=>$('panorama-dialog').close();$('panorama-dialog').addEventListener('close',()=>{viewer?.destroy();viewer=null;});
 $('plan-form').onsubmit=e=>{e.preventDefault();generatePlan().catch(error=>{$('plan-status').textContent=error.message;$('plan-status').classList.add('error');});};
 $('instagram-form').onsubmit=e=>{e.preventDefault();instagram();};
 $('instagram-connect').onclick=()=>{if(!instagramConnection.oauthAvailable)return;oauthPopup=window.open('/api/instagram/connect','crow-instagram-connect','popup,width=620,height=760');if(!oauthPopup)window.location.assign('/api/instagram/connect');else $('instagram-connection').textContent='Finish signing in in the opened window.';};
 $('instagram-disconnect').onclick=async()=>{try{await request('/api/instagram/disconnect',{});instagramSerial++;$('instagram-refresh').disabled=false;$('instagram-posts').replaceChildren();await connectStatus();}catch(error){$('instagram-status').textContent=error.message;}};
-async function oauthResult(result){setOpen(true);tab('social');await connectStatus();if(result==='error')$('instagram-status').textContent='Instagram couldn’t connect. Try signing in again and approve the requested account access.';else if(capabilities.instagram)await instagram();}
+async function oauthResult(result){showResult('social');tab('social');await connectStatus();if(result==='error')$('instagram-status').textContent='Instagram couldn’t connect. Try signing in again and approve the requested account access.';else if(capabilities.instagram)await instagram();}
 window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==oauthPopup||event.data?.type!=='crow:instagram-return')return;oauthPopup=null;oauthResult(event.data.result);});
 $('download-plan').onclick=()=>{if(!plan)return;const content=`# ${plan.destination}\n\n${plan.text}\n\nSources\n${(plan.sources||[]).map(x=>`${x.title}: ${x.url}`).join('\n')}`;const url=URL.createObjectURL(new Blob([content],{type:'text/markdown'}));const a=node('a','');a.href=url;a.download='crow-travel-plan.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
-$('voice-toggle').onclick=async()=>{if(['connecting','connected'].includes(liveState.status)){live.stop();return;}$('voice-error').textContent='';if(!capabilities.live){$('voice-error').textContent='The live guide needs the server’s OpenAI connection.';return;}try{await live.start(liveContext());}catch(error){$('voice-error').textContent=error.message;}};
+$('voice-toggle').onclick=async()=>{if(['connecting','connected'].includes(liveState.status)){live.stop();return;}$('voice-error').textContent='';if(!capabilities.live){$('voice-error').textContent='The live guide needs the server’s OpenAI connection.';return;}try{transcripts.clear();await live.start(liveContext());}catch(error){$('voice-error').textContent=error.message;}};
 $('voice-mute').onclick=()=>live.setMuted(!liveState.muted);$('voice-audio').onclick=()=>live.resumeAudio();
 for(const id of ['plan-days','plan-budget','plan-interests'])$(id).addEventListener('input',()=>{clearPlan();live.updateContext(liveContext());});
 for(const event of ['crow:ready','crow:destination','crow:context'])document.addEventListener(event,e=>refreshContext(e.detail));
 document.addEventListener('crow:flight',e=>updateTravelTransition(e.detail));
 document.addEventListener('crow:landing-selected',e=>refreshContext({...e.detail,spot:null}));
-document.addEventListener('crow:landed',e=>{refreshContext(e.detail);setOpen(true);tab('explore');note(`Landed at ${context.spot?.name||'your chosen spot'}.`);if($('auto-scene').checked&&capabilities.panorama)generateScene().catch(()=>{});if(capabilities.instagram)instagram();});
+document.addEventListener('crow:landed',e=>{refreshContext(e.detail);setOpen(true);tab('explore');note(`Landed at ${context.spot?.name||'your chosen spot'}.`);if(!managedLandings&&$('auto-scene').checked&&capabilities.panorama)generateScene().catch(()=>{});});
 window.addEventListener('pagehide',()=>{generation?.abort();planning?.abort();viewer?.destroy();live.stop();});
-setOpen(!matchMedia('(max-width: 760px)').matches);
+setOpen(false);
 const requestedTool=new URL(location.href).searchParams.get('tool');
 if(['scene','portrait','nearby','trip','voice'].includes(requestedTool)){
- setOpen(true);tab(requestedTool==='nearby'?'social':requestedTool==='trip'?'plan':'explore');
+ if(requestedTool==='portrait')showResult('portrait');else if(requestedTool==='trip')showResult('plan');else if(requestedTool==='nearby')showResult('social');else if(requestedTool==='scene')note('Ask me to land somewhere and create a 360 view.');
+ tab(requestedTool==='nearby'?'social':requestedTool==='trip'?'plan':'explore');
  if(requestedTool==='scene')$('scene-tools').open=true;
  if(requestedTool==='portrait')$('portrait-tools').open=true;
  if(requestedTool==='voice')$('voice-toggle').focus();
