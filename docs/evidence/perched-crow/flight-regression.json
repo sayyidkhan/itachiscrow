@@ -1,0 +1,74 @@
+{
+  "graphics": [
+    255,
+    0,
+    0,
+    255
+  ],
+  "errors": [],
+  "sources": [
+    "http://127.0.0.1:8806/crow-colours/c4ccd2-849aaa-e0e2df-00ff88/body.glb",
+    "http://127.0.0.1:8806/crow-colours/c4ccd2-849aaa-e0e2df-00ff88/left-wing.glb",
+    "http://127.0.0.1:8806/crow-colours/c4ccd2-849aaa-e0e2df-00ff88/right-wing.glb"
+  ],
+  "models": [
+    {
+      "status": 200,
+      "type": "fetch",
+      "worker": true
+    },
+    {
+      "status": 200,
+      "type": "fetch",
+      "worker": true
+    },
+    {
+      "status": 200,
+      "type": "fetch",
+      "worker": true
+    },
+    {
+      "status": 200,
+      "type": "fetch",
+      "worker": true
+    },
+    {
+      "status": 200,
+      "type": "fetch",
+      "worker": true
+    },
+    {
+      "status": 200,
+      "type": "fetch",
+      "worker": true
+    },
+    {
+      "status": 200,
+      "type": "xhr",
+      "worker": true
+    },
+    {
+      "status": 200,
+      "type": "xhr",
+      "worker": true
+    },
+    {
+      "status": 200,
+      "type": "xhr",
+      "worker": true
+    }
+  ],
+  "checks": [
+    "GLB validation",
+    "Geometry preserved",
+    "Original materials restored exactly",
+    "Four independent colour fields",
+    "Eye colour save/reload",
+    "Orbit and zoom",
+    "Wingbeat toggle",
+    "390px responsive viewport",
+    "Native coloured city model URLs",
+    "Start/pause/resume/reset",
+    "Restore original design"
+  ]
+}

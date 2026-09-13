@@ -24,6 +24,9 @@ parts = {'body': [], 'left-wing': [], 'right-wing': []}
 
 
 def add(part, mesh, mat=0):
+    if part == 'perched':
+        mesh.update_faces(mesh.nondegenerate_faces(height=1e-7))
+        mesh.remove_unreferenced_vertices()
     mesh.fix_normals()
     mesh.visual = tm.visual.TextureVisuals(material=materials[mat])
     parts[part].append(mesh)
@@ -186,6 +189,135 @@ for sign, part in [(-1, 'left-wing'), (1, 'right-wing')]:
                 [sign * (1.43 + .065 * i), .21 - .095 * i, .012],
                 .048, 0, bend=sign * .015)
 
+parts['perched'] = []
+perch_stations = np.array([
+    [.38, .012, .02, -.12], [.55, .19, .24, -.12], [.80, .30, .34, -.10],
+    [1.05, .34, .39, -.06], [1.30, .30, .35, .01], [1.53, .25, .285, .09],
+    [1.73, .25, .278, .145], [1.88, .258, .295, .16],
+    [2.03, .212, .255, .15], [2.13, .115, .145, .14], [2.16, .001, .002, .14]])
+perch_profile = PchipInterpolator(perch_stations[:, 0], perch_stations[:, 1:])
+
+
+def contour_feather(start, end, normal, width, mat=0, depth=.006):
+    a, b = np.array(start), np.array(end)
+    axis = b - a
+    axis /= np.linalg.norm(axis)
+    normal = np.array(normal, dtype=float)
+    normal -= axis * np.dot(normal, axis)
+    normal /= np.linalg.norm(normal)
+    side = np.cross(axis, normal)
+    rings = []
+    for t in np.linspace(0, 1, 8):
+        profile = max(.012, np.sin(np.pi * t) ** .65)
+        centre = a + (b - a) * t + normal * .004 * np.sin(np.pi * t)
+        rings.append([centre + side * width * profile * np.cos(v)
+                      + normal * depth * profile * np.sin(v)
+                      for v in np.linspace(0, 2 * np.pi, 6, endpoint=False)])
+    skin('perched', rings, mat)
+
+
+def feather_coat(centre, radii, rows, columns, length, width, mat=0,
+                 phi_range=(.18, 2.75)):
+    centre, radii = np.array(centre), np.array(radii)
+    for row, phi in enumerate(np.linspace(*phi_range, rows)):
+        for col in range(columns):
+            jitter = .22 * np.sin(row * 19.31 + col * 7.73)
+            theta = 2 * np.pi * (col + (row % 2) * .5 + jitter) / columns
+            rings = []
+            angular_length = length * (1 + jitter) / np.linalg.norm(radii * [np.cos(phi), 0, np.sin(phi)])
+            if phi + (1 + abs(jitter) * .3) * angular_length > 3.0:
+                continue
+            for t in np.linspace(0, 1, 8):
+                p = phi + (t + jitter * .3) * angular_length
+                profile = max(.01, (1 - t) ** .85 * min(1, t * 8))
+                ring = []
+                for v in np.linspace(0, 2 * np.pi, 6, endpoint=False):
+                    angle = theta + (np.cos(v) * width * profile + jitter * t * .018) / max(.07, radii[0] * np.sin(p))
+                    direction = np.array([np.sin(p) * np.cos(angle), np.sin(p) * np.sin(angle), np.cos(p)])
+                    lift = .0012 + .0015 * np.sin(np.pi * t) + .0006 * np.sin(v) * profile
+                    z = float(np.clip(centre[2] + radii[2] * direction[2], .381, 2.159))
+                    rx, ry, cy = perch_profile(z)
+                    ring.append([(rx + lift) * np.cos(angle), cy + (ry + lift) * np.sin(angle), z])
+                rings.append(ring)
+            skin('perched', rings, mat)
+
+
+def tendon(points, radius, mat=3):
+    points = np.array(points)
+    rings = []
+    for i, point in enumerate(points):
+        axis = points[min(i + 1, len(points) - 1)] - points[max(0, i - 1)]
+        axis /= np.linalg.norm(axis)
+        side = np.cross(axis, [1., 0, 0])
+        if np.linalg.norm(side) < .01:
+            side = np.cross(axis, [0., 1, 0])
+        side /= np.linalg.norm(side)
+        up = np.cross(side, axis)
+        r = radius * (1 - .75 * i / (len(points) - 1))
+        rings.append([point + r * (side * np.cos(v) + up * np.sin(v))
+                      for v in np.linspace(0, 2 * np.pi, 10, endpoint=False)])
+    skin('perched', rings, mat)
+
+
+skin('perched', [[(rx * np.cos(t), cy + ry * np.sin(t), z)
+                 for t in np.linspace(0, 2 * np.pi, 48, endpoint=False)]
+                for z in np.linspace(.38, 2.16, 90)
+                for rx, ry, cy in [perch_profile(z)]])
+feather_coat([0, -.06, 1.03], [.34, .39, .65], 15, 38, .23, .031)
+feather_coat([0, .08, 1.52], [.255, .285, .40], 12, 32, .18, .022, phi_range=(.65, 2.6))
+feather_coat([0, .16, 1.87], [.258, .30, .29], 16, 42, .075, .010)
+
+longitudinal('perched', [
+    [.35, .133, .085, 1.87], [.45, .122, .089, 1.87],
+    [.60, .092, .067, 1.86], [.74, .055, .041, 1.837],
+    [.83, .022, .025, 1.80], [.855, .005, .022, 1.765],
+    [.86, .001, .003, 1.744]], 3, samples=28, sides=20)
+longitudinal('perched', [
+    [.36, .109, .028, 1.789], [.52, .09, .032, 1.784],
+    [.69, .053, .024, 1.786], [.80, .002, .002, 1.79]], 3, samples=18)
+
+for sign in [-1, 1]:
+    ellipsoid('perched', [sign * .232, .288, 1.922], [.026, .061, .058], 3)
+    ellipsoid('perched', [sign * .25, .294, 1.924], [.024, .044, .043], 5)
+    ellipsoid('perched', [sign * .273, .300, 1.926], [.005, .025, .026], 4)
+    ellipsoid('perched', [sign * .277, .303, 1.927], [.006, .018, .020], 5)
+    ellipsoid('perched', [sign * .10, .458, 1.918], [.006, .028, .01], 5)
+    contour_feather([sign * .195, .35, 1.976], [sign * .253, .22, 1.98],
+                    [sign, 0, .7], .023)
+    for i in range(6):
+        contour_feather([sign * (.045 + i * .018), .395, 1.904 + i * .006],
+                        [sign * (.039 + i * .011), .505, 1.882], [sign * .3, .3, 1], .012)
+    for row in range(5):
+        for col in range(9):
+            t = col / 8
+            y = .19 - t * .46 - row * .027
+            z = 1.49 - row * .14 - t * .10
+            x = sign * (.335 + .05 * np.sin(t * np.pi) - row * .009)
+            contour_feather([x, y, z], [x * .94, y - .23, z - .30],
+                            [sign, .2, .12], .053 if row < 2 else .062,
+                            2 if row < 3 else 1, .004)
+    for i in range(10):
+        t = i / 9
+        contour_feather([sign * (.355 - .013 * i), .10 - .028 * i, 1.15 - .027 * i],
+                        [sign * (.23 - .011 * i), -.64 - .032 * i, .30 - .025 * i],
+                        [sign, -.1, .25], .056, 1, .005)
+    tendon([[sign * .16, .04, .57], [sign * .18, .02, .36], [sign * .18, .14, .13]], .036)
+    for i in range(3):
+        x = sign * .18 + (i - 1) * .072
+        tendon([[sign * .18, .14, .13], [x, .26, .065],
+                [x + (i - 1) * .025, .39, .04]], .022)
+        tendon([[x + (i - 1) * .025, .39, .04], [x + (i - 1) * .03, .44, .025],
+                [x + (i - 1) * .03, .46, -.005]], .014)
+    tendon([[sign * .18, .12, .11], [sign * .22, -.02, .05], [sign * .23, -.10, .015]], .021)
+    for i in range(6):
+        ellipsoid('perched', [sign * .18, .115 - i * .013, .16 + i * .028], [.033 - i * .002, .015, .009], 2)
+
+for i in range(12):
+    u = (i - 5.5) / 5.5
+    contour_feather([u * .14, -.28, .74],
+                    [u * .24, -1.08 + abs(u) * .06, -.03 + abs(u) * .03],
+                    [0, -.65, .76], .045, 1, .008)
+
 conversion = np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, -1, 0, 0], [0, 0, 0, 1.]])
 for name, meshes in parts.items():
     scene = tm.Scene()
@@ -212,7 +344,7 @@ if __name__ == '__main__':
             (85, 90, 'DORSAL / WING SILHOUETTE'), (20, 35, 'HEAD / THREE-QUARTER'),
             (22, -75, 'FOLLOW CAMERA'), (4, 0, 'PROFILE')]):
         ax = fig.add_subplot(2, 2, n + 1, projection='3d', facecolor='#c3c9cd')
-        for group in parts.values():
+        for group in [parts[name] for name in ['body', 'left-wing', 'right-wing']]:
             for mesh in group:
                 rgb = np.array(mesh.visual.material.baseColorFactor[:3]) / 255
                 shade = .52 + .48 * np.maximum(0, mesh.face_normals @ np.array([.3, -.4, .866]))

@@ -8,7 +8,7 @@ const output = new URL('../_debug/studio/', import.meta.url);
 await mkdir(output, { recursive: true });
 const sample = { body: '#c4ccd2', feathers: '#849aaa', coverts: '#e0e2df', eyes: '#edb951' };
 const parse = buffer => JSON.parse(new TextDecoder().decode(new Uint8Array(buffer, 20, new DataView(buffer).getUint32(12, true))));
-for (const name of ['body', 'left-wing', 'right-wing']) {
+for (const name of ['body', 'left-wing', 'right-wing', 'perched']) {
   const file = await readFile(new URL(`../dist/models/${name}.glb`, import.meta.url));
   const original = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
   const changed = recolourGLB(original, sample);
@@ -52,6 +52,7 @@ try {
     gl.getExtension('WEBGL_lose_context')?.loseContext(); return [...pixel];
   });
   assert.deepEqual(graphics, [255, 0, 0, 255]);
+  assert.equal(await page.locator('body').getAttribute('data-pose'), 'perched');
   await capture('01-original');
   await page.locator('[data-preset="moon"]').click();
   await page.waitForTimeout(300);
@@ -65,9 +66,13 @@ try {
   await page.locator('[data-view="portrait"]').click();
   await page.locator('#wingbeats').click();
   assert.equal(await page.locator('#wingbeats').getAttribute('aria-pressed'), 'true');
+  assert.equal(await page.locator('body').getAttribute('data-pose'), 'flight');
   await page.waitForTimeout(550);
   await capture('05-wingbeat');
   await page.locator('#wingbeats').click();
+  await page.locator('[data-pose="perched"]').click();
+  assert.equal(await page.locator('#wingbeats').getAttribute('aria-pressed'), 'false');
+  assert.equal(await page.locator('#eyes').inputValue(), '#00ff88');
   await page.locator('#save').click();
   await page.waitForFunction(() => document.getElementById('save-status').textContent.startsWith('Saved ✓'), null, { timeout: 30000 });
   assert.equal(await page.evaluate(key => JSON.parse(localStorage.getItem(key)).eyes, STORAGE_KEY), '#00ff88');
@@ -75,6 +80,7 @@ try {
   await page.waitForFunction(() => document.body.dataset.ready === 'true');
   assert.equal(await page.locator('#eyes').inputValue(), '#00ff88');
   assert.equal(await page.locator('#body').inputValue(), sample.body);
+  assert.equal(await page.locator('body').getAttribute('data-pose'), 'perched');
   const box = await page.locator('canvas').boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down(); await page.mouse.move(box.x + box.width / 2 + 130, box.y + box.height / 2 + 40, { steps: 8 }); await page.mouse.up();

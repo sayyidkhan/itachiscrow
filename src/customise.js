@@ -4,7 +4,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DEFAULT_DESIGN, MATERIAL_FIELDS, STORAGE_KEY, readDesign, normaliseDesign, linearColour, enableCustomModels, designToken, isDefault } from './crow-design.js';
 
 const $ = id => document.getElementById(id);
-let design = readDesign(), dirty = false, parts = [], flap = false, phase = 0;
+let design = readDesign(), dirty = false, parts = [], flap = false, phase = 0, pose = 'perched';
 const presets = {
   original: DEFAULT_DESIGN,
   moon: { body: '#c4ccd2', feathers: '#849aaa', coverts: '#e0e2df', eyes: '#edb951' },
@@ -78,18 +78,27 @@ async function init() {
   crow.rotation.x = -Math.PI / 2;
   scene.add(crow);
   const loader = new GLTFLoader();
-  parts = await Promise.all(['body', 'left-wing', 'right-wing'].map(async name => {
+  parts = await Promise.all(['body', 'left-wing', 'right-wing', 'perched'].map(async name => {
     const gltf = await loader.loadAsync(new URL(`models/${name}.glb`, document.baseURI).href);
     gltf.scene.traverse(node => { if (node.isMesh) node.userData.originalColour = node.material.color.clone(); });
     crow.add(gltf.scene); return gltf.scene;
   }));
   updateColours(false);
+  const perch = new THREE.Mesh(new THREE.CylinderGeometry(.09, .11, 1.35, 16), new THREE.MeshStandardMaterial({ color: 0x64584b, roughness: .95 }));
+  perch.rotation.z = Math.PI / 2; perch.position.set(0, -.075, -.21); scene.add(perch);
   let view = 'portrait';
   function setView(name) {
     view = name;
     const narrow = container.clientWidth < 550;
     controls.target.set(0, 0, 0);
-    if (name === 'eyes') { camera.position.set(1.4, .8, -2.6); controls.target.set(0, .12, -.95); }
+    if (pose === 'perched') {
+      controls.target.set(0, 1.05, .05);
+      if (name === 'eyes') { controls.target.set(0, 1.86, -.30); camera.position.set(1.25, 2.08, -1.15); }
+      else if (name === 'top') { controls.target.set(0, 1.08, .17); camera.position.set(3.0, 2.8, 2.0); }
+      else if (name === 'side') camera.position.set(4.1, 1.7, -.15);
+      else camera.position.set(narrow ? 4.6 : 3.8, 2.0, narrow ? -2.6 : -2.15);
+    }
+    else if (name === 'eyes') { camera.position.set(1.4, .8, -2.6); controls.target.set(0, .12, -.95); }
     else if (name === 'top') camera.position.set(0, narrow ? 10 : 8, .01);
     else if (name === 'side') camera.position.set(narrow ? 8 : 6, 1.3, -1.6);
     else camera.position.set(narrow ? 4.4 : 3.5, narrow ? 3 : 2.6, narrow ? -6.4 : -5.5);
@@ -97,9 +106,23 @@ async function init() {
     document.querySelectorAll('[data-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.view === name)));
   }
   document.querySelectorAll('[data-view]').forEach(button => button.onclick = () => setView(button.dataset.view));
+  function setPose(name) {
+    pose = name;
+    parts.forEach((part, index) => { part.visible = name === 'perched' ? index === 3 : index < 3; });
+    perch.visible = name === 'perched';
+    if (name === 'perched') flap = false;
+    $('wingbeats').setAttribute('aria-pressed', String(flap));
+    $('wingbeats').querySelector('span').textContent = flap ? 'on' : 'off';
+    document.querySelectorAll('[data-pose]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.pose === name)));
+    document.body.dataset.pose = name;
+    setView(view);
+  }
+  document.querySelectorAll('[data-pose]').forEach(button => button.onclick = () => setPose(button.dataset.pose));
+  setPose('perched');
   const zoom = factor => { camera.position.sub(controls.target).multiplyScalar(factor).add(controls.target); controls.update(); };
   $('zoom-in').onclick = () => zoom(.8); $('zoom-out').onclick = () => zoom(1.25);
   $('wingbeats').onclick = () => {
+    if (pose === 'perched') setPose('flight');
     flap = !flap; $('wingbeats').setAttribute('aria-pressed', String(flap)); $('wingbeats').querySelector('span').textContent = flap ? 'on' : 'off';
   };
   let lastWidth = 0;
@@ -123,6 +146,7 @@ async function init() {
     controls.update(dt); renderer.render(scene, camera);
   });
   $('loading').hidden = true; $('colours').disabled = false; $('save').disabled = false; $('restore').disabled = false;
+  document.querySelectorAll('[data-pose], [data-view], #wingbeats').forEach(button => button.disabled = false);
   document.querySelectorAll('[data-preset]').forEach(button => button.disabled = false);
   document.body.dataset.ready = 'true';
 }
