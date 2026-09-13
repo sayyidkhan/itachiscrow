@@ -23,7 +23,9 @@ function finishLoading(){
 function initialPerchMatches(){
  if(!map||!startLocation)return false;
  const center=map.center,lat=typeof center?.lat==='function'?center.lat():center?.lat,lng=typeof center?.lng==='function'?center.lng():center?.lng;
- return Math.abs(map.range-22)<3&&Math.abs(map.tilt-72)<2&&Math.abs(lat-startLocation.lat)<.00002&&Math.abs(lng-startLocation.lng)<.00002;
+ // Native camera collision handling can move the requested center and range
+ // around nearby buildings. Accept a usable local view, not an exact pose.
+ return Number.isFinite(map.range)&&map.range>0&&map.range<=2000&&map.tilt>=35&&map.tilt<=85&&Number.isFinite(lat)&&Number.isFinite(lng)&&distance({lat,lng},startLocation)<1000;
 }
 function frameInitialPerch(){
  if(startupFailed||ready)return;
@@ -47,6 +49,7 @@ function frameInitialPerch(){
    }else{
     stableSince=null;
     if(time-requestedAt>=2400&&startupCameraAttempts<3){frameInitialPerch();return;}
+    if(time-requestedAt>=12000){fail('We couldn’t frame your starting point. Reload to try again.');return;}
    }
    previous=current;startupCameraTimer=setTimeout(checkCamera,100);
   };
@@ -85,7 +88,7 @@ async function locateBrowser(){
 function acceptLocation(result){
  let place=null;if(result?.status==='located')try{place=normalizeDestination(result.place);}catch{}
  locationStatus=place?'located':['denied','timeout','unavailable'].includes(result?.status)?result.status:'unavailable';
- locationMessage=String(result?.message||(place?'Your crow starts at your current location.':'Location unavailable. Explore the Chelsea demo or choose a destination.')).slice(0,500);
+ locationMessage=String((place?'Location found. Return here anytime.':result?.message)||(place?'Your crow starts at your current location.':'Location unavailable. Explore the Chelsea demo or choose a destination.')).slice(0,500);
  lastLocationOutcome={status:locationStatus,message:locationMessage};
  if(place)startLocation=place;
  return place;
@@ -488,7 +491,7 @@ window.initCrow=async()=>{
   map=new lib.Map3DElement({...cam,fov:50,mode:'HYBRID',gestureHandling:'GREEDY',defaultUIHidden:true});
   map.style.width='100%';map.style.height='100%';
   map.addEventListener('gmp-error',()=>fail('Google’s 3D map could not initialize. Try reopening this link in Safari, or reload the city.'));
-  map.addEventListener('gmp-steadychange',event=>{sceneSteady=event.isSteady===true;finishLoading()});
+  map.addEventListener('gmp-steadychange',event=>{sceneSteady=event.isSteady===true;if(sceneSteady&&startupCameraStage==='framing'&&initialPerchMatches())startupCameraStage='confirmed';finishLoading()});
   map.addEventListener('gmp-animationend',()=>{if(!ready&&startupCameraStage==='framing'&&initialPerchMatches()){startupCameraStage='confirmed';finishLoading();}});
   map.addEventListener('webglcontextlost',()=>fail('The browser lost its 3D graphics session. Close other tabs and reload the city.'),true);
   map.addEventListener('gmp-click',e=>{
@@ -504,8 +507,8 @@ window.initCrow=async()=>{
   finishLoading();
   sceneTimer=setTimeout(()=>{
    if(ready||startupFailed)return;
-   $('loading').querySelector('h2').textContent='The city is still rendering';
-   $('loading').querySelector('p').textContent='Keep this page open a little longer, or reload. If it repeatedly closes, open the link directly in Safari.';
+   $('loading').querySelector('h2').textContent='Loading your surroundings';
+   $('loading').querySelector('p').textContent='Map details are taking a little longer to load. You can retry if the view does not appear.';
    $('reload').hidden=false;
   },18000);
  }catch(e){fail(e.name==='AbortError'?'The crow download timed out. Check your connection and reload.':e.message?.toLowerCase().includes('model')?'The 3D crow could not load. Check your connection and reload.':'The city could not start. Try opening this link directly in Safari.')}
@@ -528,6 +531,6 @@ if(!MAPS_KEY){
  initialLocationPromise=locateBrowser();
  const script=document.createElement('script');script.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(MAPS_KEY)+'&v=beta&loading=async&callback=initCrow';script.async=true;
  script.onerror=()=>fail('Couldn’t reach Google Maps. Check your connection, then try again.');
- startupTimer=setTimeout(()=>{if(!ready&&!startupFailed){$('loading').querySelector('p').textContent='Still connecting. Try opening the link in Safari if this page repeatedly closes.';$('reload').hidden=false}},22000);
+ startupTimer=setTimeout(()=>{if(!ready&&!startupFailed){$('loading').querySelector('p').textContent='Connecting to the map. Check your connection if this takes longer than expected.';$('reload').hidden=false}},22000);
  document.head.append(script);
 }

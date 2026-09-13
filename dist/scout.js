@@ -218,6 +218,13 @@ document.addEventListener('crow:landing-selected',e=>refreshContext({...e.detail
 document.addEventListener('crow:landed',e=>{refreshContext(e.detail);setOpen(true);tab('explore');note(`Landed at ${context.spot?.name||'your chosen spot'}.`);if($('auto-scene').checked&&capabilities.panorama)generateScene().catch(()=>{});if(capabilities.instagram)instagram();});
 window.addEventListener('pagehide',()=>{generation?.abort();planning?.abort();viewer?.destroy();live.stop();});
 setOpen(!matchMedia('(max-width: 760px)').matches);
+const requestedTool=new URL(location.href).searchParams.get('tool');
+if(['scene','portrait','nearby','trip','voice'].includes(requestedTool)){
+ setOpen(true);tab(requestedTool==='nearby'?'social':requestedTool==='trip'?'plan':'explore');
+ if(requestedTool==='scene')$('scene-tools').open=true;
+ if(requestedTool==='portrait')$('portrait-tools').open=true;
+ if(requestedTool==='voice')$('voice-toggle').focus();
+}
 const authResult=new URL(location.href).searchParams.get('instagram');
 if(authResult&&window.opener){window.opener.postMessage({type:'crow:instagram-return',result:authResult},location.origin);window.close();}
 if(authResult){const url=new URL(location.href);url.searchParams.delete('instagram');url.searchParams.delete('reason');history.replaceState(null,'',url);oauthResult(authResult);}else connectStatus();

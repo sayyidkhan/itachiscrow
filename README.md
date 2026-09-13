@@ -22,9 +22,9 @@ The owner-only Zo preview may set `CROW_OWNER_PHOTO` to an absolute path outside
 
 New server routes: `POST /api/portrait` (multipart image edits sent to OpenAI) and `POST /api/discover` (Responses web search). Deploy `travel.js` and `travel.css` alongside the existing `dist/` files and restart the Node server, or rebuild the GPT Sites Worker bundle. Existing OpenAI and Google Places configuration is reused. Static-only hosting retains map/Studio features, but the AI flow needs the Node backend or GPT Sites Worker. The Worker supports uploaded photos; the owner's server reference is always disabled there.
 
-1. Start the local app and allow browser location access to place the crow near you. Open **Explore**, search for a city, landmark, or address, then select a result to fly there.
-2. Search for a specific landing spot, select **Pick on the map**, or choose **Land at destination**.
-3. With **Generate a 360° scene when I land** enabled, landing creates a panorama. You can also use **Generate scene**. Drag to look around, scroll to zoom, use arrow keys to turn, or save the image.
+1. Start the local app, choose **Let’s explore** on the landing page, and allow browser location access to place the crow near you. Open **Explore**, search for a city, landmark, or address, then select a result to fly there.
+2. Open **Choose an exact landing spot** to search, select **Pick on the map**, or choose **Land at destination**.
+3. Open **Create a 360° scene** for image controls. With **Generate a 360° scene when I land** enabled, landing creates a panorama. You can also use **Generate scene**. Drag to look around, scroll to zoom, use arrow keys to turn, or save the image.
 4. Open **Around you**, choose **Connect Instagram**, and sign in through Facebook with the account linked to your professional Instagram profile. Choose an account if more than one is available, then load recent public hashtag photos.
 5. Open **Your trip**, set 1–14 days, travel style, and interests, then choose **Plan my trip**. Saved places inform the itinerary. Read its source links or save the plan.
 6. Choose **Talk** to speak with the GPT-Live guide. Ask it to fly somewhere, land at a landmark, take off, generate a panorama, or plan a trip. Microphone access starts from this action; the call has mute and end controls.
@@ -102,7 +102,7 @@ Edit `.env` and set `OPENAI_API_KEY`. Keep OpenAI and Meta credentials only in t
 npm run dev
 ```
 
-Open [localhost:3000](http://localhost:3000). `npm start` runs the same server. It loads `.env`, serves `dist/`, and provides `/api/*` on the same origin. Restart it after changing server configuration. The app uses no npm runtime dependencies and needs no frontend build.
+Open [localhost:3000](http://localhost:3000) for the feature overview, or [the map](http://localhost:3000/explore.html) to explore directly. `npm start` runs the same server. It loads `.env`, serves `dist/`, and provides `/api/*` on the same origin. Restart it after changing server configuration. The app uses no npm runtime dependencies and needs no frontend build.
 
 A Python static server can display the map, but it cannot provide the AI or Instagram endpoints. Use the Node server for the complete experience.
 
@@ -171,7 +171,8 @@ The OpenAI integration follows the official [GPT-Live WebRTC flow](https://devel
 
 | Path | Purpose |
 | --- | --- |
-| `dist/index.html`, `dist/style.css` | Map, flight controls, and place-detail dialogs |
+| `dist/index.html`, `dist/home.css`, `dist/home.js` | Landing page, feature links, and legacy sign-in return routing |
+| `dist/explore.html`, `dist/style.css`, `dist/simple.css` | Simplified map interface, optional tool disclosures, and flight controls |
 | `dist/app.js` | Maps setup, flight animation, destination and landing controls |
 | `dist/location.js` | Browser location permission, validation, and bounded retries |
 | `dist/scout.js`, `dist/scout.css` | Travel scout, Instagram, panorama, and trip-planning UI |
@@ -202,7 +203,7 @@ npm ci
 npm test
 npm run verify:models
 npm run verify:scout
-CROW_BROWSER_EXECUTABLE=/path/to/chromium CROW_TEST_URL=http://127.0.0.1:3000/ npm run verify:browser
+CROW_BROWSER_EXECUTABLE=/path/to/chromium CROW_TEST_URL=http://127.0.0.1:3000/explore.html npm run verify:browser
 CROW_BROWSER_EXECUTABLE=/path/to/chromium npm run verify:journey
 CROW_BROWSER_EXECUTABLE=/path/to/chromium npm run verify:location
 ```

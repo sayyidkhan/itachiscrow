@@ -13,7 +13,7 @@ if (process.env.CROW_VERIFY_LIVE_API !== '1') {
 const run = promisify(execFile);
 const output = new URL('../_debug/live-api-verification/', import.meta.url);
 await mkdir(output, { recursive: true });
-const url = new URL(process.env.CROW_TEST_URL || 'http://127.0.0.1:3000/');
+const url = new URL(process.env.CROW_TEST_URL || 'http://127.0.0.1:3000/explore.html');
 if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) throw Error('This smoke test only runs against a local app server.');
 const report = { syntheticInput: true, realMicrophoneAccess: false, checks: [], errors: [] };
 const audioPath = process.env.CROW_TEST_SPEECH_WAV || new URL('synthetic-input.wav', output).pathname;

@@ -7,7 +7,7 @@ import { chromium } from 'playwright-core';
 // traffic and microphone capture are intercepted; no provider calls are made.
 const output = new URL('../_debug/scout-verification/', import.meta.url);
 await mkdir(output, { recursive: true });
-const files = new Set(['index.html', 'style.css', 'scout.css', 'layout.css', 'scout.js', 'travel.js', 'travel.css', 'live.js', 'panorama.js', 'music.js', 'music.css', 'location.js']);
+const files = new Set(['index.html', 'home.css', 'home.js', 'explore.html', 'simple.css', 'style.css', 'scout.css', 'layout.css', 'scout.js', 'travel.js', 'travel.css', 'live.js', 'panorama.js', 'music.js', 'music.css', 'location.js']);
 const server = createServer(async (request, response) => {
   const name = new URL(request.url, 'http://localhost').pathname.slice(1) || 'index.html';
   if (name === 'app.js' || name === 'config.js') { response.writeHead(200, { 'Content-Type': 'text/javascript' }); response.end('/* replaced by deterministic test Maps contract */'); return; }
@@ -85,7 +85,7 @@ try {
       close() {}
     }
     window.RTCPeerConnection = FakePeer;
-    document.addEventListener('DOMContentLoaded', () => { document.getElementById('loading').hidden = true; document.getElementById('status').textContent = 'Map test double ready'; });
+    document.addEventListener('DOMContentLoaded', () => { if(document.getElementById('loading')){document.getElementById('loading').hidden = true; document.getElementById('status').textContent = 'Map test double ready';} });
   });
   const planResult = { text: '# Kyoto days\n\nVisit [Nishiki Market](https://kyoto.travel/en/see-and-do/nishiki-market.html).\n\n<script>bad()</script>',
     sources: [{ title: 'Kyoto tourism', url: 'https://kyoto.travel/en/' }, { title: 'Unsafe source', url: 'javascript:alert(1)' }] };
@@ -121,7 +121,36 @@ try {
       : name === 'session' ? { session: { id: 'live_browser_mock' }, transport: { type: 'webrtc', sdp: 'v=0\r\nanswer' } } : {};
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(result) }).catch(() => {});
   });
-  await page.goto(origin, { waitUntil: 'networkidle' });
+  await check('Landing page introduces the features without loading Maps or calling providers', async()=>{
+    await page.goto(origin,{waitUntil:'networkidle'});
+    assert.equal(await page.locator('.feature-grid article').count(),6);
+    assert.equal(await page.locator('.hero .button').getAttribute('href'),'explore.html');
+    assert.equal(report.apiRequests.length,0);
+    await page.screenshot({path:new URL('landing-desktop.png',output).pathname,fullPage:true});
+    await page.setViewportSize({width:390,height:844});
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await page.screenshot({path:new URL('landing-mobile.png',output).pathname,fullPage:true});
+    await page.setViewportSize({width:1280,height:900});
+  });
+  await page.goto(origin + '/explore.html', { waitUntil: 'networkidle' });
+  await check('Simple sidebar keeps optional tools collapsed',async()=>{
+    for(const id of ['landing-tools','scene-tools','portrait-tools']) assert.equal(await page.locator('#'+id).getAttribute('open'),null);
+    assert(await page.locator('#destination-input').isVisible());
+    assert(await page.locator('#voice-toggle').isVisible());
+    await page.screenshot({path:new URL('simple-sidebar.png',output).pathname});
+  });
+
+  await check('Landing feature links reveal the intended tool without starting a paid action',async()=>{
+    const requestsBefore=report.apiRequests.filter(x=>x.path!=='/api/status').length;
+    for(const [tool,id] of [['scene','scene-tools'],['portrait','portrait-tools'],['nearby','panel-social'],['trip','panel-plan'],['voice','voice-toggle']]){
+      await page.goto(origin+'/explore.html?tool='+tool,{waitUntil:'networkidle'});
+      assert(await page.locator('#'+id).isVisible());
+      if(tool==='scene'||tool==='portrait')assert.equal(await page.locator('#'+id).evaluate(el=>el.open),true);
+      assert.equal(await page.evaluate(()=>window.__crowMock.microphoneCalls),0);
+    }
+    assert.equal(report.apiRequests.filter(x=>x.path!=='/api/status').length,requestsBefore);
+    await page.goto(origin+'/explore.html',{waitUntil:'networkidle'});
+  });
   imageUrl = await page.evaluate(() => {
     const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 256;
     const paint = canvas.getContext('2d'); const gradient = paint.createLinearGradient(0, 0, 512, 0);
@@ -135,7 +164,7 @@ try {
     assert.equal(await page.locator('#generate-scene').isDisabled(), true);
     assert.equal(await page.locator('#voice-controls').isVisible(), false);
     assert.equal(await page.evaluate(() => window.__crowMock.microphoneCalls), 0);
-    assert.match(await page.locator('#voice-state').textContent(), /Voice companion/);
+    assert.match(await page.locator('#voice-state').textContent(), /voice/i);
   });
   await check('Destination search flies to the selected result', async () => {
     await page.locator('#destination-input').fill('Kyoto'); await page.locator('#destination-search').click();
@@ -144,7 +173,7 @@ try {
     assert.equal(await page.evaluate(() => window.__crowMock.flights.length), 1);
   });
   await check('Landing search automatically generates exactly one panorama for the chosen spot', async () => {
-    await page.locator('#spot-input').fill('Market'); await page.locator('#spot-form button').click();
+    await page.locator('#landing-tools').evaluate(el=>el.open=true); await page.locator('#spot-input').fill('Market'); await page.locator('#spot-form button').click();
     await page.locator('#spot-results button').first().click();
     await page.locator('#panorama-dialog').waitFor({ state: 'visible' });
     assert.equal(report.apiRequests.filter(item => item.path === '/api/panorama').length, 1);
@@ -207,7 +236,7 @@ try {
     assert.equal(await page.locator('#generate-plan').isDisabled(), false);
   });
   await check('Changing destination invalidates pending landing search results', async () => {
-    await page.locator('#tab-explore').click(); await page.locator('#spot-input').fill('Slow market'); await page.locator('#spot-form button').click();
+    await page.locator('#tab-explore').click(); await page.locator('#landing-tools').evaluate(el=>el.open=true); await page.locator('#spot-input').fill('Slow market'); await page.locator('#spot-form button').click();
     await page.waitForFunction(() => Boolean(window.__crowMock.resolveSearch));
     await page.evaluate(() => {
       window.__crowMock.change({ name: 'Tokyo', lat: 35.67, lng: 139.65 });
@@ -251,7 +280,7 @@ try {
       oauthAvailable: true, connection: 'account_selection_required', selectedAccount: null,
       accounts: [{ id: '178400000000001', name: 'Crow Travels', username: 'crowtravels' }, { id: '178400000000002', name: 'Crow Field Notes', username: 'crowfieldnotes' }],
     };
-    await page.goto(origin + '/?instagram=select_account&reason=fixture', { waitUntil: 'networkidle' });
+    await page.goto(origin + '/explore.html?instagram=select_account&reason=fixture', { waitUntil: 'networkidle' });
     await page.waitForFunction(() => document.getElementById('instagram-accounts').querySelectorAll('button').length === 2);
     assert.equal(await page.locator('#panel-social').isVisible(), true);
     assert.equal(await page.locator('#instagram-connect').isDisabled(), false);
@@ -351,7 +380,7 @@ try {
     await page.locator('#tab-explore').click();
     await page.locator('[data-destination="Paris"]').click();
     assert.match(await page.locator('#journey-destination').textContent(),/Eiffel Tower/);
-    await page.locator('#picture-me').click();
+    await page.locator('#portrait-tools').evaluate(el=>el.open=true); await page.locator('#picture-me').click();
     await page.waitForFunction(()=>!document.getElementById('portrait-result').hidden);
     const body=report.apiRequests.findLast(x=>x.path==='/api/portrait').body;
     assert.equal(body.useSavedPhoto,true);assert.match(body.destination.name,/Eiffel Tower/);
@@ -360,7 +389,7 @@ try {
     assert(await page.locator('#picture-me').isDisabled());
     await page.locator('#traveller-photo').setInputFiles({name:'reference.png',mimeType:'image/png',buffer:Buffer.from(imageUrl.split(',')[1],'base64')});
     await page.waitForFunction(()=>!document.getElementById('picture-me').disabled);
-    await page.locator('#picture-me').click();
+    await page.locator('#portrait-tools').evaluate(el=>el.open=true); await page.locator('#picture-me').click();
     await page.waitForFunction(()=>!document.getElementById('portrait-result').hidden);
     assert.equal(report.apiRequests.findLast(x=>x.path==='/api/portrait').body.photo,imageUrl);
     await page.locator('#remove-photo').click();assert(await page.locator('#picture-me').isDisabled());
@@ -376,7 +405,7 @@ try {
   });
   await check('Changing destination aborts a pending portrait and suppresses stale results', async () => {
     await page.locator('#tab-explore').click();await page.locator('#use-saved-photo').check();
-    const hold=holdNext('portrait');await page.locator('#picture-me').click();await hold.wait;
+    const hold=holdNext('portrait');await page.locator('#portrait-tools').evaluate(el=>el.open=true); await page.locator('#picture-me').click();await hold.wait;
     await page.evaluate(()=>window.__crowMock.change({name:'Tokyo',lat:35.68,lng:139.69}));hold.release();
     await page.waitForTimeout(80);assert(await page.locator('#portrait-result').isHidden());
   });

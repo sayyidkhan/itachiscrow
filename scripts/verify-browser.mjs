@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright-core';
 
-const url = process.env.CROW_TEST_URL || 'http://127.0.0.1:8000/';
+const url = process.env.CROW_TEST_URL || 'http://127.0.0.1:8000/explore.html';
 const output = new URL('../_debug/verification/', import.meta.url);
 await mkdir(output, { recursive: true });
 const browser = process.env.CROW_CDP_URL
