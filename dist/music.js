@@ -39,7 +39,7 @@ const studioFooter = document.querySelector('.footnote');
 if (studioFooter) {
   launcher.classList.add('music-studio');
   studioFooter.before(launcher);
-} else document.body.append(launcher);
+} else (document.querySelector('.header-actions') || document.body).append(launcher);
 const el = id => dialog.querySelector(`#music-${id}`);
 const persist = () => {
   try { localStorage.setItem(storageKey, JSON.stringify({ track: selected.id, volume: audio.volume, muted: audio.muted })); } catch {}

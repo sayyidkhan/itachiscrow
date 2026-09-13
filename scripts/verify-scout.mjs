@@ -7,7 +7,7 @@ import { chromium } from 'playwright-core';
 // traffic and microphone capture are intercepted; no provider calls are made.
 const output = new URL('../_debug/scout-verification/', import.meta.url);
 await mkdir(output, { recursive: true });
-const files = new Set(['index.html', 'style.css', 'scout.css', 'scout.js', 'live.js', 'panorama.js', 'music.js', 'music.css']);
+const files = new Set(['index.html', 'style.css', 'scout.css', 'layout.css', 'scout.js', 'live.js', 'panorama.js', 'music.js', 'music.css']);
 const server = createServer(async (request, response) => {
   const name = new URL(request.url, 'http://localhost').pathname.slice(1) || 'index.html';
   if (name === 'app.js' || name === 'config.js') { response.writeHead(200, { 'Content-Type': 'text/javascript' }); response.end('/* replaced by deterministic test Maps contract */'); return; }
@@ -296,8 +296,8 @@ try {
     await page.locator('#music-open').click();
     assert.equal(await page.locator('#music-dialog').isVisible(), true);
     await page.locator('#music-close').click();
-    const header = await page.evaluate(() => ({ brand: document.querySelector('.brand').getBoundingClientRect().right, actions: document.querySelector('.header-actions').getBoundingClientRect().left, bottom: document.querySelector('.topbar').getBoundingClientRect().bottom, panel: document.getElementById('scout-panel').getBoundingClientRect().top }));
-    assert(header.brand <= header.actions && header.bottom <= header.panel, 'Mobile header must fit above the scout panel without overlapping controls');
+    const header = await page.evaluate(() => ({ brand: document.querySelector('.brand').getBoundingClientRect().bottom, actions: document.querySelector('.header-actions').getBoundingClientRect().top, bottom: document.querySelector('.topbar').getBoundingClientRect().bottom, panel: document.getElementById('scout-panel').getBoundingClientRect().top }));
+    assert(header.brand <= header.actions && header.bottom <= header.panel, 'Mobile header rows must fit above the scout panel without overlapping controls');
     for (const name of ['explore', 'social', 'plan']) {
       await page.locator('#tab-' + name).click();
       assert.equal(await page.locator('#panel-' + name).isVisible(), true);

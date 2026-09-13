@@ -1,0 +1,128 @@
+.explorer {
+  --header-height: 76px;
+  --sidebar-width: 344px;
+  --map-left: 0px;
+  --panel: rgba(15, 27, 31, .96);
+  --muted: #a6b8b7;
+  font-size: 14px;
+}
+.explorer.scout-visible { --map-left: var(--sidebar-width); }
+.explorer #world { inset: var(--header-height) 0 0 var(--map-left); }
+.explorer .vignette { inset: var(--header-height) 0 0 var(--map-left); background: linear-gradient(transparent 65%, #06131966); }
+.explorer .topbar {
+  inset: 0 0 auto;
+  height: var(--header-height);
+  padding: 12px 24px;
+  background: #0e1b1f;
+  border-bottom: 1px solid #ffffff12;
+  z-index: 6;
+}
+.explorer .brand { gap: 10px; text-shadow: none; min-width: 0; }
+.explorer .brand .eye { font-size: 29px; }
+.explorer .brand h1 { font-size: 23px; letter-spacing: -.6px; white-space: nowrap; }
+.explorer .brand p { font-size: 9px; letter-spacing: 1.6px; margin-top: 1px; color: var(--muted); max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.explorer .header-actions { gap: 8px; }
+.explorer .header-actions > :is(button, a) { position: static; margin: 0; min-height: 40px; padding: 9px 13px; border: 1px solid #ffffff14; border-radius: 10px; background: transparent; color: var(--muted); box-shadow: none; backdrop-filter: none; font: 500 12px/1.5 system-ui; }
+.explorer .header-actions #scout-open { order: -1; color: var(--accent); background: #80ecd50d; border-color: #80ecd52b; }
+.explorer .header-actions #scout-open[aria-expanded=true] { background: #80ecd51b; }
+.explorer .header-actions #info { order: 3; width: 40px; padding: 0; }
+.explorer .header-actions #music-open { position: static; margin: 0; min-height: 40px; padding: 9px 13px; border: 1px solid #ffffff14; border-radius: 10px; background: transparent; color: var(--muted); font: 500 12px/1.5 system-ui; }
+.explorer .studio-link { max-width: none; }
+.explorer .scout-panel {
+  top: var(--header-height);
+  bottom: 0 !important;
+  left: 0;
+  width: var(--sidebar-width);
+  border: 0;
+  border-right: 1px solid #ffffff14;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  background: #101e22;
+}
+.explorer .scout-heading { padding: 22px 20px 18px; }
+.explorer .scout-heading .eyebrow { font-size: 9px; letter-spacing: 1.5px; color: #8ba5a2; }
+.explorer .scout-heading h2 { font: 25px/1.2 Georgia, serif; margin-top: 7px; }
+.explorer .icon-button { width: 36px; min-height: 36px; color: #8da7a4; }
+.explorer .scout-tabs { padding: 0 14px; border-top: 0; gap: 8px; }
+.explorer .scout-tabs button { min-height: 42px; font-size: 11px; padding: 10px 0; }
+.explorer .scout-scroll { padding: 20px; min-height: 0; scrollbar-gutter: stable; scrollbar-width: thin; }
+.explorer .field-label { font-size: 10px; letter-spacing: .9px; margin-bottom: 8px; }
+.explorer .input-action { border-color: #ffffff22; background: #ffffff04; border-radius: 10px; }
+.explorer .input-action input { padding: 11px 12px; font-size: 13px; }
+.explorer .input-action input::placeholder { color: #738b8b; }
+.explorer .input-action button { min-width: 42px; }
+.explorer .destination-presets { margin: 10px 0 20px; }
+.explorer .destination-presets button { min-height: 32px; font-size: 11px; padding: 5px 12px; }
+.explorer .journey-card { margin: 18px 0 24px; padding: 13px 14px; border: 1px solid #ffffff12; border-radius: 12px; background: #ffffff03; }
+.explorer .tiny-label { font-size: 8px; letter-spacing: 1.2px; }
+.explorer .journey-card h3 { font: 600 16px/1.4 system-ui; margin: 6px 0; }
+.explorer .journey-card p { font-size: 12px; line-height: 1.6; }
+.explorer .journey-line { font-size: 10px; }
+.explorer .split-actions button { font-size: 11px; min-height: 42px; }
+.explorer .auto-scene { font-size: 11px; line-height: 1.5; align-items: flex-start; }
+.explorer .auto-scene input { margin-top: 3px; }
+.explorer .scene-card { padding: 14px; background: #162d30; border-color: #80ecd51f; }
+.explorer .scene-card p { font-size: 11px; }
+.explorer .scene-card button { min-height: 40px; font-size: 12px; }
+.explorer .scene-card > .fine-print { font-size: 9px; }
+.explorer .voice-card { padding: 14px 18px 10px; background: #0d1a1e; }
+.explorer .voice-heading strong { font-size: 12px; font-weight: 600; }
+.explorer .voice-heading span:not(.voice-orb) { font-size: 10px; }
+.explorer .voice-heading button { min-height: 40px; padding: 8px 14px; border-radius: 10px; }
+.explorer .voice-card > .fine-print { font-size: 9px; }
+.explorer .connection-status { text-align: left; padding: 8px 20px 12px; font-size: 10px; letter-spacing: 0; border: 0; background: #0d1a1e; color: #87b7aa; }
+.explorer .flight-state { top: calc(var(--header-height) + 18px); left: calc(var(--map-left) + 20px); width: 230px; padding: 10px 13px; font-size: 11px; border-radius: 10px; gap: 6px; visibility: visible; }
+.explorer .side-tools { top: calc(var(--header-height) + 18px); right: 20px; gap: 6px; flex-direction: row; }
+.explorer .side-tools > * { min-height: 38px; padding: 8px 11px; font-size: 11px; border-radius: 10px; }
+.explorer .labels { gap: 6px; }
+.explorer .labels input { width: 14px; height: 14px; margin: 0; }
+.explorer .bottom { left: calc(var(--map-left) + (100% - var(--map-left)) / 2); bottom: calc(42px + env(safe-area-inset-bottom)); width: min(420px, calc(100% - var(--map-left) - 40px)); }
+.explorer .bottom #hint { font-size: 11px; line-height: 1.5; max-width: 390px; margin: 0 auto 10px; text-wrap: balance; }
+.explorer .controls { border-radius: 14px; padding: 6px; gap: 4px; box-shadow: 0 8px 30px #0004; }
+.explorer .controls button { min-height: 44px; padding: 9px 12px; font-size: 12px; border-radius: 9px; }
+.explorer .controls #restart { font-size: 22px; padding: 4px 12px; }
+.explorer .controls .primary { gap: 12px; }
+.explorer .loading { left: calc(var(--map-left) + (100% - var(--map-left)) / 2); }
+.explorer.in-flight .brand { visibility: visible; }
+.explorer.in-flight .studio-link { display: block; }
+.explorer.in-flight :is(.flight-state, .side-tools, #hint) { visibility: hidden; }
+@media (max-width: 1100px) and (min-width: 761px) {
+  .explorer { --sidebar-width: 310px; }
+  .explorer .flight-state { width: 190px; }
+  .explorer .side-tools { flex-direction: column; }
+}
+@media (max-width: 760px) {
+  .explorer { --header-height: calc(114px + env(safe-area-inset-top)); --map-left: 0px !important; }
+  .explorer .topbar { display: grid; grid-template-columns: 1fr; gap: 10px; padding: calc(10px + env(safe-area-inset-top)) 14px 10px; }
+  .explorer .brand { align-self: start; }
+  .explorer .brand h1 { font-size: 20px; }
+  .explorer .brand .eye { font-size: 24px; }
+  .explorer .brand p { font-size: 8px; max-width: 220px; }
+  .explorer .header-actions { display: flex; gap: 6px; }
+  .explorer .header-actions > :is(button, a) { min-height: 36px; font-size: 11px; padding: 7px 10px; }
+  .explorer .header-actions #music-open { min-height: 36px; font-size: 11px; padding: 7px 10px; }
+  .explorer .header-actions #info { position: absolute; top: calc(13px + env(safe-area-inset-top)); right: 14px; width: 34px; min-height: 34px; }
+  .explorer .header-actions #scout-open { flex: 1; }
+  .explorer .scout-panel { top: calc(var(--header-height) + 10px); left: 10px; right: 10px; bottom: calc(38px + env(safe-area-inset-bottom)) !important; width: auto; border: 1px solid #ffffff22; border-radius: 16px; box-shadow: 0 15px 60px #0008; }
+  .explorer .scout-heading { padding: 16px 18px 12px; }
+  .explorer .scout-heading h2 { font-size: 23px; }
+  .explorer .scout-scroll { padding: 18px; }
+  .explorer .scout-tabs button { min-height: 44px; }
+  .explorer .voice-card { padding: 11px 16px 8px; }
+  .explorer .connection-status { padding: 5px 18px 10px; }
+  .explorer .flight-state { top: calc(var(--header-height) + 12px); left: 12px; width: 188px; font-size: 10px; }
+  .explorer .side-tools { top: calc(var(--header-height) + 12px); right: 12px; flex-direction: column; }
+  .explorer .side-tools > * { min-height: 36px; font-size: 10px; padding: 7px 9px; }
+  .explorer .bottom { width: calc(100% - 24px); }
+  .explorer .controls button { min-height: 46px; }
+  .explorer.scout-visible :is(.bottom, .flight-state, .side-tools) { visibility: hidden; pointer-events: none; }
+  .explorer .loading { width: min(300px, calc(100% - 40px)); }
+}
+@media (max-height: 540px) and (min-width: 761px) {
+  .explorer { --header-height: 60px; }
+  .explorer .scout-heading { padding: 10px 18px; }
+  .explorer .scout-heading .eyebrow, .explorer .voice-card > .fine-print { display: none; }
+  .explorer .scout-heading h2 { margin: 0; font-size: 21px; }
+  .explorer .voice-card { padding: 8px 16px; }
+}

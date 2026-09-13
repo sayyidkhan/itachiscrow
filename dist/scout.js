@@ -27,10 +27,10 @@ function renderPlan(text){
 }
 async function request(path,body,signal){
   let response;
-  try{response=await fetch(path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal});}
+  try{response=await fetch(path,{method:body===undefined?'GET':'POST',headers:body===undefined?{'Accept':'application/json'}:{'Content-Type':'application/json','Accept':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal});}
   catch(error){if(error.name==='AbortError')throw error;throw Error('The travel service could not be reached. Check your connection and try again.');}
   const data=await response.json().catch(()=>null);
-  if(!response.ok||!data)throw Error(data?.error?.message||'The travel service is unavailable. Start the app with npm run dev.');
+  if(!response.ok||!data)throw Error(data?.error?.message||'The travel service is unavailable. Please try again shortly.');
   return data;
 }
 function refreshContext(next){
@@ -157,17 +157,18 @@ const live = new CrowLive({
   }
 });
 async function connectStatus(){
-  try{const status=await request('/api/status');capabilities=status.capabilities||{};instagramConnection=status.instagram||{};$('connection-status').textContent=capabilities.live?'● AI configured · GPT-Live + image generation':'AI setup needed · Add OPENAI_API_KEY to the server’s .env';$('instagram-status').textContent=capabilities.instagram?'Instagram connected. Refresh to find recent public hashtag photos.':'Connect Instagram through Meta to see recent public hashtag photos.';
+  try{const status=await request('/api/status');capabilities=status.capabilities||{};instagramConnection=status.instagram||{};$('connection-status').textContent=capabilities.live?'● Voice & images ready':'Voice & images are not available yet';$('instagram-status').textContent=capabilities.instagram?'Instagram connected. Refresh to find recent public hashtag photos.':'Connect Instagram through Meta to see recent public hashtag photos.';
     $('instagram-connect').disabled=!instagramConnection.oauthAvailable;$('instagram-connect').hidden=Boolean(instagramConnection.selectedAccount);
     $('instagram-disconnect').hidden=!instagramConnection.selectedAccount;
     $('instagram-connection').textContent=instagramConnection.selectedAccount?`Connected as ${instagramConnection.selectedAccount.username||instagramConnection.selectedAccount.name}.`:instagramConnection.connection==='account_selection_required'?'Choose the Instagram account to connect.':instagramConnection.oauthAvailable?'Sign in through Facebook to connect a professional Instagram account linked to a Facebook Page.':'Instagram sign-in hasn’t been set up for this app yet.';
     $('instagram-accounts').replaceChildren();
     if(instagramConnection.connection==='account_selection_required')for(const account of instagramConnection.accounts||[]){const button=node('button',account.username||account.name||'Instagram account');button.type='button';button.onclick=async()=>{button.disabled=true;try{await request('/api/instagram/select-account',{accountId:account.id});await connectStatus();await instagram();}catch(error){$('instagram-status').textContent=error.message;button.disabled=false;}};$('instagram-accounts').append(button);}
   }
-  catch{$('connection-status').textContent='AI service offline · Run npm run dev to connect';$('instagram-status').textContent='Start the app server and connect Instagram through Meta to load photos.';}
+  catch{$('connection-status').textContent='Travel service unavailable · Try refreshing';$('instagram-status').textContent='Photo discovery is temporarily unavailable. Please try again shortly.';}
   refreshContext(context);
 }
 $('scout-open').onclick=()=>setOpen($('scout-panel').hidden);$('scout-close').onclick=()=>{setOpen(false);$('scout-open').focus();};
+$('scout-panel').addEventListener('keydown',event=>{if(event.key==='Escape'){setOpen(false);$('scout-open').focus();}});
 for(const button of document.querySelectorAll('[data-tab]')){button.onclick=()=>tab(button.dataset.tab);button.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const tabs=['explore','social','plan'];const index=tabs.indexOf(currentTab);tab(e.key==='Home'?tabs[0]:e.key==='End'?tabs[2]:tabs[(index+(e.key==='ArrowRight'?1:2))%3],true);};}
 $('destination-form').onsubmit=e=>{e.preventDefault();search($('destination-input').value.trim());};
 $('spot-form').onsubmit=e=>{e.preventDefault();search($('spot-input').value.trim(),true);};
@@ -190,7 +191,7 @@ for(const event of ['crow:ready','crow:destination','crow:context'])document.add
 document.addEventListener('crow:landing-selected',e=>refreshContext({...e.detail,spot:null}));
 document.addEventListener('crow:landed',e=>{refreshContext(e.detail);setOpen(true);tab('explore');note(`Landed at ${context.spot?.name||'your chosen spot'}.`);if($('auto-scene').checked&&capabilities.panorama)generateScene().catch(()=>{});if(capabilities.instagram)instagram();});
 window.addEventListener('pagehide',()=>{generation?.abort();planning?.abort();viewer?.destroy();live.stop();});
-setOpen(true);
+setOpen(!matchMedia('(max-width: 760px)').matches);
 const authResult=new URL(location.href).searchParams.get('instagram');
 if(authResult&&window.opener){window.opener.postMessage({type:'crow:instagram-return',result:authResult},location.origin);window.close();}
 if(authResult){const url=new URL(location.href);url.searchParams.delete('instagram');url.searchParams.delete('reason');history.replaceState(null,'',url);oauthResult(authResult);}else connectStatus();

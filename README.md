@@ -23,6 +23,8 @@ Generated scenes are imaginative impressions, with the crow centered in the init
 
 The original Chelsea flight remains available as a starting route. Its controls support start, pause, resume, restart, speed changes, camera height, map labels, and nearby place discovery.
 
+On desktop, Explore opens in a full-height sidebar beside the map; closing it expands the map. On phones, the map opens first and Explore opens a drawer. Music and Crow Studio are in the top toolbar. Responsive map-page layout is defined in `dist/layout.css`; include it when deploying `dist/`.
+
 ## What is included
 
 - **Destination flight and landing:** Google Places search, map selection, and a visual flight to the selected location.
