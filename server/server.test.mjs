@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { once } from 'node:events';
 import { request as httpRequest } from 'node:http';
-import { createConfig, createLiveSession, fetchInstagram, generatePanorama, generatePortrait, discoverOffers, generatePlan, getStatus, startServer } from './index.mjs';
+import { createConfig, createLiveSession, fetchInstagram, generatePanorama, explorePanorama, generatePortrait, discoverOffers, generatePlan, getStatus, startServer } from './index.mjs';
 
 const place = { name: 'Gardens by the Bay', lat: 1.2816, lng: 103.8636, address: 'Singapore' };
 const config = createConfig({ OPENAI_API_KEY: 'sk-test-secret', INSTAGRAM_ACCESS_TOKEN: 'meta-secret', INSTAGRAM_USER_ID: '123456' });
@@ -49,6 +49,37 @@ test('panorama uses the exact landing coordinates, seamless 2:1 image dimensions
   assert.equal(result.projection, 'equirectangular');
   assert.equal(result.synthetic, true);
   assert.match(result.notice, /not a live photograph/);
+});
+
+test('panorama exploration sends both reference images and the clicked point to image edits', async () => {
+  const image='data:image/jpeg;base64,'+Buffer.from([255,216,255,0,1,2]).toString('base64');
+  const result=await explorePanorama({destination:place,spot:place,sourceImage:image,viewImage:image,selection:{x:.72,y:.3,yaw:2,pitch:-.2}}, {
+    config,fetchImpl:async(url,request)=>{
+      assert.equal(url,'https://api.openai.com/v1/images/edits');
+      assert.equal(request.body.getAll('image[]').length,2);
+      assert.equal(request.body.get('size'),'2048x1024');
+      assert.match(request.body.get('prompt'),/72% from the left and 30% from the top/);
+      assert.match(request.body.get('prompt'),/not verified new coordinates/);
+      assert.equal(request.body.getAll('image[]')[1].type,'image/jpeg');
+      return ok({data:[{b64_json:'aW1hZ2U='}]});
+    },
+  });
+  assert.equal(result.synthetic,true);assert.equal(result.projection,'equirectangular');
+});
+
+test('panorama exploration rejects invalid selections and external or oversized images before provider calls', async () => {
+  const image='data:image/jpeg;base64,'+Buffer.from([255,216,255,0]).toString('base64');
+  const body={destination:place,spot:place,sourceImage:image,viewImage:image,selection:{x:.5,y:.5,yaw:0,pitch:0}};
+  let calls=0;const options={config,fetchImpl:()=>{calls++;throw Error('Unexpected provider call');}};
+  for(const change of [{selection:{...body.selection,x:1.1}},{selection:{...body.selection,yaw:NaN}},{selection:null},{sourceImage:'https://example.test/image.jpg'},{viewImage:'data:image/jpeg;base64,aW1hZ2U='},{viewImage:'a'.repeat(2*1024*1024+1)}])await assert.rejects(explorePanorama({...body,...change},options),error=>error.status===400);
+  assert.equal(calls,0);
+});
+
+test('panorama exploration HTTP route accepts reference bodies above the normal JSON limit', async t => {
+  const image='data:image/jpeg;base64,'+Buffer.concat([Buffer.from([255,216,255]),Buffer.alloc(300000)]).toString('base64');
+  const base=await start(t,{config,fetchImpl:async()=>ok({data:[{b64_json:'aW1hZ2U='}]})});
+  const response=await post(base,'/api/panorama/explore',{destination:place,spot:place,sourceImage:image,viewImage:image,selection:{x:.5,y:.5,yaw:0,pitch:0}});
+  assert.equal(response.status,200);assert.equal((await response.json()).synthetic,true);
 });
 
 test('invalid coordinates are rejected before any provider request', async () => {

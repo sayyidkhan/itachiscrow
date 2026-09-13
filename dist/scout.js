@@ -1,4 +1,5 @@
-import { PanoramaViewer } from './panorama.js';
+import { PanoramaViewer } from './panorama.js?v=2';
+import { createPanoramaJourney } from './panorama-journey.js';
 import { CrowLive } from './live.js';
 import { createTravelExperience } from './travel.js';
 
@@ -11,6 +12,7 @@ let currentTab = 'explore', liveState = {status:'idle',muted:false};
 let instagramConnection = {}, oauthPopup = null;
 const flightStages={departing:'Leaving the familiar',cruising:'Crossing the globe',descending:'A new place comes into view',approaching:'Almost there'};
 const transcripts = new Map();
+const panoramaJourney=createPanoramaJourney({getScene:()=>scene,getContext:()=>context,request,commit:async next=>{scene=next;await openScene();}});
 const presets={Singapore:{name:'Singapore',lat:1.2868,lng:103.8545},Kyoto:{name:'Kyoto, Japan',lat:35.0036,lng:135.7782},Paris:{name:'Eiffel Tower, Paris, France',lat:48.85837,lng:2.294481}};
 const node=(tag,text,className)=>{const e=document.createElement(tag);e.textContent=text;if(className)e.className=className;return e;};
 const note=(text,error=false)=>{$('scout-message').textContent=text;$('scout-message').classList.toggle('error',error);};
@@ -115,7 +117,7 @@ async function openScene(){
   if(!scene)return;window.CrowMap?.pause();
   $('panorama-title').textContent=scene.spot.name;$('panorama-download').href=scene.imageUrl;
   if(!$('panorama-dialog').open)$('panorama-dialog').showModal();
-  viewer?.destroy();viewer=new PanoramaViewer($('panorama-view'));await viewer.load(scene.imageUrl);
+  viewer?.destroy();viewer=new PanoramaViewer($('panorama-view'),{onSelect:panoramaJourney.select});await viewer.load(scene.imageUrl);
 }
 async function generatePlan(extraRequest='',signal){
   if(!capabilities.plan)throw Error('Trip planning needs the server’s OpenAI connection.');

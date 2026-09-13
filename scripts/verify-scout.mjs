@@ -7,7 +7,7 @@ import { chromium } from 'playwright-core';
 // traffic and microphone capture are intercepted; no provider calls are made.
 const output = new URL('../_debug/scout-verification/', import.meta.url);
 await mkdir(output, { recursive: true });
-const files = new Set(['index.html', 'style.css', 'scout.css', 'layout.css', 'scout.js', 'travel.js', 'travel.css', 'live.js', 'panorama.js', 'music.js', 'music.css', 'location.js']);
+const files = new Set(['index.html', 'style.css', 'scout.css', 'layout.css', 'scout.js', 'travel.js', 'travel.css', 'live.js', 'panorama.js', 'panorama-journey.js', 'panorama-journey.css', 'music.js', 'music.css', 'location.js']);
 const server = createServer(async (request, response) => {
   const name = new URL(request.url, 'http://localhost').pathname.slice(1) || 'index.html';
   if (name === 'app.js' || name === 'config.js') { response.writeHead(200, { 'Content-Type': 'text/javascript' }); response.end('/* replaced by deterministic test Maps contract */'); return; }
@@ -20,6 +20,7 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 const report = { checks: [], failures: [], pageErrors: [], blockedExternalRequests: [], apiRequests: [] };
 let browser;
 let imageUrl;
+let failExplore=false;
 let capabilities = { live: true, panorama: true, plan: true, instagram: false };
 let instagramConnection = { oauthAvailable: false, connection: 'app_not_configured', accounts: [], selectedAccount: null };
 const pending = {};
@@ -112,10 +113,11 @@ try {
       instagramConnection = { ...instagramConnection, connection: 'not_connected', accounts: [], selectedAccount: null };
       capabilities = { ...capabilities, instagram: false };
     }
+    if(name==='explore'&&failExplore){await route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({error:{message:'Test image service unavailable.'}})});return;}
     const result = name === 'status' ? { capabilities, instagram: instagramConnection, traveller: {portrait:true,discovery:true,savedPhoto:true} }
       : name === 'portrait' ? { imageUrl, synthetic:true }
       : name === 'discover' ? { summary:'Nearby cafés with [source](https://cafe.example/). <script>bad()</script>',offers:[],sources:[{title:'Café source',url:'https://cafe.example/'}],checkedAt:'2026-09-13T00:00:00Z' }
-      : name === 'panorama' ? { imageUrl, notice: 'AI-generated impression', generatedAt: '2026-09-13T00:00:00Z' }
+      : name === 'panorama' || name === 'explore' ? { imageUrl, notice: 'AI-generated impression', generatedAt: '2026-09-13T00:00:00Z' }
       : name === 'plan' ? planResult
       : name === 'instagram' ? { posts: [{ permalink: 'https://www.instagram.com/p/crowtest/', imageUrl: 'https://images.example.test/post.png', caption: 'Morning market light', timestamp: '2026-09-13T00:00:00Z' }, { permalink: 'javascript:alert(1)', imageUrl: 'https://images.example.test/bad.png', caption: 'Rejected' }] }
       : name === 'session' ? { session: { id: 'live_browser_mock' }, transport: { type: 'webrtc', sdp: 'v=0\r\nanswer' } } : {};
@@ -160,6 +162,56 @@ try {
     await page.locator('#panorama-close').click();
     await page.locator('#panorama-view canvas').waitFor({state:'detached'});
     assert.equal(await page.locator('#panorama-view canvas').count(), 0);
+  });
+  await check('Panorama drags rotate without generation, while taps ask for confirmation without a provider request', async()=>{
+    await page.locator('#reopen-scene').click();
+    const canvas=page.locator('#panorama-view canvas');await canvas.waitFor();
+    const rect=await canvas.boundingBox();
+    await page.mouse.move(rect.x+100,rect.y+100);await page.mouse.down();await page.mouse.move(rect.x+150,rect.y+100,{steps:5});await page.mouse.up();
+    assert.equal(await page.locator('#panorama-confirm').isVisible(),false);
+    await canvas.click({position:{x:rect.width*.7,y:rect.height*.3}});
+    await page.locator('#panorama-confirm').waitFor({state:'visible'});
+    assert.equal(report.apiRequests.filter(x=>x.path==='/api/panorama/explore').length,0);
+    await page.screenshot({path:new URL('panorama-confirm.png',output).pathname});
+    await page.locator('#panorama-stay').click();
+    assert(await canvas.isVisible());
+  });
+  await check('Confirmed panorama exploration sends the marked view, animates while waiting, and replaces the scene',async()=>{
+    const canvas=page.locator('#panorama-view canvas');await canvas.focus();await page.keyboard.press('Enter');
+    const hold=holdNext('explore');await page.locator('#panorama-go').click();await hold.wait;
+    assert(await page.locator('.pano-loading').isVisible());
+    assert.equal(await page.locator('#panorama-view').getAttribute('aria-busy'),'true');
+    const call=report.apiRequests.filter(x=>x.path==='/api/panorama/explore').at(-1);
+    assert.equal(call.body.sourceImage,imageUrl);assert.match(call.body.viewImage,/^data:image\/jpeg;base64,/);
+    assert.equal(call.body.selection.x,.5);assert.equal(call.body.selection.y,.5);
+    await page.screenshot({path:new URL('panorama-loading.png',output).pathname});hold.release();
+    await page.waitForFunction(()=>document.getElementById('panorama-journey-message').textContent.includes('arrived'));
+    assert(!await page.locator('.pano-loading').count());assert(await canvas.isVisible());
+  });
+  await check('Failed panorama exploration preserves the old view and allows retry',async()=>{
+    const old=await page.locator('#panorama-download').getAttribute('href');failExplore=true;
+    await page.locator('#panorama-view canvas').click();await page.locator('#panorama-go').click();
+    await page.waitForFunction(()=>document.getElementById('panorama-journey-message').textContent.includes('unavailable'));
+    assert.equal(await page.locator('#panorama-download').getAttribute('href'),old);assert(await page.locator('#panorama-view canvas').isVisible());failExplore=false;
+  });
+  await check('Cancelling a panorama journey discards a late response and leaves the current view intact',async()=>{
+    await page.locator('#panorama-view canvas').click();const hold=holdNext('explore');await page.locator('#panorama-go').click();await hold.wait;
+    await page.locator('.pano-loading button').click();hold.release();await page.waitForTimeout(100);
+    assert.match(await page.locator('#panorama-journey-message').textContent(),/cancelled/);assert(!await page.locator('.pano-loading').count());
+  });
+  await check('Mobile touch confirmation fits the screen and reduced motion disables the journey animations',async()=>{
+    await page.setViewportSize({width:390,height:844});await page.emulateMedia({reducedMotion:'reduce'});
+    const canvas=page.locator('#panorama-view canvas');const box=await canvas.boundingBox();
+    const touch=await browserContext.newCDPSession(page);
+    await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x+box.width*.6,y:box.y+box.height*.4}]});
+    await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await touch.detach();
+    await page.locator('#panorama-confirm').waitFor({state:'visible'});
+    const r=await page.locator('#panorama-confirm').boundingBox();assert(r.x>=0&&r.x+r.width<=390);
+    await page.screenshot({path:new URL('panorama-mobile-confirm.png',output).pathname});
+    const hold=holdNext('explore');await page.locator('#panorama-go').click();await hold.wait;
+    assert.equal(await canvas.evaluate(el=>getComputedStyle(el).animationName),'none');
+    await page.locator('#panorama-close').click();hold.release();await page.waitForTimeout(100);assert(!await page.locator('#panorama-dialog').isVisible());
+    await page.setViewportSize({width:1280,height:900});await page.emulateMedia({reducedMotion:'no-preference'});
   });
   await page.locator('#panorama-dialog').evaluate(dialog => { if (dialog.open) dialog.close(); });
   await check('Planner renders safe clickable source links and itinerary Markdown links', async () => {

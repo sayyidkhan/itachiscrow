@@ -29,6 +29,9 @@ test('Sites adapter preserves assets, configuration, validation and provider con
     const portrait=await worker.fetch(request('/api/portrait',{destination:spot,photo:'data:image/jpeg;base64,/9j/4AAQ'}),env2);
     assert.equal(portrait.status,200);assert.equal((await portrait.json()).synthetic,true);
     assert.equal(calls[2].url,'https://api.openai.com/v1/images/edits');assert.equal(calls[2].body.imageSize,6);
+    const explore=await worker.fetch(request('/api/panorama/explore',{destination:spot,spot,sourceImage:'data:image/jpeg;base64,/9j/4AAQ',viewImage:'data:image/jpeg;base64,/9j/4AAQ',selection:{x:.7,y:.3,yaw:0,pitch:0}}),env2);
+    assert.equal(explore.status,200);assert.equal((await explore.json()).synthetic,true);
+    assert.equal(calls[3].url,'https://api.openai.com/v1/images/edits');
     const missing=await worker.fetch(request('/api/portrait',{destination:spot,useSavedPhoto:true}),{...env2,CROW_OWNER_PHOTO:'/private/reference.jpg'});
     assert.equal(missing.status,400);
   }finally{globalThis.fetch=originalFetch;}

@@ -1,0 +1,25 @@
+#panorama-confirm{width:min(480px,calc(100% - 24px));padding:24px}
+#panorama-confirm h2{margin:10px 0 18px}
+#panorama-target{display:block;width:100%;max-height:32dvh;object-fit:contain;border-radius:14px;background:#071719}
+#panorama-confirm p{font-size:14px;line-height:1.6}
+#panorama-confirm .fine-print{font-size:12px;color:#92aaa6}
+.pano-confirm-actions{display:flex;gap:10px;margin-top:20px}
+.pano-confirm-actions button{flex:1;min-height:44px;padding:10px;border-radius:12px}
+#panorama-journey-message{font-size:12px;color:#80ecd5;margin:12px 0 0}
+#panorama-journey-message:empty{display:none}
+.pano-travelling>canvas{pointer-events:none;transform-origin:var(--pano-target,center);animation:pano-depart 3s ease-out forwards}
+.pano-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:20px;background:radial-gradient(ellipse at center,#07171955,#071719d9);z-index:2;animation:pano-arrive .4s ease-out}
+.pano-loading h3{font:26px/1.2 Georgia,serif;margin:4px 0;color:#eef7f4}
+.pano-loading p{font-size:13px;max-width:300px;margin:0;color:#c0d3d0}
+.pano-loading button{margin-top:12px;min-height:44px;background:#0c252bd9;border:1px solid #80ecd540;color:#c4eae2;font-size:12px}
+.pano-loading .eyebrow{font-size:10px;letter-spacing:3px}
+.pano-rings{position:relative;display:grid;place-items:center;width:96px;height:96px;margin-bottom:12px;color:#80ecd5}
+.pano-rings i{position:absolute;inset:0;border:1px solid #80ecd599;border-radius:50%;animation:pano-ripple 3s ease-out infinite}
+.pano-rings i:nth-child(2){animation-delay:1.5s}
+.pano-rings span{font:40px Georgia,serif;animation:pano-soar 2.5s ease-in-out infinite}
+@keyframes pano-ripple{from{transform:scale(.45);opacity:1}to{transform:scale(1.35);opacity:0}}
+@keyframes pano-soar{50%{transform:translate(4px,-5px)}}
+@keyframes pano-depart{to{transform:scale(1.18);filter:blur(3px) brightness(.6)}}
+@keyframes pano-arrive{from{opacity:0}to{opacity:1}}
+@media(max-width:600px){#panorama-confirm{padding:18px}.pano-loading h3{font-size:22px}.pano-rings{width:64px;height:64px;margin-bottom:0}.pano-loading{gap:8px}}
+@media(prefers-reduced-motion:reduce){.pano-travelling>canvas,.pano-rings i,.pano-rings span,.pano-loading{animation:none}.pano-rings i:nth-child(2){display:none}}

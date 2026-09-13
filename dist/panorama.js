@@ -1,22 +1,25 @@
 /** Small dependency-free equirectangular viewer; no external image/renderer services. */
 export class PanoramaViewer {
-  constructor(container) {
+  constructor(container, { onSelect } = {}) {
     this.container = container;
+    this.onSelect = onSelect;
     this.yaw = 0; this.pitch = -.28; this.fov = 85;
     this.canvas = document.createElement('canvas');
     this.canvas.tabIndex = 0;
     this.canvas.setAttribute('role', 'img');
-    this.canvas.setAttribute('aria-label', 'Generated 360-degree surroundings. Drag or use arrow keys to look around.');
+    this.canvas.setAttribute('aria-label', 'Generated 360-degree surroundings. Drag or use arrow keys to look around. Tap a spot, or press Enter to explore the centre.');
     this.label = document.createElement('span'); this.label.className = 'pano-label';
-    this.label.textContent = '360° · Drag to explore';
+    this.label.textContent = 'Drag to look · Tap a spot to explore';
     container.replaceChildren(this.canvas, this.label);
     this.events = new AbortController();
     const listen = (type, fn, options = {}) => this.canvas.addEventListener(type, fn, { ...options, signal: this.events.signal });
-    listen('pointerdown', e => { this.drag = {x:e.clientX,y:e.clientY}; this.canvas.setPointerCapture(e.pointerId); });
-    listen('pointermove', e => { if (!this.drag) return; this.yaw -= (e.clientX-this.drag.x)*.004; this.pitch += (e.clientY-this.drag.y)*.004; this.drag={x:e.clientX,y:e.clientY}; this.render(); });
-    listen('pointerup', () => this.drag = null); listen('pointercancel', () => this.drag = null);
+    listen('pointerdown', e => { if (!e.isPrimary || e.button !== 0) { this.drag = null; return; } this.drag = {x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY,moved:false}; this.canvas.setPointerCapture(e.pointerId); });
+    listen('pointermove', e => { if (!this.drag) return; const d=this.drag; d.moved ||= Math.hypot(e.clientX-d.startX,e.clientY-d.startY)>8; if(d.moved){this.yaw -= (e.clientX-d.x)*.004; this.pitch += (e.clientY-d.y)*.004; this.render();} d.x=e.clientX;d.y=e.clientY; });
+    listen('pointerup', e => { const d=this.drag;this.drag=null;if(d&&!d.moved&&Math.hypot(e.clientX-d.startX,e.clientY-d.startY)<=8){const r=this.canvas.getBoundingClientRect();this.select((e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height);} });
+    listen('pointercancel', () => this.drag = null);
     listen('wheel', e => { e.preventDefault(); this.fov = Math.max(35,Math.min(100,this.fov+e.deltaY*.04)); this.render(); }, {passive:false});
     listen('keydown', e => {
+      if(e.key==='Enter'){e.preventDefault();this.select(.5,.5);return;}
       if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','-','Home'].includes(e.key)) return;
       e.preventDefault();
       if (e.key==='ArrowLeft') this.yaw-=.12; if(e.key==='ArrowRight')this.yaw+=.12;
@@ -26,6 +29,15 @@ export class PanoramaViewer {
     });
     this.resize = new ResizeObserver(() => this.render()); this.resize.observe(container);
     listen('webglcontextlost', e => {e.preventDefault(); this.fallback();});
+  }
+  select(x,y){
+    if(!this.onSelect||!this.texture||this.disposed||x<0||x>1||y<0||y>1)return;
+    this.render();
+    const preview=document.createElement('canvas');preview.width=Math.min(1024,this.canvas.width);preview.height=Math.round(preview.width*this.canvas.height/this.canvas.width);
+    const paint=preview.getContext('2d');paint.drawImage(this.canvas,0,0,preview.width,preview.height);
+    paint.beginPath();paint.arc(x*preview.width,y*preview.height,22,0,Math.PI*2);paint.strokeStyle='#80ecd5';paint.lineWidth=4;paint.stroke();
+    paint.beginPath();paint.arc(x*preview.width,y*preview.height,4,0,Math.PI*2);paint.fillStyle='#80ecd5';paint.fill();
+    this.onSelect({x,y,yaw:this.yaw,pitch:this.pitch,viewImage:preview.toDataURL('image/jpeg',.88)});
   }
   async load(url) {
     this.url = url;
