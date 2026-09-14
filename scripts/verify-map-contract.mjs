@@ -59,12 +59,26 @@ const google = { maps: { async importLibrary(name) {
   return name === 'places' ? { Place } : { Map3DElement, Model3DElement, Marker3DInteractiveElement: Model3DElement };
 } } };
 const data = new ArrayBuffer(12); new DataView(data).setUint32(0, 0x46546c67, true);
-const window = new EventTarget(); window.CROW_MAPS_KEY = 'test';
+function createCrowWindow(key = 'test') {
+  const crowWindow = new EventTarget();
+  crowWindow.CROW_MAPS_KEY = key;
+  crowWindow.CrowMapKeys = { key, retry: () => false };
+  crowWindow.CrowPlaceSearch = { async search(PlaceLibrary, options) {
+    return options.locationBias ? PlaceLibrary.searchNearby(options) : PlaceLibrary.searchByText(options);
+  } };
+  return crowWindow;
+}
+const window = createCrowWindow();
 const sandbox = vm.createContext({ document, window, google, URL, Event, CustomEvent: DetailEvent, AbortController,
   performance: { now: () => now }, setTimeout: schedule, clearTimeout: id => callbacks.delete(id),
   requestAnimationFrame: callback => schedule(callback, 1000 / 60), cancelAnimationFrame: id => callbacks.delete(id),
-  fetch: async () => ({ ok: true, arrayBuffer: async () => data }), location: { reload() {} }, console });
-vm.runInContext(await readFile(new URL('../dist/app.js', import.meta.url), 'utf8'), sandbox);
+  fetch: async () => ({ ok: true, json: async () => ({}), arrayBuffer: async () => data }), location: { reload() {} }, console });
+const appSource = await readFile(new URL('../dist/app.js', import.meta.url), 'utf8');
+async function loadApp(context) {
+  vm.runInContext(appSource, context);
+  await new Promise(resolve => setImmediate(resolve));
+}
+await loadApp(sandbox);
 const events = [];
 for (const name of ['ready', 'destination', 'landing-selected', 'landed', 'context', 'flight']) {
   document.addEventListener('crow:' + name, event => events.push({ name, detail: event.detail }));
@@ -272,11 +286,11 @@ async function locationCase(locate, key = 'test', nativeAnimationEnd = false, ad
     baseURI: document.baseURI, currentScript: document.currentScript, head: new Element(), body: new Element(), activeElement: null,
     getElementById(id) { if (!nodes.has(id)) nodes.set(id, new Element()); return nodes.get(id); }, createElement() { return new Element(); },
   });
-  const isolatedWindow = Object.assign(new EventTarget(), { CROW_MAPS_KEY: key, CrowLocation: { locate } });
+  const isolatedWindow = Object.assign(createCrowWindow(key), { CrowLocation: { locate } });
   const isolated = vm.createContext({ ...sandbox, document: isolatedDocument, window: isolatedWindow });
   const emitted = [];
   for (const name of ['ready', 'landed']) isolatedDocument.addEventListener('crow:' + name, event => emitted.push({ name, detail: event.detail }));
-  vm.runInContext(await readFile(new URL('../dist/app.js', import.meta.url), 'utf8'), isolated);
+  await loadApp(isolated);
   if (key) {
     await isolatedWindow.initCrow();
     assert.equal(maps.range, 20000, 'Startup begins above the chosen perch');
