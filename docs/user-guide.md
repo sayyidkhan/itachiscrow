@@ -14,6 +14,8 @@ Use the conversation box or **Talk**. Text works without microphone permission. 
 - “Find cafés nearby.”
 - “Plan three days here focused on food.”
 
+On phones, text and **Talk** stay in the compact panel below the map. Tap **+** to expand the conversation and **−** to make room for the map again. Sending a message expands the conversation automatically. The **•••** menu contains Author Studio, Debug, Music, and About.
+
 The guide reports progress and failures. **Stop current action** cancels pending work. Dragging the map pauses the flight so you can inspect the surroundings. Open **Debug** for manual destination, landing, flight, discovery, and planning controls.
 
 Long journeys show a globe transition and route card. A device’s reduced-motion preference shortens or skips sweeping camera movement. This is a visual exploration route, not walking directions or collision avoidance.
