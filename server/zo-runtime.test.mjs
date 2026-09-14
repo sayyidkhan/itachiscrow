@@ -39,3 +39,14 @@ test('Zo runtime creates its persistent SQLite directory on first start',async t
  t.after(()=>new Promise(resolve=>server.close(resolve)));
  assert.ok(server.listening);
 });
+
+test('Zo runtime reopens its persistent SQLite database after a restart',async t=>{
+ const parent=await mkdtemp(join(tmpdir(),'crow-zo-runtime-'));
+ const databasePath=join(parent,'state','usage.sqlite');
+ t.after(()=>rm(parent,{recursive:true,force:true}));
+ const first=await startZoRuntime({port:0,host:'127.0.0.1',databasePath,env:{PUBLIC_ORIGIN:'https://crow.example'}});
+ await new Promise(resolve=>first.close(resolve));
+ const second=await startZoRuntime({port:0,host:'127.0.0.1',databasePath,env:{PUBLIC_ORIGIN:'https://crow.example'}});
+ t.after(()=>new Promise(resolve=>second.close(resolve)));
+ assert.ok(second.listening);
+});

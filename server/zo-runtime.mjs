@@ -47,8 +47,11 @@ function d1Compatible(db){
 export async function openUsageDatabase(path=':memory:'){
  if(path!==':memory:')await mkdir(dirname(path),{recursive:true});
  const db=new DatabaseSync(path);
- const migration=(await readFile(migrationPath,'utf8')).replaceAll('--> statement-breakpoint','');
- db.exec(migration);
+ const table=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='usage_limits'").get();
+ if(!table){
+  const migration=(await readFile(migrationPath,'utf8')).replaceAll('--> statement-breakpoint','');
+  db.exec(migration);
+ }
  return {db,adapter:d1Compatible(db)};
 }
 
