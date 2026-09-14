@@ -54,6 +54,17 @@ cp dist/config.example.js dist/config.js
 
 Configure credentials privately using the [operations guide](docs/operations.md). `npm run build` prepares the Sites Worker and browser assets. `npm start` runs the original Node server, but **the current map-start and place-search endpoints are Worker-only**: Node alone is not a complete preview of this version. Use the Sites Worker with its D1 binding for the full app.
 
+For a hosted Zo or Sites deployment, configure these values as server-side secrets rather than committing them:
+
+| Variable | Purpose |
+| --- | --- |
+| `OPENAI_API_KEY` | Enables chat, voice, image generation, and travel planning. Keep server-side. |
+| `CROW_MAPS_KEY` | Primary Google Maps key used for the browser map and Places requests. |
+| `CROW_MAPS_FALLBACK_KEY` | Optional second Google Maps key used for controlled retry and rotation. It shares the same Google project quota when both keys belong to that project. |
+| `PUBLIC_ORIGIN` | Exact public base URL of the deployed app, for example `https://your-app.zo.computer`. It protects backend routes from requests made by other origins. |
+
+The current renderer uses Google Maps JavaScript API's built-in 3D Maps support. It does **not** use the Map Tiles API, so `CROW_TILES_KEY` is not needed.
+
 The browser source lives directly in tracked `dist/` files. Generated `dist/client/` and `dist/server/` are build output. Do not edit generated output as the source of a change.
 
 ## Limits of the experience
