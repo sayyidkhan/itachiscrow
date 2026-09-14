@@ -42,6 +42,12 @@ Browser Google keys are visible by design. OpenAI and Meta secrets stay server-s
 
 Use a Sites Worker environment with `ASSETS`, `DB`, and the runtime settings for the full flow. Local Node configuration still requires the ignored `dist/config.js`; `.env` alone does not generate that file. Never commit a filled `.env` or config containing secrets.
 
+## Zo development runtime
+
+`npm run start:zo` is the closest portable equivalent to the Sites Worker/D1 runtime. It serves the same browser assets, emits `/config.js`, applies the same protected route groups and limits, and stores the usage counters in SQLite at `.zo-data/usage.sqlite` by default. Set `CROW_USAGE_DB` to a persistent absolute path when registering a Zo service. This database is runtime state and is ignored by Git.
+
+For a public Zo preview, set `PUBLIC_ORIGIN` to that service’s exact HTTPS origin. The runtime rejects protected requests from other origins. It logs only redacted Places diagnostics: route, provider-reached flag, HTTP status, and error category; it never logs query payloads or credentials. A normal `npm start` preview intentionally remains the original Node server, while `start:zo` is for close Worker/D1-equivalent development.
+
 ## Publish an update
 
 1. Start from the intended GitHub branch and preserve unrelated changes.

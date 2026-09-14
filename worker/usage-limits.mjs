@@ -16,7 +16,16 @@ export async function enforceUsage(request,db,group,now=Date.now()){
  const until=current?.hour===hour&&current.hour_count>=perHour?(hour+1)*3600000:(minute+1)*60000;
  return {allowed:false,retryAfter:Math.max(1,Math.ceil((until-now)/1000))};
 }
-export async function proxyPlaceSearch(request,env,turn){
+function googleErrorCategory(status){
+ if(status===401||status===403)return 'authentication_or_restriction';
+ if(status===429)return 'quota_or_rate_limit';
+ if(status>=500)return 'provider_unavailable';
+ return 'provider_rejected_request';
+}
+function reportPlaceDiagnostic(onDiagnostic,detail){
+ try{onDiagnostic?.({route:'/api/places/search',...detail});}catch{}
+}
+export async function proxyPlaceSearch(request,env,turn,{fetchImpl=fetch,onDiagnostic}={}){
  if(Number(request.headers.get('content-length'))>4096)return Response.json({error:{message:'Search request is too large.'}},{status:413});
  const reader=request.body?.getReader();if(!reader)return Response.json({error:{message:'Enter a search.'}},{status:400});
  let bytes=0,chunks=[];while(true){const {done,value}=await reader.read();if(done)break;bytes+=value.length;if(bytes>4096){await reader.cancel();return Response.json({error:{message:'Search request is too large.'}},{status:413})}chunks.push(value)}
@@ -24,11 +33,12 @@ export async function proxyPlaceSearch(request,env,turn){
  if(typeof input.textQuery!=='string'||!input.textQuery.trim()||input.textQuery.length>250)return Response.json({error:{message:'Enter a place name under 250 characters.'}},{status:400});
  const body={textQuery:input.textQuery,pageSize:6};if(input.includedType==='cafe')body.includedType='cafe';
  const circle=input.locationBias?.circle;if(circle&&Number.isFinite(circle.center?.latitude)&&Number.isFinite(circle.center?.longitude)&&Math.abs(circle.center.latitude)<=90&&Math.abs(circle.center.longitude)<=180)body.locationBias={circle:{center:circle.center,radius:2000}};
- const keys=[...new Set([env.CROW_MAPS_KEY,env.CROW_MAPS_FALLBACK_KEY].filter(Boolean))];if(turn%2===0)keys.reverse();
- for(const key of keys){try{
- const response=await fetch('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':key,'X-Goog-FieldMask':'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.googleMapsUri,places.photos',Referer:env.PUBLIC_ORIGIN||'https://itachis-crow.promptalchemistlabs.chatgpt.site/'},body:JSON.stringify(body),signal:AbortSignal.timeout(15000),redirect:'error'});
- if(response.ok)return Response.json({...await response.json(),photoKeySlot:key===env.CROW_MAPS_KEY?'primary':'backup'},{headers:{'Cache-Control':'no-store'}});
+ const keys=[...new Set([env.CROW_MAPS_KEY,env.CROW_MAPS_FALLBACK_KEY].filter(Boolean))];if(!keys.length){reportPlaceDiagnostic(onDiagnostic,{providerReached:false,googleErrorCategory:'missing_configuration',httpStatus:null});return Response.json({error:{message:'Place search is temporarily unavailable. Try again shortly.'}},{status:503,headers:{'Retry-After':'30'}})}if(turn%2===0)keys.reverse();
+ for(const [index,key] of keys.entries()){try{
+ const response=await fetchImpl('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':key,'X-Goog-FieldMask':'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.googleMapsUri,places.photos',Referer:env.PUBLIC_ORIGIN||'https://itachis-crow.promptalchemistlabs.chatgpt.site/'},body:JSON.stringify(body),signal:AbortSignal.timeout(15000),redirect:'error'});
+ if(response.ok){reportPlaceDiagnostic(onDiagnostic,{providerReached:true,googleErrorCategory:'ok',httpStatus:response.status,attempt:index+1});return Response.json({...await response.json(),photoKeySlot:key===env.CROW_MAPS_KEY?'primary':'backup'},{headers:{'Cache-Control':'no-store'}});}
+ reportPlaceDiagnostic(onDiagnostic,{providerReached:true,googleErrorCategory:googleErrorCategory(response.status),httpStatus:response.status,attempt:index+1});
  if(![401,403,429,500,502,503,504].includes(response.status))break;
- }catch{}}
+ }catch{reportPlaceDiagnostic(onDiagnostic,{providerReached:false,googleErrorCategory:'network_or_timeout',httpStatus:null,attempt:index+1});}}
  return Response.json({error:{message:'Place search is temporarily unavailable. Try again shortly.'}},{status:503,headers:{'Retry-After':'30'}});
 }
