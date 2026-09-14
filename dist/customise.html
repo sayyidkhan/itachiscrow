@@ -1,6 +1,134 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b191d"><title>Author Studio — Itachi’s Crow</title><link rel="stylesheet" href="author.css"></head><body>
-<header><a href="index.html" class="brand">Itachi’s Crow</a><a href="explore.html">Back to the map ↗</a></header>
-<main><div class="intro"><p class="eyebrow">AUTHOR STUDIO</p><h1>You. Somewhere new.</h1><p>Choose a place. Imagine yourself there.</p></div>
-<div class="studio"><aside><img id="reference-preview" class="reference" src="images/author-default.jpeg" alt="Reference photo of Sayyid Khan"><div class="identity"><h2 id="reference-name">Sayyid Khan</h2><span id="reference-label">Default face reference</span></div><div class="reference-controls"><input id="reference-file" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose reference photo" hidden><button id="change-reference" type="button" class="primary">Change photo</button><button id="reset-reference" type="button" hidden>Use default</button></div><p class="note reference-help">JPEG, PNG or WebP · up to 5 MB.<br>Your selection stays in this tab, including when you return to the map.</p><p id="reference-status" class="note" role="status" aria-live="polite"></p><p class="note">Your crow stays on the map. Use your face reference only when you generate a scene of yourself at a destination.</p><a class="subtle" href="crow-studio.html">Crow colours ↗</a><p class="reference-links"><a href="usage-limits.html">Usage limits ↗</a></p></aside>
-<section class="workspace"><form id="author-form"><label for="destination">WHERE ARE YOU GOING?</label><input id="destination" maxlength="160" required placeholder="Eiffel Tower, Paris, France"><p class="note" id="place-note">Uses your selected map destination.</p><fieldset><legend>CHOOSE A SCENE</legend><div class="scenes"><label><input type="radio" name="scene" value="Landmark portrait" checked><span>Landmark portrait</span></label><label><input type="radio" name="scene" value="Café stop"><span>Café stop</span></label><label><input type="radio" name="scene" value="Evening walk"><span>Evening walk</span></label></div></fieldset><label for="direction">MAKE IT YOURS <span class="optional">OPTIONAL</span></label><textarea id="direction" maxlength="400" rows="2" placeholder="A navy jacket, candid smile, golden-hour light…"></textarea><div class="actions"><button class="primary" id="generate" type="submit">Picture me here ↗</button><button type="button" id="cancel" hidden>Cancel</button></div><p class="note">Your reference photo is sent to OpenAI when you generate. Images are imagined visits; facial likeness can vary.</p><p id="status" role="status" aria-live="polite"></p></form>
-<div id="empty" class="empty"><span>YOUR NEXT CHAPTER</span><h2>A place. A moment. You.</h2><p>Your generated scenes will appear here.</p></div><div id="gallery" class="gallery" aria-label="Generated travel scenes"></div></section></div></main><script src="config.js"></script><script type="module" src="author.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b191d">
+  <title>Author Studio — Itachi’s Crow</title>
+  <link rel="stylesheet" href="author-studio.css?v=studio-2">
+</head>
+<body>
+  <header class="site-header">
+    <a href="index.html" class="brand">Itachi’s Crow<span class="brand-dot" aria-hidden="true">.</span></a>
+    <a href="explore.html" class="map-link"><span aria-hidden="true">←</span> Back to map</a>
+  </header>
+  <main>
+    <div class="intro">
+      <p class="eyebrow"><span aria-hidden="true"></span> AUTHOR STUDIO</p>
+      <h1>You. <em>Somewhere new.</em></h1>
+      <p>Your photo. A favourite place. A scene worth keeping.</p>
+    </div>
+    <div class="studio">
+      <section class="workspace" aria-label="Create a travel scene">
+        <div class="reference-section">
+          <h2 class="section-label">Your reference</h2>
+          <div class="reference-card">
+            <img id="reference-preview" class="reference" src="images/author-default.jpeg" alt="Reference photo of Sayyid Khan">
+            <div class="identity">
+              <h3 id="reference-name">Sayyid Khan</h3>
+              <span id="reference-label">Default face reference</span>
+              <div class="reference-controls">
+                <input id="reference-file" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose reference photo" hidden>
+                <button id="change-reference" type="button">Change photo</button>
+                <button id="reset-reference" type="button" hidden>Use default</button>
+              </div>
+            </div>
+          </div>
+          <p id="reference-status" class="note" role="status" aria-live="polite"></p>
+          <details class="photo-help">
+            <summary>Photo tips &amp; privacy</summary>
+            <p>Choose a clear face photo. JPEG, PNG or WebP, up to 5 MB. Your selection stays in this tab and also works for Author scenes on the map.</p>
+            <p>Your crow stays on the map. This photo is only used when you generate a scene of yourself.</p>
+          </details>
+        </div>
+        <form id="author-form">
+          <div class="destination-field">
+            <label class="section-label" for="destination">Where to?</label>
+            <div class="input-wrap">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+              <input id="destination" maxlength="160" required placeholder="Eiffel Tower, Paris, France" aria-describedby="place-note">
+            </div>
+            <p class="note" id="place-note">Uses your selected map destination.</p>
+          </div>
+          <fieldset>
+            <legend class="section-label">Set the mood</legend>
+            <div class="scenes">
+              <label>
+                <input type="radio" name="scene" value="Landmark portrait" checked>
+                <span class="scene-card">
+                  <svg viewBox="0 0 32 32" aria-hidden="true"><path d="m16 4-7 23m7-23 7 23M6 28h20M11 20h10M13 13h6M15 5h2M12 27l4-6 4 6"/></svg>
+                  <span>Landmark<span class="scene-detail">portrait</span></span>
+                  <span class="scene-check" aria-hidden="true">✓</span>
+                </span>
+              </label>
+              <label>
+                <input type="radio" name="scene" value="Café stop">
+                <span class="scene-card">
+                  <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 12h16v9a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6ZM23 13h2a4 4 0 0 1 0 8h-2M5 28h22M11 4v3m5-4v4m5-3v3"/></svg>
+                  <span>Café<span class="scene-detail">stop</span></span>
+                  <span class="scene-check" aria-hidden="true">✓</span>
+                </span>
+              </label>
+              <label>
+                <input type="radio" name="scene" value="Evening walk">
+                <span class="scene-card">
+                  <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M22 5a10 10 0 1 0 5 14A9 9 0 0 1 22 5ZM7 28h20M7 4v4M5 6h4"/></svg>
+                  <span>Evening<span class="scene-detail">walk</span></span>
+                  <span class="scene-check" aria-hidden="true">✓</span>
+                </span>
+              </label>
+            </div>
+          </fieldset>
+          <details class="direction-details">
+            <summary>Make it yours <span class="optional">Optional</span></summary>
+            <div class="direction-body">
+              <label class="visually-hidden" for="direction">Extra scene direction</label>
+              <textarea id="direction" maxlength="400" rows="3" placeholder="A navy jacket, candid smile, golden-hour light…"></textarea>
+            </div>
+          </details>
+          <div class="actions">
+            <button class="primary" id="generate" type="submit">Picture me here <span aria-hidden="true">↗</span></button>
+            <button type="button" id="cancel" hidden>Cancel</button>
+          </div>
+          <p class="generation-note">Your photo is sent to OpenAI when you generate.<br>AI-imagined scenes; likeness can vary.</p>
+          <p id="status" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+      <section class="results" aria-labelledby="results-title" aria-busy="false">
+        <div class="results-heading">
+          <h2 class="section-label" id="results-title">Your scenes</h2>
+          <span>Made of possibility</span>
+        </div>
+        <div id="empty" class="empty">
+          <div class="postcards" aria-hidden="true">
+            <div class="postcard-back"></div>
+            <div class="postcard-front">
+              <span class="postcard-label">SOMEWHERE NEW</span>
+              <svg class="postcard-art" viewBox="0 0 240 150">
+                <circle class="postcard-sun" cx="166" cy="40" r="20"/>
+                <path class="postcard-hills" d="M0 124 42 71l38 41 49-71 56 68 25-25 30 40v26H0Z"/>
+                <path class="postcard-road" d="M148 150c-60-37 65-26-12-66"/>
+                <path class="postcard-flight" d="M25 37c18-25 40 13 66-10"/>
+                <path class="postcard-bird" d="m80 22 12 4-5 11"/>
+              </svg>
+              <div class="postcard-caption"><span>A moment, imagined.</span><span>↗</span></div>
+            </div>
+          </div>
+          <p class="eyebrow">A NEW POINT OF VIEW</p>
+          <h3>Your next postcard<br>starts here.</h3>
+          <p id="preview-message">Pick a place and a mood.<br>We’ll take your imagination from there.</p>
+          <span class="preview-loader" aria-hidden="true"></span>
+        </div>
+        <div id="gallery" class="gallery" aria-label="Generated travel scenes"></div>
+        <p class="results-note">A little escape, ready to save. Download your favourites before leaving.</p>
+      </section>
+    </div>
+    <footer class="studio-footer">
+      <span>Let your imagination wander.</span>
+      <nav aria-label="Studio links"><a href="crow-studio.html">Crow colours ↗</a><a href="usage-limits.html">Usage limits ↗</a></nav>
+    </footer>
+  </main>
+  <script src="config.js"></script>
+  <script type="module" src="author.js?v=studio-2"></script>
+</body>
+</html>

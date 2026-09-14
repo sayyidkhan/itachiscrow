@@ -37,6 +37,8 @@ $('author-form').onsubmit=async event=>{
  const destination={name,...(place?.name===name?{lat:place.lat,lng:place.lng}:{})};
  const job=new AbortController();controller=job;const timeout=setTimeout(()=>job.abort('timeout'),200000);
  $('generate').disabled=true;$('cancel').hidden=false;$('status').className='';$('status').textContent='Creating your scene… This can take a minute or two.';
+ document.querySelector('.results').setAttribute('aria-busy','true');
+ $('preview-message').textContent='Creating your scene… This can take a minute or two.';
  try{
   const photo=await authorPhoto();
   const response=await fetch('/api/portrait',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({destination,photo,scene}),signal:job.signal});
@@ -47,6 +49,6 @@ $('author-form').onsubmit=async event=>{
   img.src=result.imageUrl;img.alt=`AI-generated ${selected.toLowerCase()} at ${name}`;heading.textContent=name;note.textContent=selected+' · AI-generated';text.append(heading,note);download.href=result.imageUrl;download.download='author-travel-'+Date.now()+'.jpg';download.textContent='Save image ↓';download.className='download';caption.append(text,download);figure.append(img,caption);$('gallery').prepend(figure);while($('gallery').children.length>6)$('gallery').lastElementChild.remove();$('empty').hidden=true;
   $('status').textContent='Your scene is ready. Generate again for a new variation. Save images before leaving this page.';$('generate').textContent='Generate another variation ↗';
  }catch(error){$('status').className='error';$('status').textContent=job.signal.aborted?(job.signal.reason==='timeout'?'Generation took too long. Try again.':'Generation cancelled.'):error.message}
- finally{clearTimeout(timeout);controller=null;$('generate').disabled=false;$('cancel').hidden=true}
+ finally{clearTimeout(timeout);controller=null;$('generate').disabled=false;$('cancel').hidden=true;document.querySelector('.results').setAttribute('aria-busy','false');$('preview-message').textContent='Pick a place and a mood. We’ll take your imagination from there.'}
 };
 window.addEventListener('pagehide',()=>controller?.abort());
