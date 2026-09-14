@@ -26,6 +26,13 @@ Use Zo for normal code changes, browser/WebGL2 investigation, and GitHub commits
 5. Verify actual rendering in a WebGL2-capable browser when changing map/crow behaviour. A successful model download is not proof that the crow is visible.
 6. Commit and push verified changes to `main` with a clear message.
 
+### Routed Zo development deployment
+
+- The Zo checkout lives at `Github/itachiscrow`.
+- The public development route is `https://public-apps-sayyidkhan.zocomputer.io/crow`; its exact permitted `PUBLIC_ORIGIN` is `https://public-apps-sayyidkhan.zocomputer.io`.
+- The `itachiscrow-dev` process service listens only on localhost port `8806` and is reached through the Garden of Zo public router. Keep `APP_BASE_PATH=/crow` and preserve the router path-aware browser contract.
+- The public route declaration is in `Start/garden-of-zo/zo-router/public.routes.json`. Do not recreate a direct public HTTP service for this app.
+
 ### Zo limitation
 
 Zo does not have access to the existing ChatGPT Sites project or its production secrets/D1 binding. A plain `npm start` Node preview is not a full preview of the current app: map-session and server Places-search routes require the Worker/D1 setup. Do not mistake those missing routes for a Google quota failure.

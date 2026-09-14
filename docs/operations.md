@@ -48,6 +48,10 @@ Use a Sites Worker environment with `ASSETS`, `DB`, and the runtime settings for
 
 For a public Zo preview, set `PUBLIC_ORIGIN` to that service’s exact HTTPS origin. The runtime rejects protected requests from other origins. It logs only redacted Places diagnostics: route, provider-reached flag, HTTP status, and error category; it never logs query payloads or credentials. A normal `npm start` preview intentionally remains the original Node server, while `start:zo` is for close Worker/D1-equivalent development.
 
+### Garden of Zo route
+
+The active Zo development deployment is the public router route `https://public-apps-sayyidkhan.zocomputer.io/crow`. Its backend is an internal process on port `8806`; the router strips `/crow` before proxying and supplies the route prefix to the runtime. Set `PUBLIC_ORIGIN=https://public-apps-sayyidkhan.zocomputer.io` and `APP_BASE_PATH=/crow` for this deployment. Do not use a direct `*.zocomputer.io` service URL for Itachi’s Crow.
+
 ## Publish an update
 
 1. Start from the intended GitHub branch and preserve unrelated changes.
