@@ -1,8 +1,10 @@
 # Personal image assets
 
-Two personal images are omitted from this public repository pending permission to publish them here:
+[Back to README](../README.md)
 
-- `dist/images/author-default.jpeg`: default Author reference portrait.
-- `dist/images/crow-companion.png`: landing portrait with the crow.
+Two personal portrait assets have been omitted from this public repository pending explicit permission to publish them here:
 
-The deployed Site retains its existing assets. Before deploying a copy from GitHub, supply approved replacements at these paths or update the relevant image references. Do not embed private image data or credentials into source as a workaround.
+- `dist/images/author-default.jpeg` — the default Author reference portrait.
+- `dist/images/crow-companion.png` — the landing-page portrait with the crow.
+
+The deployed Site has its existing assets. This GitHub copy does not contain them; a build from this checkout will not restore them automatically. Before deploying a separate copy, supply images you have permission to publish at these paths, or update the relevant image references and use visitor uploads in Author Studio. Do not copy credentials or private image data into source as a substitute.
