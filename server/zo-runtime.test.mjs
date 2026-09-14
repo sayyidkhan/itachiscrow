@@ -15,8 +15,11 @@ function headers(){return {Origin:'https://crow.example','X-Forwarded-Host':'cro
 
 test('Zo runtime mirrors protected map and configuration contracts with persistent SQLite admission',async t=>{
  const base=await start(t);
- const config=await fetch(base+'/config.js');
- assert.equal(await config.text(),'window.CROW_MAPS_KEY="";window.CROW_MAPS_FALLBACK_KEY="";');
+ const config=await fetch(base+'/config.js',{headers:{...headers(),'X-Forwarded-Prefix':'/crow'}});
+ const configBody=await config.text();
+ assert.match(configBody,/window\.CROW_BASE_PATH="\/crow"/);
+ assert.match(configBody,/window\.CrowUrl=/);
+ assert.match(configBody,/window\.CROW_MAPS_KEY=""/);
  const page=await fetch(base+'/',{headers:headers()});
  assert.equal(page.status,200);
  const allowed=await fetch(base+'/api/map-session',{method:'POST',headers:headers()});
