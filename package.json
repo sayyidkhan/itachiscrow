@@ -6,7 +6,7 @@
     "dev": "node --watch server/index.mjs",
     "start": "node server/index.mjs",
     "start:zo": "node server/zo-runtime.mjs",
-    "test": "node --test server/server.test.mjs server/zo-runtime.test.mjs scripts/verify-live.mjs scripts/verify-location.mjs scripts/verify-chat.mjs && node scripts/verify-map-contract.mjs",
+    "test": "node --test server/server.test.mjs server/zo-runtime.test.mjs scripts/verify-live.mjs scripts/verify-location.mjs scripts/verify-chat.mjs && node scripts/verify-map-contract.mjs && node scripts/verify-image-assets.mjs",
     "verify:scout": "node scripts/verify-scout.mjs",
     "verify:journey": "node scripts/verify-journey.mjs",
     "verify:location": "node scripts/verify-location-journey.mjs",
