@@ -1,4 +1,4 @@
-import {defaultAuthorPhoto} from './author-reference.js';
+import {authorPhoto,selectedAuthorPhoto} from './author-reference.js';
 export function createSceneAuthor({getScene,getViewer,request,cancelJourney}){
  const dialog=document.getElementById('panorama-dialog'),view=document.getElementById('panorama-view'),footer=dialog.querySelector('.panorama-footer'),eyebrow=dialog.querySelector('.eyebrow');
  const tabs=document.createElement('div');tabs.className='scene-mode';tabs.setAttribute('aria-label','Scene mode');tabs.innerHTML='<button type="button" aria-pressed="true">Crow</button><button type="button" aria-pressed="false">Author · picture me here</button>';
@@ -7,6 +7,8 @@ export function createSceneAuthor({getScene,getViewer,request,cancelJourney}){
  view.after(panel);
  const [crow,author]=tabs.querySelectorAll('button'),status=panel.querySelector('[role=status]'),img=panel.querySelector('img'),thumbs=panel.querySelector('.author-thumbs'),retry=panel.querySelector('button'),save=panel.querySelector('a');
  let source=null,images=[],controller=null,reference=null,mode='crow';
+ let selectedReference=selectedAuthorPhoto();
+ window.addEventListener('pageshow',()=>{const next=selectedAuthorPhoto();if(next!==selectedReference){selectedReference=next;reset()}});
  const directions=['Replace the crow with the reference person standing naturally in the scene, relaxed pose, facing the camera, three-quarter body composition.','Replace the crow with the same reference person in a candid walking pose, head turned toward the camera, a natural smile.','Replace the crow with the reference person in a travel portrait, looking toward the camera, casually gesturing toward the landmark.'];
  function select(index){img.src=images[index];img.hidden=false;save.href=images[index];save.download='sayyid-scene-'+(index+1)+'.jpg';save.hidden=false;Array.from(thumbs.children).forEach((b,i)=>b.setAttribute('aria-pressed',String(i===index)));}
  function cancel(){controller?.abort();controller=null;}
@@ -16,7 +18,7 @@ export function createSceneAuthor({getScene,getViewer,request,cancelJourney}){
  async function generate(){
   if(controller||images.length===3)return;
   const current=source,job=new AbortController();controller=job;retry.hidden=true;
-  try{const photo=await defaultAuthorPhoto();
+  try{const photo=await authorPhoto();
    for(let i=images.length;i<3;i++){
     if(job.signal.aborted||getScene()!==current)return;
     status.textContent=`Creating image ${i+1} of 3… Each image may take a minute or two.`;

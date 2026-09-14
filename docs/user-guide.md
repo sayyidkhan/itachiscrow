@@ -32,9 +32,9 @@ Author pictures are generated 2D scenes. They are not live photographs or a 3D a
 
 ## Change your reference photo
 
-Open **Author Studio** in the map toolbar. Select a clear reference photo, choose a destination and scene direction, and generate variations. The public repository does not include the owner’s personal reference image; a self-hosted copy needs an approved replacement or a visitor upload.
+Open **Author Studio** in the map toolbar and tap **Change photo**. Select a clear reference photo, check its preview, then choose a destination and scene direction. **Use default** restores the approved Sayyid Khan portrait included with the app.
 
-Supported portrait uploads are JPEG, PNG, or WebP under 5 MB. The reference is sent to the backend and image provider when you request generation. Do not treat tab-held images or results as a permanent gallery.
+Supported portrait uploads are JPEG, PNG, or WebP up to 5 MB. Studio resizes the photo in your browser and keeps the selection for the current tab, including reloads and returning to the map. Author scenes and the map’s initial portrait reference use this selection. Choosing a photo does not upload it; the reference is sent to the backend and image provider when you request generation. It does not replace the public default or another visitor’s photo. Do not treat tab-held images or results as a permanent gallery.
 
 The separate crow colour editor is at **`/crow-studio.html`**. Colour preferences belong to the current browser and site origin; they do not automatically follow you to another device.
 
