@@ -4,11 +4,12 @@ import worker from '../dist/server/index.js';
 
 test('Sites adapter preserves assets, configuration, validation and provider contracts',async()=>{
   const origin='https://itachis-crow.promptalchemistlabs.chatgpt.site';
-  const env={OPENAI_API_KEY:'test-server-secret',CROW_MAPS_KEY:'test-browser-key',PUBLIC_ORIGIN:origin,ASSETS:{fetch:async()=>new Response('asset')}};
+  const db={prepare:()=>({bind:()=>({first:async()=>({hour_count:1}),run:async()=>({})})})};
+  const env={OPENAI_API_KEY:'test-server-secret',CROW_MAPS_KEY:'test-browser-key',PUBLIC_ORIGIN:origin,DB:db,ASSETS:{fetch:async()=>new Response('asset')}};
   const request=(path,body,headers={})=>new Request(origin+path,body===undefined?{}:{method:'POST',headers:{'content-type':'application/json',origin,...headers},body:JSON.stringify(body)});
   const status=await worker.fetch(request('/api/status'),env);
   const text=await status.text();assert.equal(status.status,200);assert.ok(!text.includes(env.OPENAI_API_KEY));assert.equal(JSON.parse(text).capabilities.live,true);
-  assert.equal(await (await worker.fetch(request('/config.js'),env)).text(),'window.CROW_MAPS_KEY="test-browser-key";');
+  assert.equal(await (await worker.fetch(request('/config.js'),env)).text(),'window.CROW_MAPS_KEY="test-browser-key";window.CROW_MAPS_FALLBACK_KEY="";');
   const model=await worker.fetch(request('/models/body.glb'),env);assert.equal(model.headers.get('content-type'),'model/gltf-binary');
   const foreign=await worker.fetch(request('/api/panorama',{}, {origin:'https://other.example'}),env);assert.equal(foreign.status,403);
   const invalid=await worker.fetch(request('/api/panorama',{}),env);assert.equal(invalid.status,400);
