@@ -22,6 +22,15 @@ function expectedOrigin(req,env){
  return `${protocol}://${req.headers.host}`;
 }
 
+function normaliseTrustedProxyHost(req,env){
+ const remote=req.socket.remoteAddress||'';
+ if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(remote))return;
+ const forwarded=typeof req.headers['x-forwarded-host']==='string'?req.headers['x-forwarded-host'].split(',')[0].trim():'';
+ try{
+  if(forwarded&&env.PUBLIC_ORIGIN&&forwarded===new URL(env.PUBLIC_ORIGIN).host)req.headers.host=forwarded;
+ }catch{}
+}
+
 function sameOrigin(req,env){
  return req.headers.origin===expectedOrigin(req,env);
 }
@@ -63,7 +72,8 @@ export async function startZoRuntime({port=Number(process.env.PORT||3000),host='
  const usage=await openUsageDatabase(databasePath);
  const core=createHandler({env,fetchImpl});
  const server=createServer(async(req,res)=>{
-   const path=new URL(req.url,'http://localhost').pathname;
+  normaliseTrustedProxyHost(req,env);
+  const path=new URL(req.url,'http://localhost').pathname;
    if(path==='/config.js'){
      const body=`window.CROW_MAPS_KEY=${JSON.stringify(env.CROW_MAPS_KEY||'')};window.CROW_MAPS_FALLBACK_KEY=${JSON.stringify(env.CROW_MAPS_FALLBACK_KEY||'')};`;
      res.writeHead(200,{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'no-store','Content-Length':Buffer.byteLength(body)});res.end(body);return;

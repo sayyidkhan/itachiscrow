@@ -17,6 +17,8 @@ test('Zo runtime mirrors protected map and configuration contracts with persiste
  const base=await start(t);
  const config=await fetch(base+'/config.js');
  assert.equal(await config.text(),'window.CROW_MAPS_KEY="";window.CROW_MAPS_FALLBACK_KEY="";');
+ const page=await fetch(base+'/',{headers:headers()});
+ assert.equal(page.status,200);
  const allowed=await fetch(base+'/api/map-session',{method:'POST',headers:headers()});
  assert.deepEqual(await allowed.json(),{allowed:true});
  const rejected=await fetch(base+'/api/map-session',{method:'POST',headers:{...headers(),Origin:'https://other.example'}});
