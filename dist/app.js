@@ -1,5 +1,6 @@
 /* Browser-only Maps demo credential. No privileged server credentials. */
-const MAPS_KEY=typeof window.CROW_MAPS_KEY==='string'?window.CROW_MAPS_KEY.trim():'';
+const mapsKeys=window.CrowMapKeys;
+const MAPS_KEY=mapsKeys.key;
 const $=id=>document.getElementById(id);
 let map,Place,Marker,ready=false,playing=false,transitioning=false,progress=0,heading=125,speed=8,high=false,frameId,last=0,selected=null,detailSerial=0,placesLoaded=false;
 let crowParts=[], flightTime=0, bank=0, crowHeading=125;
@@ -82,7 +83,7 @@ function normalizeDestination(value){
  return result;
 }
 function getCrowContext(){return {mapReady:ready,destination:{...destination},spot:landingSpot?{...landingSpot}:null,savedPlaces:[...savedPlaces.values()].map(p=>({...p})),mode:scoutMode,landingMode,flightStage,routeDistanceMeters,locationStatus,locationMessage,hasUserLocation:Boolean(startLocation),startLocation:startLocation?{...startLocation}:null};}
-function emitCrow(name,extra={}){document.dispatchEvent(new CustomEvent('crow:'+name,{detail:{...getCrowContext(),...extra}}));}
+function emitCrow(name,extra={}){try{localStorage.setItem('crow:author-destination',JSON.stringify(landingSpot||destination))}catch{}document.dispatchEvent(new CustomEvent('crow:'+name,{detail:{...getCrowContext(),...extra}}));}
 async function locateBrowser(){
  try{if(window.CrowLocation?.locate)return await window.CrowLocation.locate();}catch{}
  return {status:'unavailable',place:null,message:'Location unavailable. Explore the Chelsea demo or choose a destination.'};
@@ -136,14 +137,14 @@ async function searchDestinations(query){
  if(!ready)throw Error('The map is still loading. Please try again when it is ready.');
  if(typeof query!=='string'||query.trim().length<2)throw Error('Enter a city, landmark, or address.');
  await ensurePlaces();
- const {places=[]}=await Place.searchByText({textQuery:query.trim().slice(0,250),fields:['id','displayName','formattedAddress','location'],maxResultCount:6});
+ const {places=[]}=await window.CrowPlaceSearch.search(Place,{textQuery:query.trim().slice(0,250),fields:['id','displayName','formattedAddress','location'],maxResultCount:6});
  return places.filter(p=>p.location).map(normalizeDestination);
 }
 async function searchCafes(){
  if(!ready)throw Error('The map is still loading. Try again shortly.');
  await ensurePlaces();
  const center=landingSpot||destination;
- const {places=[]}=await Place.searchByText({textQuery:'cafes near '+center.name,includedType:'cafe',locationBias:{center:{lat:center.lat,lng:center.lng},radius:2000},fields:['id','displayName','formattedAddress','location','rating','userRatingCount','googleMapsURI','photos'],maxResultCount:6});
+ const {places=[]}=await window.CrowPlaceSearch.search(Place,{textQuery:'cafes near '+center.name,includedType:'cafe',locationBias:{center:{lat:center.lat,lng:center.lng},radius:2000},fields:['id','displayName','formattedAddress','location','rating','userRatingCount','googleMapsURI','photos'],maxResultCount:6});
  return places.filter(p=>p.location).map(p=>({...normalizeDestination(p),rating:p.rating,ratingCount:p.userRatingCount,mapsUrl:p.googleMapsURI,photo:p.photos?.[0]?{url:p.photos[0].getURI({maxWidth:480}),authors:p.photos[0].authorAttributions||[]}:null}));
 }
 // Mesh-relative placement follows terrain and rooftops in cities at any elevation.
@@ -446,7 +447,7 @@ async function mountCrow(Model){
  const perch=startLocation||DEMO_PERCH,position={lat:perch.lat,lng:perch.lng,altitude:1.2};
  crowParts=names.map(name=>new Model({src:new URL(name+'.glb',MODEL_BASE),position,altitudeMode:'RELATIVE_TO_MESH',scale:2.2}));
  crowHeading=125;poseScout(position,1);
- modelsMounted=true;crowParts.forEach(part=>map.append(part));
+ crowParts.forEach(part=>map.append(part));modelsMounted=true;
  startupPerchTimer=setTimeout(()=>{if(!ready&&!startupFailed&&startupCameraStage==='waiting')frameInitialPerch();},1500);
 }
 function hint(s){$('hint').textContent=s;}
@@ -489,7 +490,7 @@ function reset(){
  restoreUserLocation(DEMO_PERCH);destination={...DEMO_DESTINATION};
  status('Ready · Chelsea demo');hint(locationMessage);emitCrow('destination');
 }
-function fail(message){startupFailed=true;clearTimeout(startupCameraTimer);cancelAnimationFrame(startupCameraFrame);clearTimeout(startupTimer);clearTimeout(sceneTimer);clearTimeout(transitionTimer);stop();ready=false;emitCrow('context');for(const id of ['fly','restart','speed','height','nearby'])$(id).disabled=true;$('loading').hidden=false;$('loading').querySelector('.spinner').classList.add('failed');$('loading').querySelector('h2').textContent='The city couldn’t load';$('loading').querySelector('p').textContent=message;$('reload').hidden=false;status('Map unavailable');;}
+function fail(message){if(!ready&&mapsKeys.retry())return;startupFailed=true;clearTimeout(startupCameraTimer);cancelAnimationFrame(startupCameraFrame);clearTimeout(startupTimer);clearTimeout(sceneTimer);clearTimeout(transitionTimer);stop();ready=false;emitCrow('context');for(const id of ['fly','restart','speed','height','nearby'])$(id).disabled=true;$('loading').hidden=false;$('loading').querySelector('.spinner').classList.add('failed');$('loading').querySelector('h2').textContent='The city couldn’t load';$('loading').querySelector('p').textContent=message;$('reload').hidden=false;status('Map unavailable');;}
 function el(tag,text,cls){const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;return e;}
 function safeLink(url,label){try{const u=new URL(url);if(!['https:','http:'].includes(u.protocol))return null;const a=el('a',label);a.href=u.href;a.target='_blank';a.rel='noopener noreferrer';return a;}catch{return null}}
 async function openPlace(id){if(!id)return;clearTimeout(transitionTimer);stop();selected=id;const serial=++detailSerial;const pane=$('detail-content');pane.replaceChildren(el('h2','Opening this place…'),el('p','Fetching available details from Google.'));if(!$('details').open)$('details').showModal();
@@ -551,7 +552,7 @@ window.initCrow=async()=>{
   },18000);
  }catch(e){fail(e.name==='AbortError'?'The crow download timed out. Check your connection and reload.':e.message?.toLowerCase().includes('model')?'The 3D crow could not load. Check your connection and reload.':'The city could not start. Try opening this link directly in Safari.')}
 };
-window.gm_authFailure=()=>fail('Google rejected the map key. Check demo access and any website restrictions, then reload.');
+window.gm_authFailure=()=>{if(mapsKeys.retry())return;fail('Google rejected the map key. Check demo access and any website restrictions, then reload.');};
 $('fly').onclick=start;$('restart').onclick=reset;$('nearby').onclick=nearby;$('reload').onclick=()=>location.reload();$('speed').onclick=()=>{speed=speed===8?12:speed===12?4:8;$('speed').textContent=speed===8?'1×':speed===12?'1.5×':'0.5×'};$('height').onclick=()=>{high=!high;$('height').textContent=high?'Lower view':'Higher view';if(!ready)return;if(scoutMode!=='demo'){if(scoutPosition&&!playing&&!transitioning)map.flyCameraTo({endCamera:scoutCamera(scoutPosition,scoutMode==='landed'),durationMillis:900});return;}if(playing){const cam=camera(progress);map.tilt=cam.tilt;map.range=cam.range}else if(!transitioning)map.flyCameraTo({endCamera:camera(progress),durationMillis:900})};$('labels').onchange=e=>{if(map)map.mode=e.target.checked?'HYBRID':'SATELLITE'};$('close').onclick=()=>{detailSerial++;$('details').close()};$('details').addEventListener('cancel',()=>detailSerial++);$('info').onclick=()=>{if(playing||transitioning){clearTimeout(transitionTimer);stop()}$('about').showModal()};$('close-about').onclick=$('about-done').onclick=()=>$('about').close();document.addEventListener('visibilitychange',()=>{if(document.hidden&&(playing||transitioning)){clearTimeout(transitionTimer);stop()}});document.addEventListener('keydown',e=>{
  if(e.key==='Escape'&&landingMode){cancelLandingMode();return;}
  if(e.code!=='Space'||e.defaultPrevented||e.repeat||e.isComposing||e.ctrlKey||e.metaKey||e.altKey)return;
@@ -566,9 +567,12 @@ if(!MAPS_KEY){
  fail('Add your Google Maps browser key to dist/config.js, then reload to explore the 3D map.');
  $('loading').querySelector('h2').textContent='Connect Google Maps';
 }else{
+ (async()=>{
+ try{const response=await fetch('/api/map-session',{method:'POST'});const result=await response.json();if(!response.ok){const message=result.error?.message||'Map is temporarily unavailable.';startupFailed=true;$('loading').querySelector('h2').textContent='Map limit';$('loading').querySelector('p').textContent=message;$('reload').hidden=false;return}}catch{startupFailed=true;$('loading').querySelector('p').textContent='Could not check map availability. Reload to try again.';$('reload').hidden=false;return}
  initialLocationPromise=locateBrowser();
  const script=document.createElement('script');script.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(MAPS_KEY)+'&v=beta&loading=async&callback=initCrow';script.async=true;
  script.onerror=()=>fail('Couldn’t reach Google Maps. Check your connection, then try again.');
  startupTimer=setTimeout(()=>{if(!ready&&!startupFailed){$('loading').querySelector('p').textContent='Connecting to the map. Check your connection if this takes longer than expected.';$('reload').hidden=false}},22000);
  document.head.append(script);
+ })();
 }

@@ -2,10 +2,20 @@
 let handler, activeEnv;
 const publicOrigin = 'https://itachis-crow.promptalchemistlabs.chatgpt.site';
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    const group=usageGroup(url.pathname);
+    if(group){
+      if(request.method!=='POST')return Response.json({error:{message:'Use POST.'}},{status:405});
+      if(request.headers.get('origin')!==(env.PUBLIC_ORIGIN||publicOrigin))return Response.json({error:{message:'Use the website to make this request.'}},{status:403});
+      let permit;try{permit=await enforceUsage(request,env.DB,group)}catch{return Response.json({error:{message:'Usage protection is temporarily unavailable. Please try again shortly.'}},{status:503,headers:{'Retry-After':'30'}})}
+      if(!permit.allowed)return Response.json({error:{code:'usage_limit',message:`You’ve reached the ${group} limit. Try again in ${permit.retryAfter} seconds.`,retryAfter:permit.retryAfter}},{status:429,headers:{'Retry-After':String(permit.retryAfter),'Cache-Control':'no-store'}});
+      if(permit.turn===1)ctx?.waitUntil(env.DB.prepare('DELETE FROM usage_limits WHERE id IN (SELECT id FROM usage_limits WHERE expires<? LIMIT 100)').bind(Date.now()).run().catch(()=>{}));
+      if(group==='map')return Response.json({allowed:true},{headers:{'Cache-Control':'no-store'}});
+      if(group==='search')return proxyPlaceSearch(request,env,permit.turn);
+    }
     if (url.pathname === '/config.js') {
-      return new Response(`window.CROW_MAPS_KEY=${JSON.stringify(env.CROW_MAPS_KEY || '')};`, {
+      return new Response(`window.CROW_MAPS_KEY=${JSON.stringify(env.CROW_MAPS_KEY || '')};window.CROW_MAPS_FALLBACK_KEY=${JSON.stringify(env.CROW_MAPS_FALLBACK_KEY || '')};`, {
         headers: {'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'no-store'},
       });
     }

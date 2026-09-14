@@ -1,3 +1,4 @@
+import {defaultAuthorPhoto} from './author-reference.js';
 const $ = id => document.getElementById(id);
 const element = (tag, text, className) => { const e=document.createElement(tag);e.textContent=text;if(className)e.className=className;return e; };
 const placeKey = context => JSON.stringify(context.spot || context.destination);
@@ -27,6 +28,7 @@ export function createTravelExperience({getContext, request, renderText, open, o
     $('find-cafes').disabled=false;controls();
   }
   function removePhoto() { uploadSerial++;portraitJob?.abort();portraitJob=null;photo=null;$('traveller-photo').value='';$('traveller-preview').removeAttribute('src');$('traveller-preview').hidden=true;$('remove-photo').hidden=true;$('portrait-status').textContent='';clearPortrait();controls(); }
+  defaultAuthorPhoto().then(data=>{if(uploadSerial||photo)return;photo=data;$('traveller-preview').src=data;$('traveller-preview').hidden=false;controls()}).catch(error=>{$('portrait-status').textContent=error.message});
   $('remove-photo').onclick=removePhoto;
   $('use-saved-photo').onchange=()=>{portraitJob?.abort();portraitJob=null;clearPortrait();controls();};
   $('traveller-photo').onchange=async()=>{

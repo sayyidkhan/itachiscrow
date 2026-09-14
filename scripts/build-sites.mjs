@@ -30,8 +30,9 @@ for (const entry of await readdir('dist')) {
   await cp(`dist/${entry}`, `dist/client/${entry}`, { recursive: true });
 }
 const adapter = await readFile('worker/adapter.mjs','utf8');
-await writeFile('dist/server/index.js', helpers + core + '\n' + adapter);
+await writeFile('dist/server/index.js', helpers + core + '\n' + await readFile('worker/usage-limits.mjs','utf8') + '\n' + adapter);
 await mkdir('dist/.openai', { recursive: true });
 try { await cp('.openai/hosting.json', 'dist/.openai/hosting.json'); }
 catch(error) { if(error.code!=='ENOENT')throw error;console.log('No GPT Sites hosting configuration present; built bundles are available for local verification.'); }
+await cp('drizzle','dist/.openai/drizzle',{recursive:true});
 console.log('Built Sites Worker and browser assets.');

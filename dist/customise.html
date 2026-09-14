@@ -1,42 +1,6 @@
-<!doctype html>
-<html lang="en-GB">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#111a20">
-  <title>Crow studio — Itachi’s Crow</title>
-  <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="customise.css">
-</head>
-<body>
-  <header class="masthead"><a class="wordmark" href="index.html">◉ <span>Itachi’s Crow</span></a><a class="back" href="explore.html">Back to the map ↗</a></header>
-  <main>
-    <div class="intro"><div><p class="eyebrow">THE CROW STUDIO</p><h1>Make it yours.</h1></div><p>A closer look at your travelling companion.<br> Choose its colours. Give it character.</p></div>
-    <div class="studio">
-      <section class="stage" aria-label="Interactive crow preview">
-        <div class="stage-label"><span class="dot"></span> LIVE 3D PREVIEW <span class="model-label">01 / CORVUS</span></div>
-        <div id="viewport" aria-label="3D crow. Drag to rotate and pinch or scroll to zoom."></div>
-        <div id="loading" role="status">Bringing your crow into the light…</div>
-        <div class="view-tools" aria-label="Preview camera"><button data-view="portrait" aria-pressed="true" disabled>Portrait</button><button data-view="side" aria-pressed="false" disabled>Side</button><button data-view="top" aria-pressed="false" disabled>Wings</button><button data-view="eyes" aria-pressed="false" disabled>Eyes</button></div>
-        <div class="pose-tools" aria-label="Crow pose"><button data-pose="perched" aria-pressed="true" disabled>Perched</button><button data-pose="flight" aria-pressed="false" disabled>Flight</button></div>
-        <div class="stage-footer"><span>Drag to rotate · Pinch or scroll to zoom</span><div><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="wingbeats" aria-pressed="false" disabled>Wingbeats <span>off</span></button></div></div>
-      </section>
-      <aside class="palette">
-        <p class="eyebrow">YOUR SIGNATURE</p><h2>A little instinct.<br> A lot of personality.</h2>
-        <fieldset id="colours" disabled><legend>Colour palette</legend>
-          <label class="colour-row"><span><strong>Plumage</strong><small>Head, body & tail</small></span><span class="colour-control"><output for="body"></output><input id="body" type="color" aria-label="Plumage colour"></span></label>
-          <label class="colour-row"><span><strong>Flight feathers</strong><small>Long wing feathers</small></span><span class="colour-control"><output for="feathers"></output><input id="feathers" type="color" aria-label="Flight feather colour"></span></label>
-          <label class="colour-row"><span><strong>Feather layers</strong><small>Upper wing highlights</small></span><span class="colour-control"><output for="coverts"></output><input id="coverts" type="color" aria-label="Feather layer colour"></span></label>
-          <label class="colour-row"><span><strong>Eyes</strong><small>A spark of character</small></span><span class="colour-control"><output for="eyes"></output><input id="eyes" type="color" aria-label="Eye colour"></span></label>
-        </fieldset>
-        <div class="presets"><p>START WITH A MOOD</p><div><button data-preset="original">Original</button><button data-preset="moon">Moonstone</button><button data-preset="ember">Ember</button><button data-preset="indigo">Indigo</button></div></div>
-        <div class="save-area"><button id="save" class="primary" disabled>Save my crow <span>↗</span></button><button id="restore" class="text-button" disabled>Restore original colours</button><p id="save-status" role="status" aria-live="polite">Saved on this browser. Use it on your next flight.</p></div>
-      </aside>
-    </div>
-    <footer class="footnote"><span>Same crow. A different point of view.</span><span>ITACHI’S CROW / STUDIO</span></footer>
-  </main>
-  <script type="module" src="customise.js"></script>
-  <link rel="stylesheet" href="music.css">
-  <script type="module" src="music.js"></script>
-</body>
-</html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b191d"><title>Author Studio — Itachi’s Crow</title><link rel="stylesheet" href="author.css"></head><body>
+<header><a href="index.html" class="brand">Itachi’s Crow</a><a href="explore.html">Back to the map ↗</a></header>
+<main><div class="intro"><p class="eyebrow">AUTHOR STUDIO</p><h1>You. Somewhere new.</h1><p>Choose a place. Imagine yourself there.</p></div>
+<div class="studio"><aside><img class="reference" src="images/author-default.jpeg" alt="Reference photo of Sayyid Khan"><div class="identity"><h2>Sayyid Khan</h2><span>Default face reference</span></div><p class="note">Your crow stays on the map. Use your face reference only when you generate a scene of yourself at a destination.</p><a class="subtle" href="crow-studio.html">Crow colours ↗</a><p><a href="usage-limits.html">Usage limits ↗</a></p></aside>
+<section class="workspace"><form id="author-form"><label for="destination">WHERE ARE YOU GOING?</label><input id="destination" maxlength="160" required placeholder="Eiffel Tower, Paris, France"><p class="note" id="place-note">Uses your selected map destination.</p><fieldset><legend>CHOOSE A SCENE</legend><div class="scenes"><label><input type="radio" name="scene" value="Landmark portrait" checked><span>Landmark portrait</span></label><label><input type="radio" name="scene" value="Café stop"><span>Café stop</span></label><label><input type="radio" name="scene" value="Evening walk"><span>Evening walk</span></label></div></fieldset><label for="direction">MAKE IT YOURS <span class="optional">OPTIONAL</span></label><textarea id="direction" maxlength="400" rows="2" placeholder="A navy jacket, candid smile, golden-hour light…"></textarea><div class="actions"><button class="primary" id="generate" type="submit">Picture me here ↗</button><button type="button" id="cancel" hidden>Cancel</button></div><p class="note">Your reference photo is sent to OpenAI when you generate. Images are imagined visits; facial likeness can vary.</p><p id="status" role="status" aria-live="polite"></p></form>
+<div id="empty" class="empty"><span>YOUR NEXT CHAPTER</span><h2>A place. A moment. You.</h2><p>Your generated scenes will appear here.</p></div><div id="gallery" class="gallery" aria-label="Generated travel scenes"></div></section></div></main><script type="module" src="author.js"></script></body></html>

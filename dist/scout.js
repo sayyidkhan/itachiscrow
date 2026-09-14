@@ -1,3 +1,4 @@
+import {createSceneAuthor} from './scene-author.js';
 import { PanoramaViewer } from './panorama.js?v=2';
 import { createPanoramaJourney } from './panorama-journey.js';
 import { CrowChat } from './chat.js?v=2';
@@ -108,8 +109,9 @@ async function generateSceneNow(signal,regenerate=false){
   }catch(error){if(error.name!=='AbortError'){note(error.message,true);throw error;}return {status:'cancelled'};}
   finally{signal?.removeEventListener('abort',cancel);if(generation===controller){generation=null;$('generate-scene').disabled=!context.spot||!capabilities.panorama;$('generate-scene').textContent='Generate scene ↗';}}
 }
+const sceneAuthor=createSceneAuthor({getScene:()=>scene,getViewer:()=>viewer,request,cancelJourney:()=>panoramaJourney.cancel()});
 async function openScene(){
-  if(!scene)return;window.CrowMap?.pause();
+  if(!scene)return;window.CrowMap?.pause();sceneAuthor.open();
   $('scene-open').hidden=false;
   $('panorama-title').textContent=scene.spot.name;$('panorama-download').href=scene.imageUrl;
   if(!$('panorama-dialog').open)$('panorama-dialog').showModal();

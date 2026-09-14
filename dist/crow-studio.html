@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111a20">
+  <title>Crow studio — Itachi’s Crow</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="customise.css">
+</head>
+<body>
+  <header class="masthead"><a class="wordmark" href="index.html">◉ <span>Itachi’s Crow</span></a><a class="back" href="explore.html">Back to the map ↗</a></header>
+  <main>
+    <div class="intro"><div><p class="eyebrow">THE CROW STUDIO</p><h1>Make it yours.</h1></div><p>A closer look at your travelling companion.<br> Choose its colours. Give it character.</p></div>
+    <div class="studio">
+      <section class="stage" aria-label="Interactive crow preview">
+        <div class="stage-label"><span class="dot"></span> LIVE 3D PREVIEW <span class="model-label">01 / CORVUS</span></div>
+        <div id="viewport" aria-label="3D crow. Drag to rotate and pinch or scroll to zoom."></div>
+        <div id="loading" role="status">Bringing your crow into the light…</div>
+        <div class="view-tools" aria-label="Preview camera"><button data-view="portrait" aria-pressed="true" disabled>Portrait</button><button data-view="side" aria-pressed="false" disabled>Side</button><button data-view="top" aria-pressed="false" disabled>Wings</button><button data-view="eyes" aria-pressed="false" disabled>Eyes</button></div>
+        <div class="pose-tools" aria-label="Crow pose"><button data-pose="perched" aria-pressed="true" disabled>Perched</button><button data-pose="flight" aria-pressed="false" disabled>Flight</button></div>
+        <div class="stage-footer"><span>Drag to rotate · Pinch or scroll to zoom</span><div><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="wingbeats" aria-pressed="false" disabled>Wingbeats <span>off</span></button></div></div>
+      </section>
+      <aside class="palette">
+        <p class="eyebrow">YOUR SIGNATURE</p><h2>A little instinct.<br> A lot of personality.</h2>
+        <fieldset id="colours" disabled><legend>Colour palette</legend>
+          <label class="colour-row"><span><strong>Plumage</strong><small>Head, body & tail</small></span><span class="colour-control"><output for="body"></output><input id="body" type="color" aria-label="Plumage colour"></span></label>
+          <label class="colour-row"><span><strong>Flight feathers</strong><small>Long wing feathers</small></span><span class="colour-control"><output for="feathers"></output><input id="feathers" type="color" aria-label="Flight feather colour"></span></label>
+          <label class="colour-row"><span><strong>Feather layers</strong><small>Upper wing highlights</small></span><span class="colour-control"><output for="coverts"></output><input id="coverts" type="color" aria-label="Feather layer colour"></span></label>
+          <label class="colour-row"><span><strong>Eyes</strong><small>A spark of character</small></span><span class="colour-control"><output for="eyes"></output><input id="eyes" type="color" aria-label="Eye colour"></span></label>
+        </fieldset>
+        <div class="presets"><p>START WITH A MOOD</p><div><button data-preset="original">Original</button><button data-preset="moon">Moonstone</button><button data-preset="ember">Ember</button><button data-preset="indigo">Indigo</button></div></div>
+        <div class="save-area"><button id="save" class="primary" disabled>Save my crow <span>↗</span></button><button id="restore" class="text-button" disabled>Restore original colours</button><p id="save-status" role="status" aria-live="polite">Saved on this browser. Use it on your next flight.</p></div>
+      </aside>
+    </div>
+    <footer class="footnote"><span>Same crow. A different point of view.</span><span>ITACHI’S CROW / STUDIO</span></footer>
+  </main>
+  <script type="module" src="customise.js"></script>
+  <link rel="stylesheet" href="music.css">
+  <script type="module" src="music.js"></script>
+</body>
+</html>

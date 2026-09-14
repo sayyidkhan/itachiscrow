@@ -1,0 +1,34 @@
+export const usagePolicies={chat:[12,120],search:[20,100],map:[4,10],image:[6,24],voice:[3,12],research:[3,20]};
+export function usageGroup(path){return path==='/api/chat'?'chat':path==='/api/places/search'?'search':path==='/api/map-session'?'map':path==='/api/live/session'?'voice':path==='/api/portrait'||path.startsWith('/api/panorama')?'image':path==='/api/plan'||path==='/api/discover'?'research':null;}
+export const usageSQL=`INSERT INTO usage_limits(id,minute,minute_count,hour,hour_count,expires) VALUES(?,?,1,?,1,?)
+ON CONFLICT(id) DO UPDATE SET minute=excluded.minute,minute_count=CASE WHEN usage_limits.minute=excluded.minute THEN usage_limits.minute_count+1 ELSE 1 END,hour=excluded.hour,hour_count=CASE WHEN usage_limits.hour=excluded.hour THEN usage_limits.hour_count+1 ELSE 1 END,expires=excluded.expires
+WHERE (usage_limits.minute<>excluded.minute OR usage_limits.minute_count<?) AND (usage_limits.hour<>excluded.hour OR usage_limits.hour_count<?)
+RETURNING minute_count,hour_count`;
+export async function enforceUsage(request,db,group,now=Date.now()){
+ if(!db)throw Error('Usage limits unavailable');
+ const minute=Math.floor(now/60000),hour=Math.floor(now/3600000),day=Math.floor(now/86400000);
+ const raw=group+':'+day+':'+(request.headers.get('cf-connecting-ip')||'unknown');
+ const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(raw));const id=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
+ const [perMinute,perHour]=usagePolicies[group];
+ const row=await db.prepare(usageSQL).bind(id,minute,hour,now+86400000,perMinute,perHour).first();
+ if(row)return {allowed:true,turn:row.hour_count};
+ const current=await db.prepare('SELECT hour,hour_count FROM usage_limits WHERE id=?').bind(id).first();
+ const until=current?.hour===hour&&current.hour_count>=perHour?(hour+1)*3600000:(minute+1)*60000;
+ return {allowed:false,retryAfter:Math.max(1,Math.ceil((until-now)/1000))};
+}
+export async function proxyPlaceSearch(request,env,turn){
+ if(Number(request.headers.get('content-length'))>4096)return Response.json({error:{message:'Search request is too large.'}},{status:413});
+ const reader=request.body?.getReader();if(!reader)return Response.json({error:{message:'Enter a search.'}},{status:400});
+ let bytes=0,chunks=[];while(true){const {done,value}=await reader.read();if(done)break;bytes+=value.length;if(bytes>4096){await reader.cancel();return Response.json({error:{message:'Search request is too large.'}},{status:413})}chunks.push(value)}
+ let input;try{const data=new Uint8Array(bytes);let i=0;for(const chunk of chunks){data.set(chunk,i);i+=chunk.length}input=JSON.parse(new TextDecoder().decode(data))}catch{return Response.json({error:{message:'Invalid search request.'}},{status:400})}
+ if(typeof input.textQuery!=='string'||!input.textQuery.trim()||input.textQuery.length>250)return Response.json({error:{message:'Enter a place name under 250 characters.'}},{status:400});
+ const body={textQuery:input.textQuery,pageSize:6};if(input.includedType==='cafe')body.includedType='cafe';
+ const circle=input.locationBias?.circle;if(circle&&Number.isFinite(circle.center?.latitude)&&Number.isFinite(circle.center?.longitude)&&Math.abs(circle.center.latitude)<=90&&Math.abs(circle.center.longitude)<=180)body.locationBias={circle:{center:circle.center,radius:2000}};
+ const keys=[...new Set([env.CROW_MAPS_KEY,env.CROW_MAPS_FALLBACK_KEY].filter(Boolean))];if(turn%2===0)keys.reverse();
+ for(const key of keys){try{
+ const response=await fetch('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':key,'X-Goog-FieldMask':'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.googleMapsUri,places.photos',Referer:env.PUBLIC_ORIGIN||'https://itachis-crow.promptalchemistlabs.chatgpt.site/'},body:JSON.stringify(body),signal:AbortSignal.timeout(15000),redirect:'error'});
+ if(response.ok)return Response.json({...await response.json(),photoKeySlot:key===env.CROW_MAPS_KEY?'primary':'backup'},{headers:{'Cache-Control':'no-store'}});
+ if(![401,403,429,500,502,503,504].includes(response.status))break;
+ }catch{}}
+ return Response.json({error:{message:'Place search is temporarily unavailable. Try again shortly.'}},{status:503,headers:{'Retry-After':'30'}});
+}
