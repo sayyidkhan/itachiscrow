@@ -22,8 +22,13 @@ a:hover { color: var(--mint); }
 .site-header { max-width: 1340px; margin: auto; padding: 24px 48px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--line); }
 .brand { font: 700 26px Georgia, serif; letter-spacing: -.8px; white-space: nowrap; }
 .brand-dot { color: var(--mint); }
-.map-link { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 13px; color: #c4d4d0; }
-.map-link > span { font-size: 20px; }
+.studio-menu { position: relative; }
+#studio-menu-toggle { width: 44px; height: 44px; padding: 0; font-size: 18px; letter-spacing: 2px; }
+#studio-menu-toggle[aria-expanded=true] { border-color: var(--mint); color: var(--mint); }
+#studio-navigation { position: absolute; z-index: 10; top: calc(100% + 10px); right: 0; width: 208px; max-width: calc(100vw - 40px); padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: #142b2e; box-shadow: 0 16px 40px #0006; }
+#studio-navigation a { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 44px; padding: 12px; border-radius: 7px; font-size: 13px; }
+#studio-navigation a:hover, #studio-navigation a:focus-visible { background: #24443f; color: var(--mint); }
+#studio-navigation a > span { color: var(--muted); }
 main { max-width: 1240px; margin: auto; padding: 48px 48px 24px; }
 .eyebrow { font-size: 10px; font-weight: 600; letter-spacing: .2em; color: var(--mint); }
 .intro .eyebrow { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; }
@@ -135,7 +140,6 @@ textarea { padding: 14px; line-height: 1.5; resize: vertical; min-height: 92px; 
 @media (max-width: 760px) {
   .site-header { padding: 12px 20px; }
   .brand { font-size: 22px; }
-  .map-link { font-size: 12px; gap: 6px; }
   main { padding: 26px 20px max(16px, env(safe-area-inset-bottom)); }
   .intro .eyebrow { font-size: 9px; margin-bottom: 12px; }
   .intro h1 { font-size: clamp(30px, 8.5vw, 48px); letter-spacing: -1.3px; }
