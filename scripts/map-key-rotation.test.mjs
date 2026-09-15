@@ -65,6 +65,19 @@ test('place photo URLs use the third credential when the third slot succeeds',as
  assert.equal(new URL(result.places[0].photos[0].getURI({})).searchParams.get('key'),'test-three');
 });
 
+test('Places falls back to the browser only when the hosted Worker cannot reach Google',async()=>{
+ const window={...env,CrowMapKeys:{nextSearchKeys:()=>['test-two','test-three']}};
+ const calls=[];
+ runInNewContext(readFileSync(new URL('../dist/place-search.js',import.meta.url),'utf8'),{window,AbortSignal,fetch:async(url,options)=>{
+  calls.push([url,options.headers['X-Goog-Api-Key']]);
+  if(url==='/api/places/search')return Response.json({error:{message:'temporary'}},{status:503,headers:{'X-Places-Diagnostic':'network_or_timeout'}});
+  return Response.json({places:[{location:{latitude:1,longitude:2},photos:[{name:'places/test/photos/test'}]}]});
+ }});
+ const result=await window.CrowPlaceSearch.search(null,{textQuery:'Singapore'});
+ assert.deepEqual(calls,[['/api/places/search',undefined],['https://places.googleapis.com/v1/places:searchText','test-two']]);
+ assert.equal(new URL(result.places[0].photos[0].getURI({})).searchParams.get('key'),'test-two');
+});
+
 test('numbered keys sort numerically, allow gaps, and override legacy slots',async()=>{
  const keys={CROW_MAPS_KEY10:'test-ten',CROW_MAPS_KEY2:'test-two',CROW_MAPS_KEY1:'test-one',CROW_MAPS_KEY4:'test-four',CROW_MAPS_KEY5:' test-four ',CROW_MAPS_KEY:'old-one',CROW_MAPS_FALLBACK_KEY:'old-two',OPENAI_API_KEY:'private-test-value'};
  assert.deepEqual(mapKeyEntries(keys).map(entry=>entry.key),['test-one','test-two','test-four','test-ten']);
