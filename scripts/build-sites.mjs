@@ -1,9 +1,12 @@
 import { readFile, writeFile, mkdir, readdir, cp, rm, chmod } from 'node:fs/promises';
 import {readFileConfig} from '../server/config-file.mjs';
+import { build } from 'esbuild';
 
 const args=process.argv.slice(2);
 if(args.length&&!(args.length===2&&args[0]==='--config'))throw Error('Usage: npm run build -- [--config /private/config.json]');
 const fileConfig=await readFileConfig(args[1]||'config.example.json');
+await build({ entryPoints: [new URL('../src/voice-orb.js', import.meta.url).pathname], outfile: 'dist/voice-orb.js', bundle: true, minify: true, format: 'esm', target: 'es2022' });
+await cp(new URL('../node_modules/thinking-orbs/LICENSE', import.meta.url), 'dist/THINKING-ORBS-LICENSE');
 
 // Adapt the existing API handler without changing the Node development server.
 let core = await readFile('server/index.mjs', 'utf8');

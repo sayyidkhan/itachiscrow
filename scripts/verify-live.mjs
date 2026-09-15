@@ -59,6 +59,57 @@ function responseEvent(channel, event, delegationId = 'delegation_1') {
   channel.receive({ type: 'response.event', delegation_id: delegationId, event });
 }
 
+test('voice meter reads existing streams, respects mute and releases audio resources', async () => {
+  const contexts = [], levels = [];
+  class MeterContext {
+    nodes = [];
+    constructor() { contexts.push(this); }
+    async resume() {}
+    async close() { this.closed = true; }
+    createMediaStreamSource(stream) {
+      assert(stream);
+      const source = { connect() {}, disconnect() { this.disconnected = true; } };
+      this.nodes.push(source);
+      return source;
+    }
+    createAnalyser() {
+      const analyser = { getFloatTimeDomainData(data) { data.fill(.1); }, disconnect() { this.disconnected = true; } };
+      this.nodes.push(analyser);
+      return analyser;
+    }
+  }
+  const f = fixture({ AudioContext: MeterContext, onLevel: value => levels.push(value) });
+  try {
+    const channel = await f.connect();
+    f.peers[0].dispatchEvent(Object.assign(new Event('track'), { streams: [f.stream] }));
+    await new Promise(resolve => setTimeout(resolve, 100));
+    assert(levels.at(-1).input > 0 && levels.at(-1).output > 0);
+    f.client.setMuted(true);
+    await new Promise(resolve => setTimeout(resolve, 100));
+    assert.equal(levels.at(-1).input, 0);
+    assert(levels.at(-1).output > 0, 'Muting the microphone does not mute the guide');
+    responseEvent(channel, { type: 'response.created', response: { id: 'orb-response' } });
+    assert(f.client.snapshot.responding);
+    responseEvent(channel, { type: 'response.completed', response: { id: 'orb-response' } });
+    assert(!f.client.snapshot.responding);
+    await f.close();
+    assert(contexts[0].closed);
+    assert(contexts[0].nodes.every(node => node.disconnected));
+    assert.deepEqual(levels.at(-1), { input: 0, output: 0 });
+    const count = levels.length;
+    await new Promise(resolve => setTimeout(resolve, 100));
+    assert.equal(levels.length, count, 'No metering continues after hang-up');
+  } finally { await f.close(); }
+});
+
+test('an unavailable audio meter never prevents a voice call', async () => {
+  const f = fixture({ AudioContext: class { constructor() { throw Error('Audio context unavailable'); } }, onLevel() {} });
+  await f.connect();
+  assert.equal(f.client.status, 'connected');
+  assert.deepEqual(f.errors, []);
+  await f.close();
+});
+
 test('voice directional commands are allowlisted and duplicate delivery cannot steer twice', async () => {
   for (const command of ['forward','backward','left','right','higher','lower','stop','land_here','free_roam','follow']) {
     assert.deepEqual(validateLiveAction('navigate', { command }), { command });

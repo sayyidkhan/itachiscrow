@@ -137,6 +137,7 @@ export class CrowLive {
     this.microphoneAccepted = false;
     this.playbackBlocked = false;
     this.pendingAction = null;
+    this.responding = false;
     this.sessionId = null;
     this.context = {};
     this.usage = null;
@@ -153,7 +154,7 @@ export class CrowLive {
 
   get snapshot() {
     return { status: this.status, muted: this.muted, microphoneAccepted: this.microphoneAccepted,
-      playbackBlocked: this.playbackBlocked, pendingAction: this.pendingAction,
+      playbackBlocked: this.playbackBlocked, pendingAction: this.pendingAction, responding: this.responding,
       sessionId: this.sessionId, usage: this.usage, finalized: this.finalized };
   }
 
@@ -169,6 +170,8 @@ export class CrowLive {
     if (this.status === 'closing') throw new Error('The previous voice session is still closing.');
     this.context = context;
     this.status = 'connecting';
+    this.responding = false;
+    this._prepareMeter();
     this.muted = false;
     this.microphoneAccepted = false;
     this.playbackBlocked = false;
@@ -209,6 +212,7 @@ export class CrowLive {
     const microphone = await mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
     if (!this._current(generation)) { microphone.getTracks().forEach(track => track.stop()); return; }
     this._microphone = microphone;
+    this._attachMeter('input', microphone);
     this._audio = this.options.audioElement || this.options.createAudio?.() || document.createElement('audio');
     this._audio.autoplay = true;
     this._audio.setAttribute?.('playsinline', '');
@@ -218,6 +222,7 @@ export class CrowLive {
       if (!this._current(generation)) return;
       const Stream = this.options.MediaStream || globalThis.MediaStream;
       this._audio.srcObject = event.streams?.[0] || new Stream([event.track]);
+      this._attachMeter('output', this._audio.srcObject);
       this.resumeAudio().catch(() => {});
     });
     peer.addEventListener('connectionstatechange', () => {
@@ -344,11 +349,17 @@ export class CrowLive {
     if (event.type === 'response.created') {
       const id = event.response?.id;
       if (typeof id !== 'string') return;
+      this.responding = true;
+      this._notify();
       this._delegationResponses.set(delegationId, id);
       if (!this._responses.has(id)) this._responses.set(id, { id, calls: [], continued: false });
     }
     const responseId = event.response?.id || event.response_id || this._delegationResponses.get(delegationId);
     const response = this._responses.get(responseId);
+    if (['response.completed', 'response.failed', 'response.incomplete'].includes(event.type)) {
+      this.responding = false;
+      this._notify();
+    }
     if (event.type === 'response.output_item.done' && event.item?.type === 'function_call') {
       // Arguments-done and terminal output snapshots are intentionally ignored.
       if (!response || typeof event.item.call_id !== 'string') return;
@@ -416,6 +427,53 @@ export class CrowLive {
 
   cancelActions(){this._actionAbort?.abort();this._actionAbort=new AbortController();}
 
+  _prepareMeter() {
+    if (!this.options.onLevel) return;
+    const AudioContext = this.options.AudioContext || globalThis.AudioContext || globalThis.webkitAudioContext;
+    if (!AudioContext) return;
+    try {
+      this._meterContext = new AudioContext();
+      this._meterContext.resume().catch(() => {});
+      this._meters = {};
+      this._meterTimer = setInterval(() => {
+        if (this.status !== 'connected' || globalThis.document?.hidden) return;
+        const levels = { input: 0, output: 0 };
+        for (const [kind, meter] of Object.entries(this._meters)) {
+          if (kind === 'input' && this.muted || kind === 'output' && this.playbackBlocked) continue;
+          meter.analyser.getFloatTimeDomainData(meter.data);
+          const rms = Math.sqrt(meter.data.reduce((sum, value) => sum + value * value, 0) / meter.data.length);
+          levels[kind] = Math.min(1, rms * 4);
+        }
+        this.options.onLevel(levels);
+      }, 80);
+    } catch { this._clearMeter(); }
+  }
+
+  _attachMeter(kind, stream) {
+    if (!this._meterContext) return;
+    try {
+      this._meters[kind]?.source.disconnect();
+      this._meters[kind]?.analyser.disconnect();
+      const source = this._meterContext.createMediaStreamSource(stream);
+      const analyser = this._meterContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      this._meters[kind] = { source, analyser, data: new Float32Array(analyser.fftSize) };
+    } catch {}
+  }
+
+  _clearMeter() {
+    clearInterval(this._meterTimer);
+    for (const meter of Object.values(this._meters || {})) {
+      meter.source.disconnect();
+      meter.analyser.disconnect();
+    }
+    this._meterContext?.close().catch(() => {});
+    this._meterContext = null;
+    this._meters = {};
+    this.options.onLevel?.({ input: 0, output: 0 });
+  }
+
   setMuted(muted) {
     this.muted = Boolean(muted);
     this._microphone?.getAudioTracks().forEach(track => { track.enabled = !this.muted; });
@@ -432,6 +490,7 @@ export class CrowLive {
     if (!this._audio) return;
     const generation = this._generation;
     try {
+      this._meterContext?.resume().catch(() => {});
       await this._audio.play();
       if (!this._current(generation)) return;
       this.playbackBlocked = false;
@@ -455,6 +514,7 @@ export class CrowLive {
       return this.snapshot;
     }
     this.status = 'closing';
+    this._clearMeter();
     this._actionAbort?.abort();
     this._microphone?.getAudioTracks().forEach(track => { track.enabled = false; });
     this._audio?.pause();
@@ -484,6 +544,8 @@ export class CrowLive {
   }
 
   _cleanup() {
+    this._clearMeter();
+    this.responding = false;
     ++this._generation;
     this._abort?.abort();
     this._actionAbort?.abort();

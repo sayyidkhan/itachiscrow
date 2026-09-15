@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="map-glass.css?v=1">
 <link rel="stylesheet" href="discovery.css?v=3">
 <link rel="stylesheet" href="flight-controls.css?v=6">
+<link rel="stylesheet" href="voice-orb.css?v=1">
 <link rel="stylesheet" href="steering.css?v=3"><link rel="stylesheet" href="vote.css?v=2"><script src="vote.js?v=2" defer></script></head>
 <body class="explorer conversation-first">
 <main id="world" aria-label="Interactive 3D travel map"></main>
@@ -56,6 +57,13 @@
  <button id="voice-launch" type="button" aria-label="Start live voice guide" disabled>Talk</button>
 </div>
 <section id="voice-overlay" class="voice-overlay" aria-label="Live voice conversation" hidden>
+ <div id="voice-console" class="voice-console">
+  <div class="voice-console-head">
+   <div class="voice-orb-stage" aria-hidden="true"><canvas id="voice-orb-canvas" width="128" height="128"></canvas></div>
+   <div class="voice-orb-copy"><span class="voice-orb-eyebrow">CROW · VOICE COMPANION</span><strong id="voice-orb-status">Connecting</strong><p id="voice-orb-hint">Opening your voice channel</p><button id="voice-style-toggle" type="button" aria-label="Choose voice orb style" aria-expanded="false" aria-controls="voice-orb-styles">Auto ◇</button></div>
+  </div>
+  <div id="voice-orb-styles" class="voice-orb-styles" role="group" aria-label="Orb styles" hidden></div>
+ </div>
  <div id="voice-captions" class="voice-captions" role="log" aria-live="polite" aria-label="Voice captions"></div>
  <div class="voice-toolbar"><span id="voice-overlay-state" role="status"></span><div class="voice-overlay-actions">
   <button id="voice-chat" type="button" aria-label="Open chat" aria-controls="companion" aria-expanded="false">Chat</button>
@@ -104,6 +112,7 @@
 </section>
 <script src="steering.js?v=4" defer></script>
 <script src="chat-start.js"></script>
-<script type="module" src="scout.js?v=25"></script>
+<script type="module" src="scout.js?v=26"></script>
 <script src="mobile-ui.js?v=6" defer></script>
+<script type="module" src="voice-orb.js?v=1"></script>
 </body></html>

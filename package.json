@@ -16,6 +16,7 @@
     "verify:browser": "node scripts/verify-browser.mjs",
     "verify:loading": "node scripts/verify-loading.mjs",
     "verify:chat-interface": "node scripts/verify-chat-interface.mjs",
+    "verify:voice-orb": "node scripts/verify-voice-orb.mjs",
     "verify:discovery": "node scripts/verify-discovery.mjs",
     "verify:scene-author": "node scripts/verify-scene-author.mjs",
     "verify:flight-controls": "node scripts/verify-flight-controls.mjs",
@@ -32,6 +33,7 @@
     "esbuild": "0.28.2",
     "gltf-validator": "2.0.0-dev.3.10",
     "playwright-core": "1.61.1",
+    "thinking-orbs": "0.3.1",
     "three": "0.186.0"
   }
 }

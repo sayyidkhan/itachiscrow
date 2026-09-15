@@ -2,7 +2,7 @@ import {createSceneAuthor} from './scene-author.js?v=2';
 import { PanoramaViewer } from './panorama.js?v=2';
 import { createPanoramaJourney } from './panorama-journey.js';
 import { CrowChat } from './chat.js?v=3';
-import { CrowLive } from './live.js?v=3';
+import { CrowLive } from './live.js?v=4';
 import { createTravelExperience } from './travel.js';
 import { createDiscovery } from './discovery.js?v=4';
 
@@ -258,6 +258,7 @@ async function executeAction(name,args,{signal,sessionId}={}){
 }
 const travel = createTravelExperience({getContext:()=>context,request,renderText:renderPlan,open:()=>{showResult('portrait');tab('explore');},openSocial:()=>{showResult('social');tab('social');},fly});
 const live = new CrowLive({
+  onLevel(levels){window.dispatchEvent(new CustomEvent('crow:voice-level',{detail:levels}));},
   onState(state){liveState=state;$('command-stop').hidden=!state.pendingAction&&!commandBusy;const active=['connecting','connected'].includes(state.status);$('voice-toggle').disabled=state.status==='closing';$('voice-toggle').querySelector('span').textContent=state.status==='closing'?'Ending…':active?'End call':'Talk';$('voice-toggle').setAttribute('aria-label',active?'End live voice guide':'Start live voice guide');$('voice-orb').classList.toggle('connected',state.status==='connected');$('voice-state').hidden=!active&&state.status!=='closing';$('voice-state').textContent=state.pendingAction?'Your guide is working…':state.status==='connecting'?'Connecting voice…':state.status==='closing'?'Ending call…':state.status==='connected'?(state.muted?'Microphone muted':'Listening — go ahead') :'';$('voice-controls').hidden=state.status!=='connected';$('voice-mute').textContent=state.muted?'Unmute mic':'Mute mic';$('voice-mute').setAttribute('aria-pressed',String(state.muted));$('voice-audio').hidden=!state.playbackBlocked;window.dispatchEvent(new CustomEvent('crow:voice-state',{detail:state}));},
   onError(error){$('voice-error').textContent=error.message;},
   onTranscript(event){let entry=transcripts.get('current');if(!entry||entry.role!==event.role){entry={role:event.role,element:addMessage(event.role,''),text:''};transcripts.set('current',entry);}entry.text+=event.delta;entry.element.lastElementChild.textContent=entry.text.slice(-5000);scrollConversation();window.dispatchEvent(new CustomEvent('crow:voice-caption',{detail:{role:event.role,text:entry.text}}));},
@@ -313,6 +314,7 @@ window.addEventListener('message',event=>{if(event.origin!==location.origin||eve
 $('download-plan').onclick=()=>{if(!plan)return;const content=`# ${plan.destination}\n\n${plan.text}\n\nSources\n${(plan.sources||[]).map(x=>`${x.title}: ${x.url}`).join('\n')}`;const url=URL.createObjectURL(new Blob([content],{type:'text/markdown'}));const a=node('a','');a.href=url;a.download='crow-travel-plan.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 $('voice-toggle').onclick=async()=>{if(['connecting','connected'].includes(liveState.status)){live.stop();return;}$('voice-error').textContent='';if(!capabilities.live){$('voice-error').textContent='The live guide needs the server’s OpenAI connection.';return;}try{transcripts.clear();await live.start(liveContext());}catch(error){$('voice-error').textContent=error.message;}};
 $('voice-mute').onclick=()=>live.setMuted(!liveState.muted);$('voice-audio').onclick=()=>live.resumeAudio();
+window.addEventListener('crow:voice-state-request',()=>window.dispatchEvent(new CustomEvent('crow:voice-state',{detail:liveState})));
 for(const id of ['plan-days','plan-budget','plan-interests'])$(id).addEventListener('input',()=>{clearPlan();live.updateContext(liveContext());});
 for(const event of ['crow:ready','crow:destination','crow:context'])document.addEventListener(event,e=>refreshContext(e.detail));
 document.addEventListener('crow:landing-selected',e=>refreshContext({...e.detail,spot:null}));
