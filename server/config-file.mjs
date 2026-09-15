@@ -9,7 +9,8 @@ const defaults=JSON.parse(await readFile(new URL('../config.example.json',import
 export function validateFileConfig(value){
  if(!value||typeof value!=='object'||Array.isArray(value))throw Error('config.json must contain an object.');
  for(const [name,setting] of Object.entries(value)){
-  if(!Object.hasOwn(defaults,name))throw Error('config.json contains an unsupported setting. Maps keys and PUBLIC_ORIGIN belong in .env.');
+  if(name==='OPENAI_API_KEY')throw Error('Move OPENAI_API_KEY from config.json to .env or a runtime secret binding.');
+  if(!Object.hasOwn(defaults,name))throw Error('config.json contains an unsupported setting. OPENAI_API_KEY, Maps keys and PUBLIC_ORIGIN belong in .env.');
   if(name==='PORT'){
    if(!Number.isInteger(Number(setting))||Number(setting)<1||Number(setting)>65535)throw Error('config.json PORT must be between 1 and 65535.');
   }else if(typeof setting!=='string')throw Error('config.json settings must be strings, except PORT.');

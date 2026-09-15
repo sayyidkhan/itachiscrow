@@ -53,7 +53,7 @@ cp config.example.json config.json
 cp dist/config.example.js dist/config.js
 ```
 
-Configure credentials privately using the [operations guide](docs/operations.md). `.env` contains only numbered Maps keys and `PUBLIC_ORIGIN`; private `config.json` contains OpenAI/Instagram credentials, model names, port, host and other server settings. Both files are ignored by Git. `config.example.json` is the blank, committed template.
+Configure credentials privately using the [operations guide](docs/operations.md). `.env` contains `OPENAI_API_KEY`, numbered Maps keys and `PUBLIC_ORIGIN`; private `config.json` contains Instagram credentials, model names, port, host and other server settings. Both files are ignored by Git. `config.example.json` is the blank, committed template. OpenAI credentials are supplied at runtime and are not accepted in JSON configuration.
 
 `npm run start:zo` runs the complete Zo preview with SQLite. `npm start` runs the original Node server without the Worker-style map-session and Places endpoints. `npm run build` prepares the Sites Worker using the blank config template; an explicitly supplied deployment config can be included in the server bundle with `npm run build -- --config /private/config.json`.
 
@@ -61,6 +61,7 @@ The environment file needs only:
 
 | Variable | Purpose |
 | --- | --- |
+| `OPENAI_API_KEY` | Server-only OpenAI credential for chat, voice, images and research. |
 | `CROW_MAPS_KEY1` | Primary Google Maps key used for the browser map and Places requests. |
 | `CROW_MAPS_KEY2` | Optional second Google Maps key used for controlled retry and rotation. It shares the same Google project quota when both keys belong to that project. |
 | `CROW_MAPS_KEY3` | Optional third Google Maps key in the same rotation. Keys in one Google project still share quota. |

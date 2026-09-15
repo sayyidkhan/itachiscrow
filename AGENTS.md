@@ -17,12 +17,13 @@ Use Zo for normal code changes, browser/WebGL2 investigation, and GitHub commits
 
 1. Clone or pull `main` from `https://github.com/sayyidkhan/itachiscrow.git`.
 2. Run `npm ci`. On first setup only, copy `.env.example` to `.env` and `config.example.json` to private `config.json`; preserve existing values.
-3. Keep only Maps keys and the origin in `.env` or the Zo service environment:
+3. Keep OpenAI and Maps keys and the origin in `.env` or the Zo service environment:
+   - `OPENAI_API_KEY`
    - `CROW_MAPS_KEY1`
    - `CROW_MAPS_KEY2` (optional)
    - `CROW_MAPS_KEY3` and further numbered keys (optional)
    - `PUBLIC_ORIGIN` set to Zo's exact public HTTPS URL when using a deployed preview.
-   Put OpenAI/Instagram credentials, model names, port, host, base path and storage paths in private `config.json` (permissions `600`). Restart after changes. Legacy environment overrides remain supported.
+   Put Instagram credentials, model names, port, host, base path and storage paths in private `config.json` (permissions `600`). Keep `OPENAI_API_KEY` out of JSON and supply it at runtime; JSON validation rejects it. Keep `.env` permissions `600` too. Restart after changes. Legacy environment overrides remain supported.
 4. Do not add `CROW_TILES_KEY`.
 5. Verify actual rendering in a WebGL2-capable browser when changing map/crow behaviour. A successful model download is not proof that the crow is visible.
 6. Commit and push verified changes to `main` with a clear message.

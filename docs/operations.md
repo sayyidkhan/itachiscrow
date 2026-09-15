@@ -8,7 +8,7 @@ This describes the current Sites Worker implementation. Historical verification 
 
 | Setting | Where / purpose |
 | --- | --- |
-| `config.json` → `OPENAI_API_KEY` | Private server credential for chat, voice, images and research |
+| `OPENAI_API_KEY` | Private server credential in `.env` or a runtime secret binding for chat, voice, images and research |
 | `config.json` → `OPENAI_TEXT_MODEL`, `OPENAI_LIVE_MODEL`, `OPENAI_IMAGE_MODEL` | Model settings; defaults are documented in `config.example.json` |
 | `CROW_MAPS_KEY1` | Primary Google key; served to the browser through `/config.js` on Sites |
 | `CROW_MAPS_KEY2` | Optional second Google key, used for rotation and retry |
@@ -20,7 +20,9 @@ This describes the current Sites Worker implementation. Historical verification 
 
 ### Private configuration
 
-Keep only `CROW_MAPS_KEY1`, `CROW_MAPS_KEY2`, further numbered keys and `PUBLIC_ORIGIN` in `.env` or the service environment. Copy `config.example.json` to root `config.json` for everything else. Keep `config.json` private (permissions `600`); it is ignored by Git and never served over HTTP. Do not place it under `dist/`. Restart the Zo service after editing either file.
+Keep `OPENAI_API_KEY`, `CROW_MAPS_KEY1`, `CROW_MAPS_KEY2`, further numbered keys and `PUBLIC_ORIGIN` in `.env` or the service environment. Copy `config.example.json` to root `config.json` for everything else. Both files are private (permissions `600`), ignored by Git and must stay outside `dist/`. JSON configuration is never served over HTTP. Restart the Zo service after editing either file.
+
+If upgrading from the JSON-based OpenAI configuration, move the existing `OPENAI_API_KEY` value to `.env` (or the deployment's runtime secrets) and remove that property from `config.json` before restarting or building. The loader rejects OpenAI keys in JSON, including explicitly selected build configs, so they cannot be embedded in the Worker bundle.
 
 Zo loads template defaults, then `config.json`, then `.env`, then process environment overrides. Older environment-based settings remain accepted for deployment compatibility. Never overwrite an existing config with the blank example during setup.
 
