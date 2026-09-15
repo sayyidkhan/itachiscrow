@@ -14,6 +14,7 @@
     "build:studio": "esbuild src/customise.js --bundle --minify --format=esm --external:./crow-design.js --outfile=dist/customise.js",
     "verify:studio": "node scripts/verify-studio.mjs",
     "verify:browser": "node scripts/verify-browser.mjs",
+    "verify:loading": "node scripts/verify-loading.mjs",
     "verify:models": "node scripts/verify-models.mjs",
     "build": "node scripts/build-sites.mjs"
   },
