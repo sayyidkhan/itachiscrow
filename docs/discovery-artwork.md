@@ -18,4 +18,6 @@ Each image used the following prompt, substituting its subject below:
 
 ## Use
 
+The landing page reuses six of these bundled illustrations in feature previews, with decorative HTML/CSS layers for flight, voice, panorama, photo reference, nearby discovery and a day plan. These are illustrative previews, not live map captures or actual provider results. The Author Studio preview uses the approved public default portrait. Layout lives in `dist/home.css`; feature images are lazy-loaded with reserved space and require no provider requests.
+
 Destination cards show their corresponding landmarks. Local picks and day plans reuse these as thematic artwork, not venue photography. Nearby cards use Google venue photos or a neutral “No photo available” placeholder, never this artwork. Keep that distinction visible and preserve Google photo credits. Paths resolve relative to `discovery.js` so both `/crow/` on Zo and the GPT root deployment work. Missing images settle on a text fallback without repeated requests.
