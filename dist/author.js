@@ -1,13 +1,5 @@
 import {authorPhoto,selectedAuthorPhoto,prepareAuthorPhoto,saveAuthorPhoto} from './author-reference.js';
 const $=id=>document.getElementById(id);
-const menuToggle=$('studio-menu-toggle'),navigation=$('studio-navigation');
-function closeMenu(){navigation.hidden=true;menuToggle.setAttribute('aria-expanded','false')}
-menuToggle.onclick=()=>{navigation.hidden=!navigation.hidden;menuToggle.setAttribute('aria-expanded',String(!navigation.hidden))};
-navigation.addEventListener('click',event=>{if(event.target.closest('a'))closeMenu()});
-document.addEventListener('pointerdown',event=>{if(!event.target.closest('.studio-menu'))closeMenu()});
-document.addEventListener('focusin',event=>{if(!event.target.closest('.studio-menu'))closeMenu()});
-document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!navigation.hidden){closeMenu();menuToggle.focus()}});
-window.addEventListener('pageshow',closeMenu);
 let place=null, controller=null;
 function showReference(){
  const selected=selectedAuthorPhoto();

@@ -245,8 +245,8 @@ assert(parts[0].position.lat<48.85837,'The crow approaches from a viewpoint faci
 
 elements.get('restart').onclick();
 assert.equal(api.getContext().mode, 'landed');
-assert.equal(api.getContext().spot.name, 'Chelsea rooftop');
-assert.equal(api.getContext().destination.name, 'Chelsea, New York');
+assert.equal(api.getContext().spot.name, 'Esplanade, Singapore');
+assert.equal(api.getContext().destination.name, 'Esplanade, Singapore');
 assert.equal(api.getContext().savedPlaces[0].name, 'Mountain Cafe');
 assert(parts.every(part => part.altitudeMode === 'RELATIVE_TO_MESH'));
 assert(parts[1].scale.x < 1);
@@ -328,7 +328,7 @@ assert.equal(located.api.getContext().locationStatus, 'located');
 assert.equal(located.api.getContext().hasUserLocation, true);
 assert.equal(located.api.getContext().mode, 'landed');
 assert.equal(located.api.getContext().spot.lat, singapore.lat);
-assert.equal(located.map.initialOptions.center.lat, singapore.lat, 'The initial map must never flash Chelsea before locating the user');
+assert.equal(located.map.initialOptions.center.lat, singapore.lat, 'The initial map must never flash the fallback before locating the user');
 assert.equal(located.map.initialOptions.center.lng, singapore.lng);
 assert.equal(located.map.range, 22, 'Ready means the crow is framed nearby, never the bootstrap 20km camera');
 assert.equal(located.map.tilt, 72);
@@ -366,23 +366,33 @@ assert.equal(located.api.getContext().spot.lat, 35.67, 'Only the last location r
 assert.deepEqual(located.emitted.map(event => event.name), ['ready']);
 const animationEnded = await locationCase(async () => ({ status: 'located', place: singapore, message: 'Located.' }), 'test', true);
 assert.equal(animationEnded.api.getContext().mapReady, true, 'Native animation completion also confirms the close camera');
-const denied = await locationCase(async () => ({ status: 'denied', place: null, message: 'Location permission denied. Try the Chelsea demo.' }));
+const denied = await locationCase(async () => ({ status: 'denied', place: null, message: 'Location permission denied. Try the Esplanade fallback.' }));
 assert.equal(denied.api.getContext().locationStatus, 'denied');
 assert.equal(denied.api.getContext().hasUserLocation, false);
 assert.equal(denied.api.getContext().mode, 'landed');
-assert.equal(denied.api.getContext().spot.name, 'Chelsea rooftop');
+assert.equal(denied.api.getContext().spot.name, 'Esplanade, Singapore');
+assert.equal(denied.map.initialOptions.center.lat, 1.28972);
+assert.equal(denied.map.initialOptions.center.lng, 103.85528);
 assert.equal(vm.runInContext('crowParts[0].position.altitude',denied.sandbox),1.2);
 assert.equal(vm.runInContext('crowParts[1].scale.x<1',denied.sandbox),true);
 assert.deepEqual(denied.emitted.map(event=>event.name),['ready']);
 const fallbackTakeoff=denied.api.takeOff();advance(6500);
 assert.equal((await fallbackTakeoff).mode,'hovering');
 denied.nodes.get('fly').onclick();advance(1500);
-assert.equal(denied.api.getContext().mode,'demo','The original Chelsea loop remains available after takeoff');
+assert.equal(denied.api.getContext().mode,'demo','The Esplanade loop remains available after takeoff');
 assert.equal(vm.runInContext('playing',denied.sandbox),true);
 assert.equal(vm.runInContext('crowParts.every(part=>part.altitudeMode==="ABSOLUTE")',denied.sandbox),true);
 denied.nodes.get('restart').onclick();
-assert.equal(denied.api.getContext().spot.name,'Chelsea rooftop');
+assert.equal(denied.api.getContext().spot.name,'Esplanade, Singapore');
 assert.match(denied.api.getContext().locationMessage, /denied/);
+for(const status of ['unavailable','timeout']){
+  const fallback = await locationCase(async()=>({status,place:null,message:'Location '+status+'.'}));
+  assert.equal(fallback.api.getContext().hasUserLocation,false);
+  assert.equal(fallback.api.getContext().destination.name,'Esplanade, Singapore');
+  assert.equal(fallback.map.initialOptions.center.lat,1.28972);
+  assert.equal(fallback.map.initialOptions.center.lng,103.85528);
+  assert.match(fallback.api.getContext().locationMessage,/Starting at Esplanade, Singapore/);
+}
 const callsBeforeNoKey = locationCalls;
 const noKey = await locationCase(() => { locationCalls++; throw Error('Location must not be requested without Maps configuration'); }, '');
 assert.equal(locationCalls, callsBeforeNoKey);

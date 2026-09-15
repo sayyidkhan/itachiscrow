@@ -1,4 +1,3 @@
-#mobile-menu { display: none; }
 @media (max-width: 760px) {
   .explorer {
     --header-height: calc(64px + env(safe-area-inset-top));
@@ -16,44 +15,6 @@
   .explorer .brand { max-width: calc(100% - 56px); align-self: center; }
   .explorer .brand h1 { font-size: 20px; }
   .explorer .brand p { font-size: 9px; letter-spacing: 1.2px; max-width: calc(100vw - 115px); }
-  .explorer #mobile-menu {
-    display: block;
-    width: 44px;
-    min-height: 44px;
-    padding: 0;
-    border-radius: 14px;
-    border: 1px solid #ffffff20;
-    background: #172c30;
-    color: #b6efcf;
-    letter-spacing: 2px;
-  }
-  .explorer .header-actions {
-    display: none;
-    position: absolute;
-    top: calc(var(--header-height) - 2px);
-    right: 12px;
-    width: 208px;
-    padding: 8px;
-    background: #102125;
-    border: 1px solid #ffffff25;
-    border-radius: 16px;
-    box-shadow: 0 16px 40px #0006;
-  }
-  .explorer.mobile-menu-open .header-actions { display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
-  .explorer .header-actions > :is(button, a),
-  .explorer .header-actions #music-open,
-  .explorer .header-actions #info {
-    position: static;
-    inset: auto;
-    width: 100%;
-    min-height: 44px;
-    padding: 11px 14px;
-    text-align: left;
-    font-size: 13px;
-    border: 0;
-    border-radius: 9px;
-  }
-  .explorer .header-actions #info::after { content: ' About'; }
   .explorer.conversation-first #world,
   .explorer.conversation-first .vignette { bottom: calc(var(--mobile-dock-height) + 8px + env(safe-area-inset-bottom)); }
   .explorer.conversation-first.debug-open #world,

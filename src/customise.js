@@ -48,7 +48,7 @@ $('save').onclick = async () => {
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
     dirty = designToken(snapshot) !== designToken(design);
-    tell(dirty ? 'Saved. Your latest preview changes still need saving.' : 'Saved ✓ Return to Chelsea to fly with your crow.');
+    tell(dirty ? 'Saved. Your latest preview changes still need saving.' : 'Saved ✓ Return to the map to fly with your crow.');
   } catch (error) {
     tell(error.name === 'QuotaExceededError' || error.name === 'SecurityError' ? 'Browser storage is unavailable. Allow site storage, then save again.' : error.message, true);
   } finally { $('save').disabled = false; }

@@ -6,20 +6,11 @@
   <meta name="theme-color" content="#0b191d">
   <title>Author Studio — Itachi’s Crow</title>
   <link rel="stylesheet" href="author-studio.css?v=studio-4">
-</head>
+<link rel="stylesheet" href="navigation.css?v=1"><script src="navigation.js?v=1" defer></script></head>
 <body>
   <header class="site-header">
     <a href="index.html" class="brand">Itachi’s Crow<span class="brand-dot" aria-hidden="true">.</span></a>
-    <div class="studio-menu">
-      <button id="studio-menu-toggle" type="button" aria-label="More options" aria-expanded="false" aria-controls="studio-navigation">•••</button>
-      <nav id="studio-navigation" aria-label="Studio navigation" hidden>
-        <a href="explore.html">Map <span aria-hidden="true">↗</span></a>
-        <a href="customise.html" aria-current="page">Author Studio <span aria-hidden="true">✓</span></a>
-        <a href="crow-studio.html">Crow colours <span aria-hidden="true">↗</span></a>
-        <a href="usage-limits.html">Usage limits <span aria-hidden="true">↗</span></a>
-        <a class="menu-home" href="index.html">Back to home <span aria-hidden="true">←</span></a>
-      </nav>
-    </div>
+    <div data-crow-navigation></div>
   </header>
   <main>
     <div class="intro">
@@ -138,6 +129,6 @@
     </footer>
   </main>
   <script src="config.js"></script>
-  <script type="module" src="author.js?v=studio-3"></script>
+  <script type="module" src="author.js?v=studio-4"></script>
 </body>
 </html>

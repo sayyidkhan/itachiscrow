@@ -6,7 +6,7 @@ Explore a real 3D city with a flying crow, then imagine yourself at your destina
 
 ## Start exploring
 
-1. Open the app and choose **Let’s explore**. Allow location access to start nearby, or use the Chelsea fallback.
+1. Open the app and choose **Let’s explore**. Allow location access to start nearby, or use the Esplanade, Singapore fallback.
 2. Type **“Fly to the Eiffel Tower in Paris”**, or choose **Talk** and allow microphone access.
 3. Ask to land and generate a view. In the scene window, switch between **Crow** and **Author** to generate pictures of yourself at that location.
 4. Download the images you want to keep. Open **Author Studio** to change the reference photo and generate destination variations.
