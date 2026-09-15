@@ -44,6 +44,7 @@ try {
     try {
       await page.goto(new URL('explore.html', base).href);
       await page.waitForFunction(() => window.CrowMap?.getContext().mapReady);
+      await page.waitForFunction(() => ['fly', 'free-roam', 'land-map', 'nearby', 'steering-toggle'].every(id => !document.getElementById(id).disabled));
       await page.locator('#auto-scene').evaluate(input => { input.checked = false; });
       for (const id of ['fly', 'free-roam', 'land-map', 'nearby']) {
         assert(await page.locator('#' + id).isVisible());
@@ -93,7 +94,7 @@ try {
       await page.getByRole('button', { name: 'Land here ↘' }).click();
       await page.waitForFunction(() => CrowMap.getContext().mode === 'landed');
       await page.waitForFunction(() => nearbyRequests.length === 2);
-      assert.equal(await page.locator('#fly').textContent(), 'Lift off ↗');
+      assert.equal(await page.locator('#fly').textContent(), 'Lift off');
       await page.locator('#chat-open').click();
       if (width <= 1000) assert(await page.locator('#nearby-panel').isHidden());
       await page.locator('#companion-toggle').click();

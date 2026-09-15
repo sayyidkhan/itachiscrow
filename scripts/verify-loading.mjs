@@ -56,7 +56,7 @@ try {
           assert.equal(state.chatPosition, 'absolute');
           assert.equal(state.oldControls, 'block');
           for (const id of ['fly', 'free-roam', 'land-map', 'nearby']) {
-            assert(await page.locator('#' + id).isVisible());
+            assert(await page.locator('#' + id).isHidden());
             assert(await page.locator('#' + id).isDisabled());
           }
           assert(await page.locator('#loading').isVisible());

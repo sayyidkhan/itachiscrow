@@ -17,8 +17,8 @@ function finishLoading(){
  if(startupCameraStage!=='confirmed')return;
  clearTimeout(startupTimer);clearTimeout(sceneTimer);clearTimeout(startupCameraTimer);cancelAnimationFrame(startupCameraFrame);ready=true;
  $('loading').hidden=true;for(const id of ['fly','restart','speed','height','nearby'])$(id).disabled=false;
- clearTimeout(startupPerchTimer);landedSurfaceAltitude=surfaceAltitudeAtCrow();$('fly').textContent='Lift off ↗';updateProgress(0);
- status(startLocation?'Ready · Your location':'Ready · Esplanade, Singapore');hint(colourWarning||(startLocation?'Your crow is perched nearby. Take off or choose a destination.':locationMessage));registerTools();emitCrow('ready');
+ clearTimeout(startupPerchTimer);landedSurfaceAltitude=surfaceAltitudeAtCrow();$('fly').textContent='Lift off';updateProgress(0);
+ status(startLocation?'Ready · Your location':'Ready · Esplanade, Singapore');hint(colourWarning);registerTools();emitCrow('ready');
 }
 function initialPerchMatches(){
  if(!map||!scoutPosition)return false;
@@ -105,7 +105,7 @@ function invalidateLocationRequest(){
 function restoreUserLocation(place){
  destination={...place};landingSpot={...place};scoutMode='landed';freeRoaming=false;landedSurfaceAltitude=null;bank=0;flightTime=0;crowHeading=heading=125;
  poseScout({lat:place.lat,lng:place.lng,altitude:1.2},1);map.flyCameraTo({endCamera:scoutCamera(scoutPosition,true),durationMillis:0});
- updateProgress(0);$('fly').textContent='Lift off ↗';status('Ready · '+place.name);hint('Your crow is perched nearby. Lift off or choose a destination.');
+ updateProgress(0);$('fly').textContent='Lift off';status('Ready · '+place.name);hint('');
 }
 async function useCurrentLocation(){
  if(!ready)throw Error('Wait for the map to finish loading.');
@@ -229,7 +229,7 @@ function reportFlight(stage,fraction,range){
 }
 function finishDestinationFlight(){
  scoutMode='hovering';flightStage=null;playing=false;transitioning=false;setFlightView(false);updateProgress(1);
- $('fly').textContent='Fly again ↗';status('Arrived · '+destination.name);hint('Choose a landing spot, or open a place and select Land here.');
+ $('fly').textContent='Fly again';status('Arrived · '+destination.name);hint('Choose a landing spot, or open a place and select Land here.');
  if(flightInfo){emitCrow('flight',{...flightInfo,stage:null,progress:1,arrived:true});flightInfo=null;}
  emitCrow('destination');nearby(true);
 }
@@ -283,7 +283,7 @@ function flyTo(value){
  routeDistanceMeters=distance(source,target);flightInfo={from:source,to:{...target},stage:null,progress:0,range:initialCamera.range,routeDistanceMeters};
  const arrival=isEiffelView()?{...relativeOffset(target,-500,-300),altitude:180}:{lat:target.lat,lng:target.lng,altitude:64};
  const serial=journeySerial,approach={...relativeOffset(arrival,-105,-75),altitude:arrival.altitude+8};
- updateProgress(0);$('fly').textContent='Pause flight Ⅱ';status('Flying to '+target.name);hint('Follow your crow across the map. Drag the map or pause to stop.');emitCrow('destination');
+ updateProgress(0);$('fly').textContent='Pause';status('Flying to '+target.name);hint('Follow your crow across the map. Drag the map or pause to stop.');emitCrow('destination');
  if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){
   crowHeading=bearing(approach,target);poseScout(arrival,0,isEiffelView()?0:null);const cam=scoutCamera(arrival);if(isEiffelView())Object.assign(map,cam);else map.flyCameraTo({endCamera:cam,durationMillis:0});finishDestinationFlight();return Promise.resolve(getCrowContext());
  }
@@ -300,11 +300,11 @@ async function circleAround(value){
  const from={...(scoutPosition||flightPosition(progress))},surface=surfaceAltitudeAtCrow()??0;
  stop();cancelLandingMode();clearNearby();destination=target;landingSpot=null;scoutMode='circling';playing=true;setFlightView(true);
  const serial=journeySerial,startAngle=bearing(target,from)*radians,radius=180,duration=14000;
- $('fly').textContent='Pause orbit Ⅱ';status('Circling · '+target.name);hint('Circling once. Say stop or drag the map to pause.');emitCrow('destination');
+ $('fly').textContent='Pause';status('Circling · '+target.name);hint('Circling once. Say stop or drag the map to pause.');emitCrow('destination');
  if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){
   poseScout({...relativeOffset(target,-radius,0),altitude:110},0,surface);
   map.flyCameraTo({endCamera:{center:{...target,altitude:surface+70},altitudeMode:'ABSOLUTE',heading:0,tilt:60,range:480},durationMillis:0});
-  scoutMode='hovering';playing=false;setFlightView(false);$('fly').textContent='Fly again ↗';status('View around · '+target.name);emitCrow('context');return {...getCrowContext(),reducedMotion:true};
+  scoutMode='hovering';playing=false;setFlightView(false);$('fly').textContent='Fly again';status('View around · '+target.name);emitCrow('context');return {...getCrowContext(),reducedMotion:true};
  }
  return new Promise(resolve=>{
   const state={resolve,frame:0,timer:0};journey=state;let elapsed=0,previous=performance.now();
@@ -318,7 +318,7 @@ async function circleAround(value){
    crowHeading=wrapAngle(angle/radians+90);poseScout(position,0,surface);
    map.flyCameraTo({endCamera:{center:{lat:target.lat,lng:target.lng,altitude:surface+70},altitudeMode:'ABSOLUTE',heading:wrapAngle(angle/radians+180),tilt:60,range:480,roll:0},durationMillis:0});updateProgress(t);
    if(t<1){state.frame=requestAnimationFrame(step);return;}
-   journey=null;playing=false;scoutMode='hovering';setFlightView(false);$('fly').textContent='Fly again ↗';status('Orbit complete · '+target.name);emitCrow('context');resolve(getCrowContext());
+   journey=null;playing=false;scoutMode='hovering';setFlightView(false);$('fly').textContent='Fly again';status('Orbit complete · '+target.name);emitCrow('context');resolve(getCrowContext());
   };state.frame=requestAnimationFrame(step);
  });
 }
@@ -333,10 +333,10 @@ function landAt(value){
  const from=near?{...scoutPosition}:{...relativeOffset(target,-55,-35),altitude:64};
  const to={lat:target.lat,lng:target.lng,altitude:1.2};
  if(distance(from,to)>1)crowHeading=bearing(from,to);
- poseScout(from);updateProgress(0);$('fly').textContent='Pause landing Ⅱ';status('Landing · '+target.name);hint('The crow is descending to your selected spot.');
+ poseScout(from);updateProgress(0);$('fly').textContent='Pause';status('Landing · '+target.name);hint('The crow is descending to your selected spot.');
  map.flyCameraTo({endCamera:scoutCamera(from),durationMillis:near?400:1400});emitCrow('landing-selected',{spot:{...target}});
  return animateJourney({duration:3400,delay:near?450:1450,from,to,landing:true,serial,onComplete(){
-  landingSpot=target;landedSurfaceAltitude=surfaceAltitudeAtCrow()??target.altitude??null;scoutMode='landed';$('fly').textContent='Lift off ↗';status('Landed · '+target.name);hint('Explore nearby places below, or lift off again.');emitCrow('landed');nearby(true);
+  landingSpot=target;landedSurfaceAltitude=surfaceAltitudeAtCrow()??target.altitude??null;scoutMode='landed';$('fly').textContent='Lift off';status('Landed · '+target.name);hint('Explore nearby places below, or lift off again.');emitCrow('landed');nearby(true);
  }});
 }
 function surfaceAltitudeAtCrow(){
@@ -356,7 +356,7 @@ function takeOff(){
  const smooth=value=>{const t=Math.max(0,Math.min(1,value));return t*t*t*(t*(t*6-15)+10);},blend=(a,b,t)=>a+(b-a)*t;
  const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
  flightTime=0;
- poseScout(from,1);updateProgress(0);$('fly').textContent='Pause takeoff Ⅱ';status('Taking off · '+source.name);hint('Spreading wings and climbing clear of the rooftop.');
+ poseScout(from,1);updateProgress(0);$('fly').textContent='Pause';status('Taking off · '+source.name);hint('Spreading wings and climbing clear of the rooftop.');
  emitCrow('context');
  return animateJourney({duration:reducedMotion?1200:5600,from,to,serial,frameInterval:0,
   foldAt:fraction=>1-smooth(fraction/.28),
@@ -375,7 +375,7 @@ function takeOff(){
    const longitudeDelta=((to.lng-from.lng+540)%360)-180;
    return {lat:from.lat+(to.lat-from.lat)*forward,lng:forward===0?from.lng:((from.lng+longitudeDelta*forward+540)%360)-180,altitude:from.altitude+(climbAltitude-from.altitude)*rise};
   },
-  onComplete(){scoutMode='hovering';$('fly').textContent='Fly again ↗';status('Airborne · '+destination.name);hint('The crow is clear of the rooftop. Choose another spot to land.');}
+  onComplete(){scoutMode='hovering';$('fly').textContent='Fly again';status('Airborne · '+destination.name);hint('The crow is clear of the rooftop. Choose another spot to land.');}
  });
 }
 function freeRoam(){
@@ -404,7 +404,7 @@ async function beginSteering(){
  landingSpot=null;landedSurfaceAltitude=null;scoutMode='steering';playing=true;setFlightView(true);
  poseScout(position);map.stopCameraAnimation?.();
  const state={x:0,y:0,z:0,updated:performance.now(),previous:performance.now(),frame:0};manualFlight=state;
- $('fly').textContent='Pause flight Ⅱ';status('Steering your crow');hint('Push forward to fly, left or right to turn. Release to hover.');emitCrow('context');
+ $('fly').textContent='Pause';status('Steering your crow');hint('Push forward to fly, left or right to turn. Release to hover.');emitCrow('context');
  const step=now=>{
   if(manualFlight!==state)return;
   if(document.hidden||now-state.updated>600){endSteering();return;}
@@ -530,7 +530,7 @@ function stop(){
   destination={name:destination.name,lat:scoutPosition.lat,lng:scoutPosition.lng};
  }
  invalidateLocationRequest();clearTimeout(transitionTimer);cancelJourney();setFlightView(false);playing=false;transitioning=false;cancelAnimationFrame(frameId);map?.stopCameraAnimation?.();
- $('fly').innerHTML=scoutMode==='demo'?'Resume flight <span aria-hidden="true">↗</span>':scoutMode==='landed'?'Lift off ↗':'Fly again ↗';status('Paused · explore the map');emitCrow('context');
+ $('fly').innerHTML=scoutMode==='demo'?'Resume':scoutMode==='landed'?'Lift off':'Fly again';status('Paused · explore the map');emitCrow('context');
 }
 function draw(t){if(!playing)return;if(t-last<FRAME_INTERVAL){frameId=requestAnimationFrame(draw);return;}const dt=Math.min((t-last)/1000,.1);last=t;flightTime+=dt;progress+=dt*speed;if(progress>=total){progress=total;stop();$('fly').textContent='Fly again';status('Flight complete');hint('You’ve scouted the block. Tap Places to explore what’s nearby.');$('progress').style.width='100%';$('progress-text').textContent='100%';return;}
  const cam=camera(progress);const turn=angleDelta(flightBearing(progress),crowHeading);
@@ -554,7 +554,7 @@ function start(){
  $('details').close();detailSerial++;transitioning=true;map.stopCameraAnimation?.();
  const cam=camera(progress);heading=cam.heading;
  map.flyCameraTo({endCamera:cam,durationMillis:1000});poseCrow(progress);
- $('fly').textContent='Pause flight Ⅱ';status('Returning to the crow');
+ $('fly').textContent='Pause';status('Returning to the crow');
  hint('Tap a place to investigate. Drag the map to pause.');
  transitionTimer=setTimeout(()=>{
   if(!transitioning)return;
