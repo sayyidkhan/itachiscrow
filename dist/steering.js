@@ -72,12 +72,20 @@
     reset(); if (rollPending) window.CrowMap?.pause(); panel.hidden = !panel.hidden;
     $('steering-toggle').setAttribute('aria-expanded', String(!panel.hidden));
     document.body.classList.toggle('steering-open', !panel.hidden);
-    if (!panel.hidden) pad.focus({ preventScroll: true });
+    if (!panel.hidden) {
+      window.dispatchEvent(new Event('crow:steering-open'));
+      (pad.disabled ? $('steering-liftoff') : pad).focus({ preventScroll: true });
+    }
   };
   function reflect() {
     const state = window.CrowMap?.getContext(), ready = Boolean(state?.mapReady);
-    pad.disabled = !ready; $('steering-toggle').disabled = !ready;
-    $('steering-roll').disabled = !ready || rollPending || state.rolling;
+    const perched = state?.mode === 'landed', takingOff = state?.mode === 'taking-off';
+    pad.disabled = !ready || perched || takingOff; $('steering-toggle').disabled = !ready;
+    $('steering-liftoff').hidden = !perched && !takingOff;
+    $('steering-liftoff').disabled = !ready;
+    $('steering-liftoff').textContent = takingOff ? 'Stop lift off' : 'Lift off';
+    $('steering-help').textContent = perched ? 'Lift off to start steering' : takingOff ? 'Spreading wings and climbing…' : 'Drag to steer · Release to hover';
+    $('steering-roll').disabled = !ready || perched || takingOff || rollPending || state.rolling;
     $('steering-speed').disabled = !ready;
     const speed = state?.steeringSpeed || 1;
     $('steering-speed-value').textContent = speed + '×';
@@ -105,6 +113,14 @@
     }, true);
   }
   $('steering-speed').onclick = () => window.CrowMap.setSteeringSpeed(window.CrowMap.getContext().steeringSpeed % 3 + 1);
+  $('steering-liftoff').onclick = async () => {
+    const stopping = window.CrowMap.getContext().mode === 'taking-off';
+    window.dispatchEvent(new Event('crow:manual-control'));
+    try {
+      if (stopping) window.CrowMap.pause();
+      else await window.CrowMap.takeOff();
+    } catch (error) { $('hint').textContent = error.message; }
+  };
   $('steering-roll').onclick = async () => {
     rollPending = true; reflect();
     if (!running) window.dispatchEvent(new Event('crow:manual-control'));
@@ -120,6 +136,7 @@
     document.body.classList.remove('steering-open');
   }
   document.addEventListener('crow:destination', closePanel);
+  window.addEventListener('crow:text-chat-open', closePanel);
   document.addEventListener('crow:landed', closePanel);
   $('nearby').addEventListener('click', closePanel);
   window.addEventListener('blur', reset);

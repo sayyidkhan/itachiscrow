@@ -168,7 +168,9 @@ const callsBeforeTakeoff = cameraCalls.length;
 const takeoff = api.takeOff();
 assert.equal(api.getContext().mode, 'taking-off');
 assert.equal(api.getContext().spot, null);
-assert.equal(JSON.stringify(parts[0].position), JSON.stringify(restingPosition), 'Takeoff must begin at the exact landed position');
+assert.equal(parts[0].position.lat, restingPosition.lat);
+assert.equal(parts[0].position.lng, restingPosition.lng);
+assert.equal(parts[0].position.altitude, restingPosition.altitude + 1422, 'Switch to absolute altitude without moving the rendered perch');
 assert(Math.abs(parts[1].scale.x - foldedWidth) < 1e-6);
 assert.equal(JSON.stringify({center:maps.center,range:maps.range,tilt:maps.tilt,heading:maps.heading}), cameraBeforeTakeoff, 'No pre-launch camera jump');
 const takeoffSamples = [];
@@ -201,7 +203,7 @@ assert.equal(parts[1].scale.x, 2.2);
 assert.equal(JSON.stringify(api.getContext().destination), destinationBeforeTakeoff);
 assert.equal(events.filter(event => event.name === 'destination').length, destinationEvents);
 assert.equal(cameraCalls.length, callsBeforeTakeoff, 'Takeoff must not restart native camera animations each frame');
-assert.equal(maps.range, 42);
+assert.equal(maps.range, 52);
 assert(takeoffSamples.filter((sample, i) => i && sample.range !== takeoffSamples[i-1].range).length > 25, 'Camera advances at display cadence during pullback');
 for (let i = 1; i < takeoffSamples.length; i++) {
   assert(Math.abs(takeoffSamples[i].cameraAltitude - takeoffSamples[i-1].cameraAltitude) < .6, 'No vertical camera snaps at lift-off');
@@ -463,16 +465,25 @@ console.log('Landmark orbit contract passed: repeat, slow frames, completion and
 
 sandbox.requestAnimationFrame = callback => schedule(callback, 20);
 const travelRates = [];
+const steeringCameraCalls = cameraCalls.length;
+let flightSurface;
 for (const multiplier of [1, 2, 3]) {
   api.setSteeringSpeed(multiplier);
   await api.beginSteering();
   vm.runInContext('crowHeading=0', sandbox);
   const initialPosition = api.getContext().position;
+  const renderedAltitude = vm.runInContext('crowParts[0].position.altitude', sandbox);
+  flightSurface = renderedAltitude - initialPosition.altitude;
   for (let i=0;i<10;i++) { api.steer(0,1); advance(100); }
+  assert.equal(vm.runInContext('crowParts[0].altitudeMode', sandbox), 'ABSOLUTE');
+  assert.equal(vm.runInContext('crowParts[0].position.altitude', sandbox), renderedAltitude, 'Crossing rooftops keeps flight elevation constant');
   travelRates.push((api.getContext().position.lat-initialPosition.lat)*111320);
   api.endSteering();
 }
-for (let i=0;i<3;i++) assert(Math.abs(travelRates[i]-35*(i+1))<.01,'Speed scales real distance without changing the animation clock');
+assert(travelRates[0] > 30 && travelRates[0] < 35, 'Speed eases up from rest');
+for (let i=1;i<3;i++) assert(Math.abs(travelRates[i]/travelRates[0]-(i+1))<.001,'Speed multiplier preserves proportional distance');
+assert.equal(cameraCalls.length, steeringCameraCalls, 'Steering never restarts native camera animations');
+assert(Math.abs(vm.runInContext('map.center.altitude', sandbox)-api.getContext().position.altitude-flightSurface-1.8)<.001, 'Camera and crow share one elevation reference');
 assert.throws(()=>api.setSteeringSpeed(4),/1×, 2× or 3×/);
 api.setSteeringSpeed(1);
 await api.beginSteering();
@@ -494,3 +505,15 @@ window.matchMedia=()=>({matches:true});
 assert.equal((await api.roll()).reducedMotion,true);
 assert.equal(api.getContext().rolling,false);
 console.log('Steering contract passed: 1×/2×/3× distance, simultaneous roll, level camera, cancellation, slow frames and reduced motion.');
+window.matchMedia=()=>({matches:false});
+const slowLanding=api.landAt({name:'Test rooftop',...api.getContext().position});advance(7000);await slowLanding;
+const slowTakeoff=api.takeOff();advance(7000);
+assert.equal(api.getContext().mode,'hovering','A low frame rate must not stretch the liftoff animation');
+assert.equal((await slowTakeoff).mode,'hovering');
+const airborneAltitude = parts[0].position.altitude, airborneCamera = vm.runInContext('map.range',sandbox);
+sandbox.requestAnimationFrame = callback => schedule(callback,20);
+await api.beginSteering();
+api.steer(0,1);advance(200);api.endSteering();
+assert.equal(parts[0].position.altitude, airborneAltitude, 'Steering starts at the exact airborne elevation');
+assert.equal(vm.runInContext('map.range',sandbox), airborneCamera, 'Steering continues the takeoff camera without a zoom jump');
+console.log('Liftoff contract passed at one frame per second.');

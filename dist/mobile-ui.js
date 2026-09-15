@@ -18,17 +18,18 @@
     else travelAnchor.after(travel);
   }
   function openChat() {
+    window.dispatchEvent(new Event('crow:text-chat-open'));
     companion.hidden = false;
     $('chat-unread').hidden = true;
     surfaces();
     sizeInput();
     $('companion-toggle').focus({ preventScroll: true });
   }
-  function closeChat() {
+  function closeChat(focus = true) {
     input.blur();
     companion.hidden = true;
     surfaces();
-    $(voiceActive ? 'voice-chat' : 'chat-open').focus({ preventScroll: true });
+    if (focus) $(voiceActive ? 'voice-chat' : 'chat-open').focus({ preventScroll: true });
   }
   $('chat-open').onclick = openChat;
   $('voice-chat').onclick = openChat;
@@ -36,7 +37,8 @@
   companion.addEventListener('keydown', event => {
     if (event.key === 'Escape') { event.preventDefault(); closeChat(); }
   });
-  $('voice-launch').onclick = () => { openChat(); $('voice-toggle').click(); };
+  $('voice-launch').onclick = () => $('voice-toggle').click();
+  window.addEventListener('crow:steering-open', () => closeChat(false));
   for (const [overlay, original] of [['end', 'voice-toggle'], ['mute', 'voice-mute'], ['audio', 'voice-audio'], ['stop', 'command-stop'], ['result', 'command-result']]) {
     $('voice-overlay-' + overlay).onclick = () => $(original).click();
   }

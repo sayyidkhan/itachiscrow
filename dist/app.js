@@ -182,12 +182,12 @@ function animateJourney({duration,delay=0,from,to,landing=false,serial,onComplet
   const state={resolve,frame:0,timer:0};journey=state;
   state.timer=setTimeout(()=>{
    if(serial!==journeySerial)return;
-   map.stopCameraAnimation?.();let elapsed=0,previous=performance.now();
+   map.stopCameraAnimation?.();const startedAt=performance.now();let previous=startedAt;
    const step=now=>{
     if(serial!==journeySerial)return;
     if(now-previous<frameInterval){state.frame=requestAnimationFrame(step);return;}
-    const dt=Math.max(0,Math.min((now-previous)/1000,.1));previous=now;elapsed+=dt;flightTime+=dt;
-    const fraction=Math.min(1,elapsed/(duration/1000)),eased=fraction*fraction*(3-2*fraction);
+    const dt=Math.max(0,Math.min((now-previous)/1000,.1));previous=now;flightTime+=dt;
+    const fraction=Math.min(1,(now-startedAt)/duration),eased=fraction*fraction*(3-2*fraction);
     // Use the shortest longitude span when an approach crosses the date line.
     const longitudeDelta=((to.lng-from.lng+540)%360)-180;
     const position=path?path(fraction):{lat:from.lat+(to.lat-from.lat)*eased,lng:((from.lng+longitudeDelta*eased+540)%360)-180,altitude:from.altitude+(to.altitude-from.altitude)*eased};
@@ -354,14 +354,14 @@ function surfaceAltitudeAtCrow(){
 function takeOff(){
  if(!ready)return Promise.reject(Error('Wait for the map to finish loading.'));
  if(scoutMode!=='landed'||!landingSpot||!scoutPosition)return Promise.reject(Error('Land on a spot before taking off.'));
- const source={...landingSpot},from={...scoutPosition},surface=surfaceAltitudeAtCrow()??landedSurfaceAltitude,initialCamera=cameraSnapshot();
+ const source={...landingSpot},from={...scoutPosition},surface=scoutAltitudeBase??surfaceAltitudeAtCrow()??landedSurfaceAltitude,initialCamera=cameraSnapshot();
  invalidateLocationRequest();stop();cancelLandingMode();$('details').close();detailSerial++;landingSpot=null;scoutMode='taking-off';transitioning=true;setFlightView(true);bank=0;
  const serial=journeySerial,climbAltitude=Math.max(50,from.altitude),departure=relativeOffset(from,Math.cos(crowHeading*radians)*40,Math.sin(crowHeading*radians)*40);
  const to={...(surface===null?from:departure),altitude:climbAltitude};
  const smooth=value=>{const t=Math.max(0,Math.min(1,value));return t*t*t*(t*(t*6-15)+10);},blend=(a,b,t)=>a+(b-a)*t;
  const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
  flightTime=0;
- poseScout(from,1);updateProgress(0);$('fly').textContent='Pause';status('Taking off · '+source.name);hint('Spreading wings and climbing clear of the rooftop.');
+ poseScout(from,1,surface);updateProgress(0);$('fly').textContent='Pause';status('Taking off · '+source.name);hint('Spreading wings and climbing clear of the rooftop.');
  emitCrow('context');
  return animateJourney({duration:reducedMotion?1200:5600,from,to,serial,frameInterval:0,
   foldAt:fraction=>1-smooth(fraction/.28),
@@ -373,7 +373,7 @@ function takeOff(){
    const longitudeDelta=((position.lng-initialCamera.center.lng+540)%360)-180;
    return {center:{lat:blend(initialCamera.center.lat,position.lat,follow),lng:((initialCamera.center.lng+longitudeDelta*follow+540)%360)-180,altitude:blend(initialCamera.center.altitude,altitude,follow)},
     heading:wrapAngle(initialCamera.heading+angleDelta(crowHeading,initialCamera.heading)*(reducedMotion?0:follow)),
-    range:blend(initialCamera.range,high?100:42,pullback),tilt:blend(initialCamera.tilt,high?48:65,pullback),roll:blend(initialCamera.roll,0,pullback),fov:blend(initialCamera.fov,50,pullback)};
+    range:blend(initialCamera.range,high?100:52,pullback),tilt:blend(initialCamera.tilt,high?48:65,pullback),roll:blend(initialCamera.roll,0,pullback),fov:blend(initialCamera.fov,50,pullback)};
   },
   path(fraction){
    const rise=smooth((fraction-.08)/.72),forward=smooth((fraction-.62)/.38);
@@ -385,6 +385,8 @@ function takeOff(){
 }
 function freeRoam(){
  if(!ready)throw Error('Wait for the map to finish loading.');
+ const surface=scoutAltitudeBase??surfaceAltitudeAtCrow();
+ if(scoutPosition&&surface!==null)poseScout(scoutPosition,scoutMode==='landed'?1:0,surface);
  stop();cancelLandingMode();freeRoaming=true;
  status('Free roam · '+destination.name);hint('Drag to explore, pinch or scroll to zoom. Follow crow brings you back.');emitCrow('context');return getCrowContext();
 }
@@ -405,19 +407,24 @@ async function beginSteering(){
  if(document.hidden)return {cancelled:true};
  clearNearby();$('details').close();detailSerial++;
  const position=scoutPosition?{...scoutPosition}:flightPosition(progress);
- position.altitude=Math.max(20,Math.min(500,position.altitude));
+ position.altitude=Math.max(1.2,Math.min(500,position.altitude));
+ const surface=scoutAltitudeBase??surfaceAltitudeAtCrow()??landedSurfaceAltitude;
+ if(surface===null)throw Error('Choose Follow crow before steering so the flight height can be set.');
  landingSpot=null;landedSurfaceAltitude=null;scoutMode='steering';playing=true;setFlightView(true);
- poseScout(position);map.stopCameraAnimation?.();
- const state={x:0,y:0,z:0,updated:performance.now(),previous:performance.now(),frame:0};manualFlight=state;
+ poseScout(position,0,surface);map.stopCameraAnimation?.();
+ const state={x:0,y:0,z:0,vx:0,vy:0,vz:0,surface,updated:performance.now(),previous:performance.now(),frame:0};manualFlight=state;
  $('fly').textContent='Pause';status('Steering your crow');hint('Push forward to fly, left or right to turn. Release to hover.');emitCrow('context');
  const step=now=>{
   if(manualFlight!==state)return;
   if(document.hidden||now-state.updated>600){endSteering();return;}
   const dt=Math.max(0,Math.min((now-state.previous)/1000,.08));state.previous=now;flightTime+=dt;
-  crowHeading=wrapAngle(crowHeading+state.x*65*dt);
-  const metres=state.y*35*steeringSpeed*dt,point=relativeOffset(scoutPosition,Math.cos(crowHeading*radians)*metres,Math.sin(crowHeading*radians)*metres);
-  poseScout({...point,altitude:Math.max(20,Math.min(500,scoutPosition.altitude+state.z*18*steeringSpeed*dt))});
-  map.flyCameraTo({endCamera:scoutCamera(scoutPosition),durationMillis:0});
+  const response=1-Math.exp(-dt*12);
+  for(const axis of ['x','y','z'])state['v'+axis]=state[axis]===0?0:state['v'+axis]+(state[axis]-state['v'+axis])*response;
+  crowHeading=wrapAngle(crowHeading+state.vx*65*dt);
+  const metres=state.vy*35*steeringSpeed*dt,point=relativeOffset(scoutPosition,Math.cos(crowHeading*radians)*metres,Math.sin(crowHeading*radians)*metres);
+  poseScout({...point,altitude:Math.max(1.2,Math.min(500,scoutPosition.altitude+state.vz*18*steeringSpeed*dt))},0,state.surface);
+  const cam=scoutCamera(scoutPosition);
+  map.center=cam.center;map.heading=cam.heading;map.tilt=cam.tilt;map.range=cam.range;map.roll=cam.roll;map.fov=cam.fov;
   state.frame=requestAnimationFrame(step);
  };
  state.frame=requestAnimationFrame(step);return getCrowContext();

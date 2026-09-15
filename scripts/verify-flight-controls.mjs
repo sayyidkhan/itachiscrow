@@ -7,7 +7,7 @@ const output = new URL('../_debug/flight-controls/', import.meta.url);
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.CROW_BROWSER_EXECUTABLE, args: ['--no-sandbox'] });
 try {
-  for (const [width, height] of [[320, 568], [390, 844], [430, 932], [740, 390], [390, 380], [1280, 844]]) {
+  for (const [width, height] of [[320, 568], [375, 667], [390, 844], [430, 932], [740, 390], [390, 380], [1280, 844]]) {
     if (process.env.CROW_TEST_VIEWPORT && process.env.CROW_TEST_VIEWPORT !== `${width}x${height}`) continue;
     const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce', hasTouch: true });
     context.setDefaultTimeout(30_000);
@@ -52,6 +52,10 @@ try {
         assert(await page.locator('#' + id).isEnabled(), id + ' is enabled');
       }
       assert.equal(await page.evaluate(() => nearbyRequests.length), 0);
+      await page.locator('#steering-toggle').click();
+      assert(await page.locator('#steering-liftoff').isVisible(), 'First steering session exposes Lift off');
+      assert(await page.locator('#crow-joystick').isDisabled(), 'Lift off is required before manual steering');
+      await page.screenshot({path:new URL(`initial-liftoff-${width}x${height}.png`,output).pathname});
       await page.locator('#chat-open').click();
       await page.locator('#chat-input').fill('Keep this draft');
       await page.evaluate(() => {
@@ -214,19 +218,15 @@ try {
       const beforeVoice = await page.evaluate(() => CrowMap.getContext());
       await page.locator('#chat-open').click();
       await page.locator('#chat-input').fill('Keep chatting while I fly');
-      for (const id of ['crow-joystick', 'steering-roll', 'steering-speed']) {
-        assert(await page.locator('#' + id).isVisible(), id + ' stays visible with chat open');
-        assert(await page.locator('#' + id).evaluate(el => {
-          const r = el.getBoundingClientRect();
-          return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
-        }), id + ' receives pointer input with chat open');
-      }
+      assert(await pad.isHidden(), 'Text chat closes steering');
+      assert.equal(await page.evaluate(() => CrowMap.getContext().steering), false);
+      await page.locator('#steering-toggle').click();
+      assert(await page.locator('#companion').isHidden(), 'Opening steering closes text chat');
+      for (const id of ['crow-joystick', 'steering-roll', 'steering-speed']) assert(await page.locator('#' + id).isVisible());
       const dockBounds = await page.evaluate(() => {
         const rect = id => document.getElementById(id).getBoundingClientRect().toJSON();
         return {pad:rect('crow-joystick'),chat:rect('companion'),roll:rect('steering-roll'),speed:rect('steering-speed'),send:rect('chat-send')};
       });
-      assert(dockBounds.pad.bottom <= dockBounds.chat.top || dockBounds.pad.top >= dockBounds.chat.bottom || dockBounds.pad.right <= dockBounds.chat.left, 'Chat clears steering');
-      assert(dockBounds.send.bottom <= dockBounds.chat.bottom, 'Send remains reachable alongside steering');
       assert(dockBounds.roll.bottom <= height - 40 && dockBounds.speed.bottom <= height - 40, 'Action buttons clear attribution');
       await page.screenshot({path:new URL(`steering-chat-${width}x${height}.png`,output).pathname});
       const rates = [];
@@ -295,9 +295,11 @@ try {
         assert.equal(await page.evaluate(()=>CrowMap.getContext().steering),false,'Release stops steering even during slow frames');
       }
       await page.emulateMedia({reducedMotion:'reduce'});
+      await page.locator('#chat-open').click();
       assert.equal(await page.locator('#chat-input').inputValue(), 'Keep chatting while I fly');
       await page.locator('#chat-input').fill('');
       await page.locator('#companion-toggle').click();
+      await page.locator('#steering-toggle').click();
       await page.evaluate(() => window.dispatchEvent(new CustomEvent('crow:voice-state',{detail:{status:'connected',muted:false}})));
       assert(await pad.isVisible(), 'Voice captions preserve steering');
       await pad.focus();
@@ -319,12 +321,13 @@ try {
       await page.waitForFunction(() => CrowMap.getContext().mode === 'landed');
       await page.locator('#nearby-close').click();
       await page.locator('#steering-toggle').click();
-      await pad.focus();
-      await page.keyboard.down('ArrowUp');
+      assert(await pad.isDisabled());
+      await page.locator('#steering-liftoff').click();
       await page.waitForFunction(() => CrowMap.getContext().mode === 'taking-off');
-      await page.keyboard.up('ArrowUp');
+      assert(await pad.isDisabled(), 'Steering waits for the full liftoff animation');
+      await page.locator('#steering-liftoff').click();
       await page.waitForTimeout(1400);
-      assert.equal(await page.evaluate(() => CrowMap.getContext().steering), false, 'Release during takeoff cancels late steering');
+      assert.equal(await page.evaluate(() => CrowMap.getContext().steering), false, 'Stopping takeoff never starts steering later');
       await page.screenshot({ path: new URL(`steering-${width}x${height}.png`, output).pathname });
       await page.locator('#steering-toggle').click();
       let commandResult, command = 'left';

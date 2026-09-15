@@ -1,6 +1,9 @@
 .explorer .steering-control { position: absolute; z-index: 4; left: 16px; bottom: calc(48px + env(safe-area-inset-bottom)); width: 156px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; pointer-events: none; }
 .explorer .steering-control button { pointer-events: auto; }
-.explorer #steering-toggle, .explorer #crow-joystick, .explorer .steering-action { background: var(--glass-highlight), var(--glass-tint); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); }
+.explorer #steering-toggle, .explorer #steering-liftoff, .explorer #crow-joystick, .explorer .steering-action { background: var(--glass-highlight), var(--glass-tint); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); }
+.explorer #steering-liftoff { min-height: 44px; width: 100%; border-radius: 22px; color: #cbf6e4; }
+.explorer #steering-liftoff[hidden] { display: none; }
+.explorer #crow-joystick:disabled { opacity: .45; cursor: default; }
 .explorer #steering-toggle { min-height: 44px; padding: 8px 13px; border-radius: 24px; font-size: 12px; display: flex; align-items: center; gap: 7px; }
 .explorer #steering-toggle[aria-expanded=true] { color: #b5efd8; }
 #steering-panel { display: flex; flex-direction: column; align-items: center; gap: 6px; }
@@ -25,37 +28,26 @@
 .explorer.debug-open .steering-control, .explorer.long-flight .steering-control { display: none; }
 @media (max-width: 1000px) {
   .explorer .steering-control { left: 12px; }
-  .explorer:has(#companion:not([hidden])), .explorer:has(#voice-overlay:not([hidden])) { --steering-clearance: 60px; }
-  .explorer.steering-open:has(#companion:not([hidden])), .explorer.steering-open:has(#voice-overlay:not([hidden])) { --steering-clearance: 200px; }
+  .explorer:has(#companion:not([hidden])), .explorer:has(#voice-overlay:not([hidden])) { --steering-clearance: 48px; }
+  .explorer.steering-open:has(#voice-overlay:not([hidden])) { --steering-clearance: 240px; }
+  .explorer.conversation-first.long-flight:has(#companion:not([hidden])) { --steering-clearance: 0px; }
   .explorer.conversation-first :is(.companion, .voice-overlay) { bottom: calc(48px + env(safe-area-inset-bottom) + var(--steering-clearance, 0px)); max-height: calc(100% - var(--header-height) - 64px - env(safe-area-inset-bottom) - var(--steering-clearance, 0px)); }
 }
 @media (max-width: 1000px) and (max-height: 600px) {
-  .explorer.conversation-first:has(#companion:not([hidden])), .explorer.conversation-first:has(#voice-overlay:not([hidden])) { --steering-clearance: 0px; }
-  .explorer :is(.companion, .voice-overlay) { left: 116px; right: 8px; width: auto; }
-  .explorer.steering-open:has(#companion:not([hidden])) .steering-orbit,
+  .explorer.conversation-first:has(#voice-overlay:not([hidden])) { --steering-clearance: 0px; }
+  .explorer .voice-overlay { left: 116px; right: 8px; width: auto; }
   .explorer.steering-open:has(#voice-overlay:not([hidden])) .steering-orbit { width: 96px; height: 152px; }
-  .explorer.steering-open:has(#companion:not([hidden])) #crow-joystick,
   .explorer.steering-open:has(#voice-overlay:not([hidden])) #crow-joystick { width: 96px; height: 96px; }
-  .explorer.steering-open:has(#companion:not([hidden])) #steering-roll,
   .explorer.steering-open:has(#voice-overlay:not([hidden])) #steering-roll { top: auto; bottom: 0; left: 0; right: auto; }
-  .explorer.steering-open:has(#companion:not([hidden])) #steering-speed,
   .explorer.steering-open:has(#voice-overlay:not([hidden])) #steering-speed { bottom: 0; right: 0; }
-  .explorer.steering-open:has(#companion:not([hidden])) #steering-help,
   .explorer.steering-open:has(#voice-overlay:not([hidden])) #steering-help { display: none; }
-  .explorer .companion-heading { gap: 3px; padding-left: 8px; }
-  .explorer .companion .voice-orb { display: none; }
-  .explorer .companion-heading strong { font-size: 12px; }
-  .explorer .companion-heading button { width: 36px; }
-  .explorer .command-examples { grid-template-columns: 1fr; }
-  .explorer .command-examples button { min-height: 44px; flex-direction: row; align-items: center; }
-  .explorer .composer-hint { display: none; }
+  .explorer:has(#voice-overlay:not([hidden])) #steering-panel { width: 96px; }
 }
 @media (max-height: 450px) {
+  #steering-panel:has(#steering-liftoff:not([hidden])) .steering-orbit { display: none; }
   .explorer #crow-joystick { width: 80px; height: 80px; }
   #steering-panel small { display: none; }
   .explorer .steering-orbit { width: 132px; height: 96px; }
-  .explorer.steering-open:has(#companion:not([hidden])) #crow-joystick,
   .explorer.steering-open:has(#voice-overlay:not([hidden])) #crow-joystick { width: 80px; height: 80px; margin-left: 8px; }
-  .explorer.steering-open:has(#companion:not([hidden])) .steering-orbit,
   .explorer.steering-open:has(#voice-overlay:not([hidden])) .steering-orbit { height: 132px; }
 }
