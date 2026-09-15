@@ -21,11 +21,25 @@
     document.getElementById('chat-input').blur();
     updateToggle();
   });
+  window.addEventListener('crow:chat-message', event => {
+    if (event.detail.role !== 'user') return;
+    if (mobile.matches) companion.classList.add('mobile-expanded');
+    else companion.classList.remove('compact');
+    updateToggle();
+  });
+  const input = document.getElementById('chat-input');
+  function sizeInput() {
+    input.style.height = 'auto';
+    input.style.height = `${Math.min(input.scrollHeight, 120)}px`;
+  }
+  input.addEventListener('input', sizeInput);
+  sizeInput();
   new ResizeObserver(() => {
     document.body.style.setProperty('--mobile-dock-height', `${companion.getBoundingClientRect().height}px`);
   }).observe(companion);
   function viewport() {
     const view = window.visualViewport;
+    document.body.classList.toggle('compact-viewport', (view?.height || innerHeight) < 500);
     document.body.style.setProperty('--mobile-viewport-height', `${view?.height || innerHeight}px`);
     document.body.style.setProperty('--mobile-viewport-top', `${view?.offsetTop || 0}px`);
   }

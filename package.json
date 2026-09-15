@@ -15,6 +15,7 @@
     "verify:studio": "node scripts/verify-studio.mjs",
     "verify:browser": "node scripts/verify-browser.mjs",
     "verify:loading": "node scripts/verify-loading.mjs",
+    "verify:chat-interface": "node scripts/verify-chat-interface.mjs",
     "verify:models": "node scripts/verify-models.mjs",
     "build": "node scripts/build-sites.mjs"
   },

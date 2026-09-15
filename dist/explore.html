@@ -4,8 +4,8 @@
 <link rel="stylesheet" href="panorama-journey.css">
 <link rel="stylesheet" href="layout.css?v=3">
 <link rel="stylesheet" href="simple.css">
-<link rel="stylesheet" href="conversation.css?v=2">
-<link rel="stylesheet" href="mobile.css?v=2">
+<link rel="stylesheet" href="conversation.css?v=3">
+<link rel="stylesheet" href="mobile.css?v=3">
 </head>
 <body class="explorer conversation-first">
 <main id="world" aria-label="Interactive 3D travel map"></main>
@@ -43,17 +43,16 @@
  </div>
 </aside>
 <aside id="companion" class="companion" aria-label="Chat and voice guide">
- <div class="companion-heading"><div><span class="companion-dot" aria-hidden="true"></span><strong>Your crow companion</strong></div><button id="companion-toggle" aria-label="Expand or collapse conversation" aria-expanded="true">−</button></div>
- <div class="companion-body"><p class="command-intro">Where shall we go?</p><p class="command-hint">Tell me the whole journey. I’ll handle the flight, landing, and view.</p>
- <div class="command-examples"><button data-command="Fly to Osaka, land at Shinsaibashi, and show me around.">Osaka → Shinsaibashi ↗</button><button data-command="Circle around the Eiffel Tower in Paris.">Circle the Eiffel Tower ↻</button></div>
- <div class="voice-card"><div class="voice-heading"><span class="voice-orb" id="voice-orb" aria-hidden="true">◉</span><div><strong>Ask your guide</strong><span id="voice-state">Fly, discover, or plan by voice</span></div><button id="voice-toggle" aria-label="Start live voice guide">Talk ↗</button></div><p class="fine-print">AI voice · Microphone starts when you tap Talk.</p><div id="voice-controls" hidden><button id="voice-mute" aria-pressed="false">Mute mic</button><button id="voice-audio" hidden>Enable audio</button></div><p id="voice-error" class="inline-status error" role="status"></p></div>
- <div id="connection-status" class="connection-status" role="status">Checking AI connection…</div>
+ <div class="companion-heading"><span class="voice-orb" id="voice-orb" aria-hidden="true">◉</span><div class="companion-identity"><strong>Crow companion</strong><span id="connection-status" class="connection-status" role="status">Connecting…</span></div><button id="companion-toggle" aria-label="Expand or collapse conversation" aria-controls="companion-content" aria-expanded="true">−</button></div>
+ <div class="companion-body" id="companion-content"><div class="chat-welcome"><span class="chat-eyebrow">A little curiosity. A new perspective.</span><p class="command-intro">Where to next?</p><p class="command-hint">Pick a place, find a hidden gem, or plan a day. Let’s explore together.</p>
+ <div class="command-examples"><button data-command="Fly to Gardens by the Bay in Singapore."><span aria-hidden="true">↗</span><span>Take me somewhere<small>Gardens by the Bay</small></span></button><button data-command="Find cafés near my current destination."><span aria-hidden="true">⌕</span><span>Find a local favourite<small>Cafés around here</small></span></button><button data-command="Plan a day at my current destination, with local food and hidden gems."><span aria-hidden="true">☼</span><span>Make a day of it<small>Food, sights & hidden gems</small></span></button></div></div>
  <div id="voice-transcript" class="voice-transcript" role="log" aria-label="Conversation" aria-live="polite"></div>
+ <button id="chat-latest" class="chat-latest" type="button" hidden>Latest messages ↓</button>
  </div><div class="companion-composer">
  <p id="command-status" role="status" class="command-status"></p>
  <button id="command-result" class="command-result" hidden>Open result ↗</button>
- <form id="chat-form" class="chat-form"><label class="sr-only" for="chat-input">Tell your crow where to go</label><input id="chat-input" type="text" maxlength="2000" placeholder="Where next? Ask me anything…" autocomplete="off" enterkeyhint="send" required><button id="chat-send" type="submit" aria-label="Send command">Send ↗</button></form>
- <button id="command-stop" class="command-stop" hidden>Stop current action ■</button>
+ <div class="voice-card"><span id="voice-state" role="status" hidden></span><div id="voice-controls" hidden><button id="voice-mute" aria-pressed="false">Mute mic</button><button id="voice-audio" hidden>Enable audio</button></div><p id="voice-error" class="inline-status error" role="status"></p></div>
+ <form id="chat-form" class="chat-form"><label class="sr-only" for="chat-input">Message your crow</label><textarea id="chat-input" rows="1" maxlength="2000" placeholder="Where shall we go?" autocomplete="off" enterkeyhint="send" required></textarea><div class="composer-actions"><button id="voice-toggle" type="button" aria-label="Start live voice guide"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8"/></svg><span>Talk</span></button><span class="composer-hint">Enter to send</span><button id="chat-send" type="submit" aria-label="Send message" disabled>↑</button><button id="command-stop" type="button" class="command-stop" aria-label="Stop current action" hidden>■</button></div></form>
  </div></aside>
 <dialog id="result-dialog" class="result-dialog" aria-labelledby="result-title"><div class="dialog-top"><h2 id="result-title">Your result</h2><button id="result-close" aria-label="Close result">✕</button></div><div id="result-content"></div></dialog>
 <dialog id="panorama-dialog" class="panorama-dialog" aria-labelledby="panorama-title"><div class="dialog-top"><div><span class="eyebrow">YOUR CROW’S POINT OF VIEW</span><h2 id="panorama-title">Look around.</h2></div><button id="panorama-close" aria-label="Close 360 scene">✕</button></div><div id="panorama-view" class="panorama-view"></div><div class="panorama-footer"><p>Drag to look around · Scroll to zoom · Arrow keys to turn<br><span>AI-generated scene, not a live photograph.</span></p><a id="panorama-download" download="crow-panorama.jpg">Save image ↓</a></div></dialog>
@@ -66,6 +65,6 @@
 <script src="place-search.js?v=23"></script>
 <script src="app.js?v=22"></script>
 <script src="chat-start.js"></script>
-<script type="module" src="scout.js?v=18"></script>
-<script src="mobile-ui.js?v=2" defer></script>
+<script type="module" src="scout.js?v=19"></script>
+<script src="mobile-ui.js?v=3" defer></script>
 </body></html>

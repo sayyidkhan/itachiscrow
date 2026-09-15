@@ -166,16 +166,26 @@ function showResult(kind){
 }
 $('result-close').onclick=closeResult;
 $('result-dialog').addEventListener('close',()=>{if(!$('result-dialog').open)restoreResult();});
+let followConversation=true;
+function scrollConversation(force=false){
+ const log=$('voice-transcript');
+ if(force)followConversation=true;
+ if(followConversation)log.scrollTop=log.scrollHeight;
+ $('chat-latest').hidden=followConversation;
+}
+$('voice-transcript').addEventListener('scroll',()=>{const log=$('voice-transcript');followConversation=log.scrollHeight-log.scrollTop-log.clientHeight<48;$('chat-latest').hidden=followConversation;});
+$('chat-latest').onclick=()=>scrollConversation(true);
 function addMessage(role,text){
+ if(role==='user')followConversation=true;
  $('companion').classList.add('has-conversation');
  const p=node('div','',role==='user'?'chat-bubble user':'chat-bubble assistant');
  p.append(node('b',role==='user'?'You':'Crow'));
  const content=node('div','');renderPlan(text,content);p.append(content);$('voice-transcript').append(p);
  while($('voice-transcript').children.length>50)$('voice-transcript').firstElementChild.remove();
- $('voice-transcript').scrollTop=$('voice-transcript').scrollHeight;
- const body=$('companion').querySelector('.companion-body');body.scrollTop=body.scrollHeight;return p;
+ window.dispatchEvent(new CustomEvent('crow:chat-message',{detail:{role}}));
+ scrollConversation();return p;
 }
-new ResizeObserver(()=>{const log=$('voice-transcript');log.scrollTop=log.scrollHeight;}).observe($('voice-transcript'));
+new ResizeObserver(()=>scrollConversation()).observe($('voice-transcript'));
 function abortActions(){actionAbort?.abort();generation?.abort();planning?.abort();if(context.mapReady)window.CrowMap?.pause();}
 function waitForMap(signal){
  if(context.mapReady)return Promise.resolve();
@@ -239,20 +249,22 @@ async function executeAction(name,args,{signal,sessionId}={}){
 }
 const travel = createTravelExperience({getContext:()=>context,request,renderText:renderPlan,open:()=>{showResult('portrait');tab('explore');},openSocial:()=>{showResult('social');tab('social');},fly});
 const live = new CrowLive({
-  onState(state){liveState=state;$('command-stop').hidden=!state.pendingAction&&!commandBusy;const active=['connecting','connected'].includes(state.status);$('voice-toggle').disabled=state.status==='closing';$('voice-toggle').textContent=state.status==='closing'?'Ending…':active?'End call':'Talk ↗';$('voice-toggle').setAttribute('aria-label',active?'End live voice guide':'Start live voice guide');$('voice-orb').classList.toggle('connected',state.status==='connected');$('voice-state').textContent=state.pendingAction?'Your guide is working…':state.status==='connecting'?'Connecting to GPT-Live…':state.status==='connected'?(state.muted?'Connected · Microphone muted':'Connected · Listening'):'GPT-Live · Voice companion';$('voice-controls').hidden=state.status!=='connected';$('voice-mute').textContent=state.muted?'Unmute mic':'Mute mic';$('voice-mute').setAttribute('aria-pressed',String(state.muted));$('voice-audio').hidden=!state.playbackBlocked;},
+  onState(state){liveState=state;$('command-stop').hidden=!state.pendingAction&&!commandBusy;const active=['connecting','connected'].includes(state.status);$('voice-toggle').disabled=state.status==='closing';$('voice-toggle').querySelector('span').textContent=state.status==='closing'?'Ending…':active?'End call':'Talk';$('voice-toggle').setAttribute('aria-label',active?'End live voice guide':'Start live voice guide');$('voice-orb').classList.toggle('connected',state.status==='connected');$('voice-state').hidden=!active&&state.status!=='closing';$('voice-state').textContent=state.pendingAction?'Your guide is working…':state.status==='connecting'?'Connecting voice…':state.status==='closing'?'Ending call…':state.status==='connected'?(state.muted?'Microphone muted':'Listening — go ahead') :'';$('voice-controls').hidden=state.status!=='connected';$('voice-mute').textContent=state.muted?'Unmute mic':'Mute mic';$('voice-mute').setAttribute('aria-pressed',String(state.muted));$('voice-audio').hidden=!state.playbackBlocked;},
   onError(error){$('voice-error').textContent=error.message;},
-  onTranscript(event){let entry=transcripts.get('current');if(!entry||entry.role!==event.role){entry={role:event.role,element:addMessage(event.role,''),text:''};transcripts.set('current',entry);}entry.text+=event.delta;entry.element.lastElementChild.textContent=entry.text.slice(-5000);$('voice-transcript').scrollTop=$('voice-transcript').scrollHeight;},
+  onTranscript(event){let entry=transcripts.get('current');if(!entry||entry.role!==event.role){entry={role:event.role,element:addMessage(event.role,''),text:''};transcripts.set('current',entry);}entry.text+=event.delta;entry.element.lastElementChild.textContent=entry.text.slice(-5000);scrollConversation();},
   onAction:executeAction
 });
-const chat=new CrowChat({getContext:liveContext,onAction:executeAction,onMessage:addMessage,onProgress:text=>note(text),onError:error=>note(error.message,true),onBusy:busy=>{commandBusy=busy;$('companion').classList.toggle('busy',busy);$('chat-send').disabled=busy;$('chat-send').textContent=busy?'Sending…':'Send ↗';$('chat-input').setAttribute('aria-busy',String(busy));$('command-stop').hidden=!busy&&!liveState.pendingAction;}});
+const chat=new CrowChat({getContext:liveContext,onAction:executeAction,onMessage:addMessage,onProgress:text=>note(text),onError:error=>note(error.message,true),onBusy:busy=>{commandBusy=busy;$('companion').classList.toggle('busy',busy);$('chat-send').disabled=busy||!$('chat-input').value.trim();$('chat-input').setAttribute('aria-busy',String(busy));$('command-stop').hidden=!busy&&!liveState.pendingAction;}});
 function stopCommand(){chat.stop();chat.completedConversation=null;live.cancelActions();abortActions();note('Stopped. Where next?');}
 $('command-stop').onclick=stopCommand;
-$('chat-form').onsubmit=event=>{event.preventDefault();const message=$('chat-input').value.trim();if(!message)return;if(commandBusy&&!/^(stop|pause|cancel)[.!]?$/i.test(message)){note('Finish or stop the current request before sending another.');return;}$('chat-input').value='';if(/^(stop|pause|cancel)[.!]?$/i.test(message)){addMessage('user',message);stopCommand();addMessage('assistant','Stopped.');return;}live.cancelActions();abortActions();chat.send(message);};
-$('chat-input').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.isComposing){event.preventDefault();$('chat-form').requestSubmit();}});
-for(const button of document.querySelectorAll('[data-command]'))button.onclick=()=>{$('chat-input').value=button.dataset.command;$('chat-input').focus();};
+$('chat-form').onsubmit=event=>{event.preventDefault();const message=$('chat-input').value.trim();if(!message)return;if(commandBusy&&!/^(stop|pause|cancel)[.!]?$/i.test(message)){note('Finish or stop the current request before sending another.');return;}$('chat-input').value='';$('chat-input').dispatchEvent(new Event('input'));if(/^(stop|pause|cancel)[.!]?$/i.test(message)){addMessage('user',message);stopCommand();addMessage('assistant','Stopped.');return;}live.cancelActions();abortActions();chat.send(message);};
+$('chat-input').addEventListener('input',()=>{$('chat-send').disabled=commandBusy||!$('chat-input').value.trim();});
+$('chat-input').dispatchEvent(new Event('input'));
+$('chat-input').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();$('chat-form').requestSubmit();}});
+for(const button of document.querySelectorAll('[data-command]'))button.onclick=()=>{$('chat-input').value=button.dataset.command;$('chat-input').dispatchEvent(new Event('input'));$('chat-input').focus();};
 window.addEventListener('pagehide',()=>chat.stop());
 async function connectStatus(){
-  try{const status=await request('/api/status');capabilities=status.capabilities||{};instagramConnection=status.instagram||{};$('connection-status').textContent=capabilities.chat?'● Chat connected · Enter or Send to reply':capabilities.live?'Voice connected · Text chat unavailable':'AI chat is not configured';$('instagram-status').textContent=capabilities.instagram?'Instagram connected. Refresh to find recent public hashtag photos.':'Connect Instagram through Meta to see recent public hashtag photos.';
+  try{const status=await request('/api/status');capabilities=status.capabilities||{};instagramConnection=status.instagram||{};$('connection-status').textContent=capabilities.chat?'Your guide to anywhere':capabilities.live?'Voice ready · Chat unavailable':'Chat unavailable';$('instagram-status').textContent=capabilities.instagram?'Instagram connected. Refresh to find recent public hashtag photos.':'Connect Instagram through Meta to see recent public hashtag photos.';
     $('instagram-connect').disabled=!instagramConnection.oauthAvailable;$('instagram-connect').hidden=Boolean(instagramConnection.selectedAccount);
     $('instagram-disconnect').hidden=!instagramConnection.selectedAccount;
     $('instagram-connection').textContent=instagramConnection.selectedAccount?`Connected as ${instagramConnection.selectedAccount.username||instagramConnection.selectedAccount.name}.`:instagramConnection.connection==='account_selection_required'?'Choose the Instagram account to connect.':instagramConnection.oauthAvailable?'Sign in through Facebook to connect a professional Instagram account linked to a Facebook Page.':'Instagram sign-in hasn’t been set up for this app yet.';

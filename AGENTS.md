@@ -36,6 +36,7 @@ Use Zo for normal code changes, browser/WebGL2 investigation, and GitHub commits
 - The public route declaration is in `Start/garden-of-zo/zo-router/public.routes.json`. Do not recreate a direct public HTTP service for this app.
 - Public page navigation is shared through `dist/navigation.js` and `dist/navigation.css`; keep the same menu across all five pages. Location denial, timeout or unavailable data defaults to Esplanade, Singapore; a valid device location still takes precedence.
 - Keep every page stylesheet in the document head and reserve the navigation button in HTML so delayed scripts cannot expose an unfinished layout. `npm run verify:loading` checks all five pages during delayed downloads; set `CROW_TEST_URL` and `CROW_BROWSER_EXECUTABLE` for the target preview and browser.
+- Chat layout lives in `dist/conversation.css` and `dist/mobile.css`; keep text, Talk and Stop reachable when collapsed or the keyboard reduces the viewport. `npm run verify:chat-interface` checks browser interactions with mocked chat replies and microphone denial, using the same preview/browser environment variables.
 
 ### Zo limitation
 

@@ -14,7 +14,9 @@ Use the conversation box or **Talk**. Text works without microphone permission. 
 - “Find cafés nearby.”
 - “Plan three days here focused on food.”
 
-On phones, text and **Talk** stay in the compact panel below the map. Tap **+** to expand the conversation and **−** to make room for the map again. Sending a message expands the conversation automatically. Every page uses the same **•••** menu: Map, Author Studio, Crow colours, Usage limits, Debug tools, Music, About, and Back to home. The current page is marked with a tick; map tools open the map when needed.
+Text and **Talk** share one composer below the conversation. Tap a starter suggestion to edit it before sending, or write your own message. **Enter** sends; **Shift+Enter** adds a new line. The square **Stop current action** button appears while a request is running. Scroll back to read earlier replies without being pulled to the bottom; **Latest messages** takes you back.
+
+On phones, the composer stays in the compact panel below the map. Tap **+** to expand the conversation and **−** to make room for the map again. Sending a message expands the conversation automatically. Every page uses the same **•••** menu: Map, Author Studio, Crow colours, Usage limits, Debug tools, Music, About, and Back to home. The current page is marked with a tick; map tools open the map when needed.
 
 The guide reports progress and failures. **Stop current action** cancels pending work. Dragging the map pauses the flight so you can inspect the surroundings. Open **Debug** for manual destination, landing, flight, discovery, and planning controls.
 
