@@ -32,6 +32,8 @@
   .explorer.steering-open:has(#voice-overlay:not([hidden])) { --steering-clearance: 240px; }
   .explorer.conversation-first.long-flight:has(#companion:not([hidden])) { --steering-clearance: 0px; }
   .explorer.conversation-first :is(.companion, .voice-overlay) { bottom: calc(48px + env(safe-area-inset-bottom) + var(--steering-clearance, 0px)); max-height: calc(100% - var(--header-height) - 64px - env(safe-area-inset-bottom) - var(--steering-clearance, 0px)); }
+  .explorer.conversation-first:not(.steering-open) .voice-overlay { bottom: calc(48px + env(safe-area-inset-bottom)); max-height: calc(100% - var(--header-height) - 64px - env(safe-area-inset-bottom)); }
+  .explorer:not(.steering-open):has(#voice-overlay:not([hidden])) .steering-control { bottom: calc(56px + env(safe-area-inset-bottom) + var(--voice-panel-height, 160px)); }
 }
 @media (max-width: 1000px) and (max-height: 600px) {
   .explorer.conversation-first:has(#voice-overlay:not([hidden])) { --steering-clearance: 0px; }

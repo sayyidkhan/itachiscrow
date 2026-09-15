@@ -71,14 +71,14 @@
     const { role, text } = event.detail;
     if (captions.at(-1)?.role === role) captions[captions.length - 1] = { role, text };
     else captions.push({ role, text });
-    captions = captions.slice(-2);
+    captions = captions.slice(-1);
     $('voice-captions').replaceChildren(...captions.map(caption => {
       const bubble = document.createElement('p');
       bubble.className = 'voice-caption ' + (caption.role === 'user' ? 'user' : 'assistant');
       const label = document.createElement('strong');
       label.textContent = caption.role === 'user' ? 'You' : 'Crow';
       const content = document.createElement('span');
-      content.textContent = caption.text.slice(-600);
+      content.textContent = caption.text.slice(-240);
       bubble.append(label, content);
       return bubble;
     }));
@@ -116,6 +116,9 @@
   window.visualViewport?.addEventListener('scroll', viewport);
   window.addEventListener('resize', viewport);
   window.addEventListener('crow:open-chat', openChat);
+  new ResizeObserver(() => {
+    document.body.style.setProperty('--voice-panel-height', $('voice-overlay').getBoundingClientRect().height + 'px');
+  }).observe($('voice-overlay'));
   $('chat-open').disabled = false;
   $('voice-launch').disabled = false;
   viewport();

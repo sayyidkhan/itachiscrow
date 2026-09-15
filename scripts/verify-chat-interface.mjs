@@ -141,7 +141,7 @@ try {
         window.voiceHarness.caption('user', 'Tell me about this waterfront.');
         window.voiceHarness.caption('assistant', 'You’re at Esplanade, overlooking Marina Bay.');
       });
-      assert.equal(await page.locator('.voice-caption').count(), 2);
+      assert.equal(await page.locator('.voice-caption').count(), 1, 'Only the latest caption stays over the map');
       assert.match(await page.locator('.voice-caption.assistant').innerText(), /Marina Bay/);
       assert.deepEqual(await page.locator('#world').boundingBox(), voiceMap);
       const hud = await page.locator('#voice-overlay').boundingBox();

@@ -101,14 +101,15 @@ for (const [index, value] of ['auto', ...styles].entries()) {
   preview.width = preview.height = 64;
   preview.setAttribute('aria-hidden', 'true');
   const label = document.createElement('span');
-  label.textContent = index ? labels[index - 1] : 'Auto';
+  label.textContent = index ? labels[index - 1] : 'Adaptive';
+  if (!index) button.title = 'Changes the orb shape as you listen, think and speak';
   button.append(preview, label);
   paint(preview, value === 'auto' ? 'connecting' : value, 1.8);
   button.onclick = () => {
     selection = value;
     try { localStorage.setItem('crow.voice-orb', value); } catch {}
     for (const item of picker.children) item.setAttribute('aria-pressed', String(item === button));
-    toggle.textContent = (index ? labels[index - 1] : 'Auto') + ' ◇';
+    updateStyleLabel();
     picker.hidden = true;
     toggle.setAttribute('aria-expanded', 'false');
     toggle.focus({ preventScroll: true });
@@ -116,7 +117,13 @@ for (const [index, value] of ['auto', ...styles].entries()) {
   };
   picker.append(button);
 }
-toggle.textContent = (selection === 'auto' ? 'Auto' : labels[styles.indexOf(selection)]) + ' ◇';
+function updateStyleLabel() {
+  const name = selection === 'auto' ? 'Adaptive' : labels[styles.indexOf(selection)];
+  toggle.textContent = 'Orb style';
+  toggle.title = 'Orb style: ' + name;
+  toggle.setAttribute('aria-label', 'Choose voice orb style: ' + name);
+}
+updateStyleLabel();
 toggle.onclick = () => {
   picker.hidden = !picker.hidden;
   toggle.setAttribute('aria-expanded', String(!picker.hidden));

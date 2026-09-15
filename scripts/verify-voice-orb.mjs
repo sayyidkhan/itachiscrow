@@ -85,7 +85,12 @@ try {
       const rect = id => document.getElementById(id).getBoundingClientRect().toJSON();
       return { overlay: rect('voice-overlay'), mute: rect('voice-overlay-mute'), end: rect('voice-overlay-end'), captions: rect('voice-captions'), toolbar: document.querySelector('.voice-toolbar').getBoundingClientRect().toJSON() };
     });
-    if (height > 500 && width <= 430) assert(compact.overlay.height <= 250, 'Phone voice panel leaves the city in view');
+    if (height > 500 && width <= 430) {
+      assert(compact.overlay.height <= 175, 'Phone voice panel leaves the city in view');
+      assert(Math.abs(compact.overlay.bottom - (height - 48)) <= 1, 'Voice sits just above attribution without an unused control row');
+    }
+    assert.equal(await page.locator('.voice-caption').count(), 1, 'Voice shows only the latest caption');
+    assert.equal(await page.locator('#voice-style-toggle').textContent(), 'Orb style');
     assert(compact.mute.width >= 44 && compact.mute.height >= 44 && compact.end.width >= 44 && compact.end.height >= 44, 'Call controls retain accessible touch targets');
     assert(compact.captions.bottom <= compact.toolbar.top + 1, 'Captions never overlap call controls');
     assert.equal(await page.locator('#voice-overlay-end svg').count(), 1, 'Voice state updates retain the hang-up icon');
@@ -105,7 +110,7 @@ try {
     await page.locator('#voice-overlay-end').click();
     assert(await page.locator('#voice-overlay').isHidden());
     await page.reload();
-    await page.waitForFunction(() => document.querySelector('#voice-style-toggle').textContent.includes('Helix'));
+    await page.waitForFunction(() => document.querySelector('#voice-style-toggle').getAttribute('aria-label').includes('Helix'));
     assert(await page.locator('#voice-overlay').isHidden(), 'Restoring the visual preference never starts a call');
     if (width === 320) {
       let release;
