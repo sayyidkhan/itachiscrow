@@ -31,4 +31,12 @@ const author = await readFile('dist/images/author-default.jpeg');
 assert.deepEqual([...author.subarray(0, 2)], [255, 216]);
 assert.deepEqual([...author.subarray(-2)], [255, 217]);
 
+for (const name of ['gardens', 'marina', 'kyoto', 'paris', 'sydney', 'kampong']) {
+  const path = `dist/images/destinations/${name}.webp`;
+  const image = await readFile(path);
+  assert.equal(image.toString('ascii', 0, 4), 'RIFF', path);
+  assert.equal(image.toString('ascii', 8, 12), 'WEBP', path);
+  assert.equal(image.readUInt32LE(4) + 8, image.length, `${path} is truncated`);
+}
+
 console.log('Approved image assets are complete.');

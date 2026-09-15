@@ -10,6 +10,7 @@ try {
   for (const [width, height] of [[320, 568], [390, 844], [430, 932], [740, 390], [390, 380], [1280, 844]]) {
     if (process.env.CROW_TEST_VIEWPORT && process.env.CROW_TEST_VIEWPORT !== `${width}x${height}`) continue;
     const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce', hasTouch: true });
+    context.setDefaultTimeout(30_000);
     await context.route('**/config.js', route => route.fulfill({ contentType: 'text/javascript', body: 'window.CROW_MAPS_KEY1="test";' }));
     await context.route('**/api/map-session', route => route.fulfill({ json: { ok: true } }));
     await context.route('**/api/status', route => route.fulfill({ json: { capabilities: { chat: true, live: true, panorama: true } } }));
@@ -71,8 +72,14 @@ try {
       assert.equal(await page.locator('.nearby-card').count(), 8);
       assert.equal(await page.locator('.nearby-credits a').first().getAttribute('href'), 'https://example.com/photographer');
       await page.locator('.nearby-art img').first().dispatchEvent('error');
-      await page.locator('.nearby-art svg').first().waitFor({ state: 'attached' });
+      await page.locator('.nearby-art .discovery-art img').first().waitFor({ state: 'attached' });
+      const fallbackImage = page.locator('.nearby-art .discovery-art img').first();
+      if (await fallbackImage.isVisible()) await fallbackImage.evaluate(image => image.decode());
       assert.equal(await page.locator('.nearby-illustration-label').first().textContent(), 'Illustration');
+      await page.locator('.nearby-art .discovery-art img').first().dispatchEvent('error');
+      await page.waitForTimeout(100);
+      assert.equal(await page.locator('.nearby-art .art-unavailable').count(), 1);
+      assert.equal(await page.locator('.nearby-art .art-unavailable img').count(), 0);
       const bounds = await page.evaluate(() => {
         const rect = selector => document.querySelector(selector).getBoundingClientRect().toJSON();
         return { panel: rect('#nearby-panel'), toolbar: rect('.controls'), map: rect('#world'), chat: rect('#chat-launcher'), overflow: document.documentElement.scrollWidth > innerWidth };

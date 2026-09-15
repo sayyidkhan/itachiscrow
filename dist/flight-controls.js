@@ -1,4 +1,4 @@
-import { illustration } from './discovery.js?v=2';
+import { illustration } from './discovery.js?v=3';
 
 (() => {
   const $ = id => document.getElementById(id);
@@ -43,7 +43,7 @@ import { illustration } from './discovery.js?v=2';
   new MutationObserver(reflect).observe($('nearby-panel'), { attributes: true, attributeFilter: ['hidden'] });
   function illustrateMissingPhotos() {
     for (const art of $('places').querySelectorAll('.nearby-art')) {
-      if (art.querySelector('img, svg')) continue;
+      if (art.querySelector('img, svg, .discovery-art')) continue;
       const type = art.closest('.nearby-card').querySelector('small').textContent.toLowerCase();
       const theme = /park|garden/.test(type) ? 'gardens' : /museum|gallery|art/.test(type) ? 'arts' : /cafe|coffee|restaurant|food/.test(type) ? 'cafe' : 'city';
       const label = document.createElement('span');

@@ -36,7 +36,13 @@ try {
       await page.locator('#chat-input').fill('Keep my draft');
       await page.locator('[data-discovery="somewhere"]').click();
       assert.equal(await page.locator('.discovery-card').count(), 6);
-      assert.equal(await page.locator('.discovery-art svg').count(), 6);
+      assert.equal(await page.locator('.discovery-art img').count(), 6);
+      for (const picture of await page.locator('.discovery-art img').all()) {
+        await picture.scrollIntoViewIfNeeded();
+        await picture.evaluate(image => image.decode());
+        assert(await picture.evaluate(image => image.naturalWidth >= 640));
+      }
+      await page.locator('#companion-content').evaluate(el => { el.scrollTop = 0; });
       assert.equal(requests.length, 0);
       assert.equal(await page.locator('#chat-input').inputValue(), 'Keep my draft');
       await page.screenshot({ path: new URL(`destinations-${width}x${height}.png`, output).pathname });

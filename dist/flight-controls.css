@@ -55,7 +55,7 @@
 .nearby-art img { width: 100%; height: 100%; object-fit: cover; }
 .nearby-art { position: relative; }
 .nearby-art .discovery-art { width: 100%; height: 100%; aspect-ratio: auto; }
-.nearby-art .discovery-art svg { width: 100%; height: 100%; object-fit: cover; }
+.nearby-art .discovery-art img { width: 100%; height: 100%; object-fit: cover; }
 .nearby-illustration-label { position: absolute; bottom: 4px; right: 5px; padding: 1px 4px; border-radius: 3px; background: #10282dcc; color: #d8eee3; font: 8px/1.5 system-ui; }
 .nearby-card strong { display: block; padding: 9px 10px 0; font-size: 13px; line-height: 1.3; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .explorer .nearby-card small { margin: 0; padding: 5px 10px 10px; font-size: 10px; line-height: 1.3; }

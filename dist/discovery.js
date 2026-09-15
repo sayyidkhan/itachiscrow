@@ -4,17 +4,21 @@ const make = (tag, text = '', className = '') => {
   element.className = className;
   return element;
 };
-const scenes = {
-  gardens: '<path d="M0 96Q65 70 130 98T260 94V160H0" fill="#467e69"/><path d="M74 128V66m-19-9 19 20 22-24m70 77V45m-29-6 29 25 31-30" stroke="#dbb6a6" stroke-width="6"/><ellipse cx="74" cy="51" rx="33" ry="12" fill="#8fcbaa"/><ellipse cx="166" cy="32" rx="42" ry="14" fill="#b0d8a7"/><path d="M0 142Q100 107 260 135" fill="none" stroke="#c6dca9" stroke-width="10"/>',
-  waterfront: '<path d="M0 106H260V160H0" fill="#558e94"/><path d="M50 104Q54 59 104 76Q126 48 151 104Z" fill="#dbe9cb"/><path d="m123 104 24-49 22 49m-10 0 31-68 23 68" fill="#f1e6c6"/><path d="M24 127h70m45-8h95m-171 26h110" stroke="#c4e6d5" stroke-width="2"/>',
-  temple: '<path d="M0 110 52 44 121 112 181 58 260 118V160H0" fill="#668f81"/><path d="M83 144V72h91v72" fill="#dbc7a3"/><path d="m64 82 65-34 65 34Zm-8 35 73-36 75 36Z" fill="#733e47"/><path d="M119 145v-28h22v28" fill="#70464a"/><path d="M27 160v-63m-15-5h31" stroke="#d79583" stroke-width="6"/>',
-  city: '<path d="M26 135V78h35v57m13 0V54h37v81m12 0V85h32v50m14 0V43h34v92m13 0V68h30v67" fill="#9ab8b0"/><path d="M184 43V23M0 142h260" stroke="#d6d9b4" stroke-width="3"/><path d="M84 67v9m13-9v9m84-17v10m11-10v10m-8 14v10M38 91v10m12-10v10" stroke="#ffe8af" stroke-width="4"/>',
-  cafe: '<path d="M38 144V58h184v86" fill="#d5b494"/><path d="M29 58h202l-15-25H44Z" fill="#bd7771"/><path d="M67 34 61 58m37-24-2 24m36-24v24m33-24 3 24m29-24 5 24" stroke="#f4d5b4" stroke-width="13"/><path d="M57 80h63v44H57m84 20V78h60v66" fill="#385f63"/><path d="M73 94h25v17H73m25-15q12 0 7 11h-7" stroke="#f2e1ba" fill="none" stroke-width="3"/>',
-  arts: '<path d="M42 139V73h176v66" fill="#c4cfc5"/><path d="m28 73 102-42 103 42Z" fill="#e9d9b8"/><path d="M61 83v46m37-46v46m38-46v46m38-46v46m30-46v46" stroke="#698987" stroke-width="9"/><path d="M28 145h205" stroke="#e9d9b8" stroke-width="10"/>'
-};
+const artwork = { gardens: 'gardens', city: 'marina', temple: 'kyoto', arts: 'paris', waterfront: 'sydney', cafe: 'kampong' };
 export function illustration(theme) {
-  const art = make('div', '', 'discovery-art ' + theme);
-  art.innerHTML = `<svg viewBox="0 0 260 160" fill="none" aria-hidden="true"><path fill="currentColor" d="M0 0h260v160H0z"/><circle cx="211" cy="35" r="21" fill="#f2d5a2"/><path d="M20 35h40m-15 8h33" stroke="#e0eddd" stroke-width="3" stroke-linecap="round" opacity=".5"/>${scenes[theme] || scenes.city}</svg>`;
+  const selected = Object.hasOwn(artwork, theme) ? theme : 'city';
+  const art = make('div', '', 'discovery-art ' + selected);
+  const picture = make('img');
+  picture.alt = '';
+  picture.width = 768; picture.height = 512;
+  picture.loading = 'lazy'; picture.decoding = 'async';
+  picture.src = new URL(`./images/destinations/${artwork[selected]}.webp`, import.meta.url).href;
+  picture.addEventListener('error', () => {
+    picture.remove();
+    art.classList.add('art-unavailable');
+    art.append(make('span', 'Preview unavailable'));
+  }, { once: true });
+  art.append(picture);
   return art;
 }
 const destinations = [
@@ -142,7 +146,7 @@ export function createDiscovery({ getContext, request, onFly }) {
       }
       body.append(actions); card.append(body); cards.append(card);
     }
-    content.append(cards, make('p', mode === 'somewhere' ? 'Illustrated destination ideas · choose any place to explore.' : 'AI suggestions with web sources · illustrations, not venue photos. Check opening hours before visiting.', 'discovery-footnote'));
+    content.append(cards, make('p', mode === 'somewhere' ? 'AI-illustrated destinations · choose any place to explore.' : 'AI suggestions with web sources · artwork sets the mood, not a view of each venue. Check opening hours before visiting.', 'discovery-footnote'));
     if (mode !== 'somewhere') {
       const actions = make('div', '', 'discovery-footer');
       actions.append(button('Refresh picks', () => load()));

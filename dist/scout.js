@@ -4,7 +4,7 @@ import { createPanoramaJourney } from './panorama-journey.js';
 import { CrowChat } from './chat.js?v=3';
 import { CrowLive } from './live.js?v=3';
 import { createTravelExperience } from './travel.js';
-import { createDiscovery } from './discovery.js?v=1';
+import { createDiscovery } from './discovery.js?v=3';
 
 const $ = id => document.getElementById(id);
 const emptyContext = {mapReady:false,destination:{name:'Esplanade, Singapore',lat:1.2897,lng:103.8556},spot:null,savedPlaces:[]};
