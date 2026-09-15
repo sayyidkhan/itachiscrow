@@ -45,7 +45,7 @@ function requestBasePath(req,env){
 }
 
 function browserConfig(env,basePath){
- return `window.CROW_BASE_PATH=${JSON.stringify(basePath)};window.CrowUrl=path=>typeof path==='string'&&path.startsWith('/')&&!path.startsWith('//')?window.CROW_BASE_PATH+path:path;if(window.CROW_BASE_PATH){const crowFetch=window.fetch.bind(window);window.fetch=(input,init)=>crowFetch(typeof input==='string'?window.CrowUrl(input):input,init);}window.CROW_MAPS_KEY=${JSON.stringify(env.CROW_MAPS_KEY||'')};window.CROW_MAPS_FALLBACK_KEY=${JSON.stringify(env.CROW_MAPS_FALLBACK_KEY||'')};`;
+ return `window.CROW_BASE_PATH=${JSON.stringify(basePath)};window.CrowUrl=path=>typeof path==='string'&&path.startsWith('/')&&!path.startsWith('//')?window.CROW_BASE_PATH+path:path;if(window.CROW_BASE_PATH){const crowFetch=window.fetch.bind(window);window.fetch=(input,init)=>crowFetch(typeof input==='string'?window.CrowUrl(input):input,init);}window.CROW_MAPS_KEY=${JSON.stringify(env.CROW_MAPS_KEY||'')};window.CROW_MAPS_FALLBACK_KEY=${JSON.stringify(env.CROW_MAPS_FALLBACK_KEY||'')};window.CROW_MAPS_FALLBACK_KEY_2=${JSON.stringify(env.CROW_MAPS_FALLBACK_KEY_2||'')};`;
 }
 
 function sameOrigin(req,env){

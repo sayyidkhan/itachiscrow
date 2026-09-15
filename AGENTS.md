@@ -21,6 +21,7 @@ Use Zo for normal code changes, browser/WebGL2 investigation, and GitHub commits
    - `OPENAI_API_KEY`
    - `CROW_MAPS_KEY`
    - `CROW_MAPS_FALLBACK_KEY` (optional)
+   - `CROW_MAPS_FALLBACK_KEY_2` (optional third key)
    - `PUBLIC_ORIGIN` set to Zo's exact public HTTPS URL when using a deployed preview.
 4. Do not add `CROW_TILES_KEY`.
 5. Verify actual rendering in a WebGL2-capable browser when changing map/crow behaviour. A successful model download is not proof that the crow is visible.
@@ -49,6 +50,7 @@ Use ChatGPT Work/Codex to operate the existing public Sites deployment at `https
    - `OPENAI_API_KEY`
    - `CROW_MAPS_KEY`
    - `CROW_MAPS_FALLBACK_KEY` (optional)
+   - `CROW_MAPS_FALLBACK_KEY_2` (optional third key)
    - `PUBLIC_ORIGIN` set to `https://itachis-crow.promptalchemistlabs.chatgpt.site`
 4. Rebuild, save a version from the exact source commit, deploy it, and confirm deployment success.
 5. A GitHub push never auto-deploys this Site. Production deployment is a separate explicit ChatGPT Work/Codex step.

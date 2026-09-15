@@ -1,6 +1,6 @@
 # Usage limits
 
-Server-enforced per-IP limits use persistent D1 counters. Requests are charged before provider calls, including failed attempts. A retry with the second Google key uses the same search allowance.
+Server-enforced per-IP limits use persistent D1 counters. Requests are charged before provider calls, including failed attempts. Retries with the second or third Google key use the same search allowance.
 
 | Operation | Per minute | Per hour |
 | --- | ---: | ---: |

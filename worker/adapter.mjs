@@ -15,7 +15,7 @@ export default {
       if(group==='search')return proxyPlaceSearch(request,env,permit.turn);
     }
     if (url.pathname === '/config.js') {
-      return new Response(`window.CROW_MAPS_KEY=${JSON.stringify(env.CROW_MAPS_KEY || '')};window.CROW_MAPS_FALLBACK_KEY=${JSON.stringify(env.CROW_MAPS_FALLBACK_KEY || '')};`, {
+      return new Response(`window.CROW_MAPS_KEY=${JSON.stringify(env.CROW_MAPS_KEY || '')};window.CROW_MAPS_FALLBACK_KEY=${JSON.stringify(env.CROW_MAPS_FALLBACK_KEY || '')};window.CROW_MAPS_FALLBACK_KEY_2=${JSON.stringify(env.CROW_MAPS_FALLBACK_KEY_2 || '')};`, {
         headers: {'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'no-store'},
       });
     }

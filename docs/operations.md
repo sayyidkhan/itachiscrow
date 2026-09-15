@@ -12,6 +12,7 @@ This describes the current Sites Worker implementation. Historical verification 
 | `OPENAI_TEXT_MODEL`, `OPENAI_LIVE_MODEL`, `OPENAI_IMAGE_MODEL` | Optional model overrides; inspect `.env.example` and `server/index.mjs` for configured defaults and request compatibility |
 | `CROW_MAPS_KEY` | Primary Google key; served to the browser through `/config.js` on Sites |
 | `CROW_MAPS_FALLBACK_KEY` | Optional second Google key, used for rotation and retry |
+| `CROW_MAPS_FALLBACK_KEY_2` | Optional third Google key, used for rotation and retry |
 | `PUBLIC_ORIGIN` | Exact published HTTPS origin, without a path; protected Worker requests must match it |
 | `DB` | Sites-managed D1 binding declared in `.openai/hosting.json`; required for protected routes |
 | Meta settings in `.env.example` | Optional Instagram integration; not required for flight or Author scenes |
@@ -67,7 +68,9 @@ GitHub and Sites source are separate repositories. A GitHub push alone does not 
 
 The Worker admits protected requests before calling providers using atomic D1 counters. See [Usage limits](usage-limits.md) for thresholds and reset behaviour. It returns 429 and `Retry-After` when full, 503 if usage protection is unavailable, and 403 for an origin mismatch.
 
-Map startup alternates configured keys across browser loads and allows one fallback reload on supported startup failures. Places searches rotate on the server and can retry the other key for selected provider failures. A Places retry shares one app search allowance; a map reload needs another map-start admission.
+Map startup rotates across up to three distinct configured keys across browser loads. Supported startup failures try each remaining key once (at most two reloads). Places searches rotate their starting key on the server using the admitted per-IP hourly search count and can retry each remaining key once for selected provider failures. All Places attempts share one app search allowance; each map reload needs another map-start admission. Place photos use the credential that served their search result.
+
+Configure `CROW_MAPS_FALLBACK_KEY_2` separately in each deployment's secrets. Zo's managed service environment does not transfer to GPT Sites through GitHub.
 
 Direct Google imagery, SDK place details, and photos are outside the app counters. Voice admission limits session creation, not audio duration. Provider quotas and billing controls remain separate.
 
