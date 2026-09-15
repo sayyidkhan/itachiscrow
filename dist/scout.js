@@ -1,4 +1,4 @@
-import {createSceneAuthor} from './scene-author.js';
+import {createSceneAuthor} from './scene-author.js?v=2';
 import { PanoramaViewer } from './panorama.js?v=2';
 import { createPanoramaJourney } from './panorama-journey.js';
 import { CrowChat } from './chat.js?v=3';
@@ -301,7 +301,7 @@ $('pick-spot').onclick=()=>{try{window.CrowMap.selectLandingMode();setOpen(false
 $('land-here').onclick=async()=>{try{setOpen(false);await window.CrowMap.landAt(context.destination);}catch(error){setOpen(true);note(error.message,true);}};
 $('generate-scene').onclick=()=>generateScene(undefined,true).catch(()=>{});$('reopen-scene').onclick=()=>openScene().catch(error=>note(error.message,true));
 $('scene-open').onclick=()=>openScene().catch(error=>{setOpen(true);note(error.message,true);});
-$('panorama-close').onclick=()=>$('panorama-dialog').close();$('panorama-dialog').addEventListener('close',()=>{viewer?.destroy();viewer=null;});
+$('panorama-close').onclick=()=>$('panorama-dialog').close();$('panorama-dialog').addEventListener('close',()=>{if(!$('panorama-dialog').open){viewer?.destroy();viewer=null;}});
 $('plan-form').onsubmit=e=>{e.preventDefault();generatePlan().catch(error=>{$('plan-status').textContent=error.message;$('plan-status').classList.add('error');});};
 $('instagram-form').onsubmit=e=>{e.preventDefault();instagram();};
 $('instagram-connect').onclick=()=>{if(!instagramConnection.oauthAvailable)return;const loginUrl=window.CrowUrl?.('/api/instagram/connect')||'/api/instagram/connect';oauthPopup=window.open(loginUrl,'crow-instagram-connect','popup,width=620,height=760');if(!oauthPopup)window.location.assign(loginUrl);else $('instagram-connection').textContent='Finish signing in in the opened window.';};

@@ -17,6 +17,7 @@
     "verify:loading": "node scripts/verify-loading.mjs",
     "verify:chat-interface": "node scripts/verify-chat-interface.mjs",
     "verify:discovery": "node scripts/verify-discovery.mjs",
+    "verify:scene-author": "node scripts/verify-scene-author.mjs",
     "verify:flight-controls": "node scripts/verify-flight-controls.mjs",
     "verify:models": "node scripts/verify-models.mjs",
     "build": "node scripts/build-sites.mjs"

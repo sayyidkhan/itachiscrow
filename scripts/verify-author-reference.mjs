@@ -51,6 +51,7 @@ try{
   const canvas=document.createElement('canvas');canvas.width=10;canvas.height=10;
   const scene={spot:{name:'Test destination'}},photos=[];
   createSceneAuthor({getScene:()=>scene,getViewer:()=>({canvas,render(){}}),cancelJourney(){},request:async(path,body)=>{photos.push(body.photo);return {imageUrl:body.photo}}});
+  document.getElementById('panorama-dialog').showModal();
   document.querySelector('.scene-mode button:last-child').click();
   const deadline=Date.now()+5000;
   while(photos.length<3&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,10));

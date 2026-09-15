@@ -46,9 +46,11 @@ Long journeys show a globe transition and route card. A device’s reduced-motio
 
 The 3D map always begins with the crow. Your reference portrait should not cover the map.
 
-After landing and generating a scene, use the scene window’s **Crow / Author** switch. Crow shows the generated crow scene. Author uses the reference portrait and current scene as image-generation context to create three variations of you at that destination. Each variation is a separate image request and uses the image allowance.
+After landing and generating a scene, use the scene window’s **Crow / Author** switch. Crow shows the generated crow scene. Author uses the reference portrait and current scene as image-generation context to create three variations of you at that destination concurrently. Three animated cards show progress, and each finished image appears immediately. Select a card to preview and save it. Each variation is a separate image request and uses the image allowance.
 
-Switch back to Crow to return to the scene. Leaving the dialog or changing modes cancels pending Author generation; an already admitted provider request can still count toward usage. Download finished images you want to keep.
+Add optional comments under **Shape your next variations**, then choose **Generate 3 more** for another concurrent batch. Try a closer portrait, a different outfit or a candid pose. Your reference identity and location stay consistent; previous results remain in the dialog. If an image fails, retry its card individually or choose **Retry unfinished**. Successful images are not regenerated. Comments apply to new batches; retries use the original direction.
+
+Switch back to Crow to return to the scene. **Stop**, leaving the dialog or changing modes cancels pending Author generation; an already admitted provider request can still count toward usage. Reopening retains finished images and comments for the same scene, and unfinished requests resume only when you choose retry. A new scene clears the previous gallery. Download finished images you want to keep.
 
 Author pictures are generated 2D scenes. They are not live photographs or a 3D avatar, and likeness and location details may vary.
 
