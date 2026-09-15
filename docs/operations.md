@@ -65,6 +65,8 @@ For a public Zo preview, set `PUBLIC_ORIGIN` to that service’s exact HTTPS ori
 
 The active Zo development deployment is the public router route `https://public-apps-sayyidkhan.zocomputer.io/crow`. Its backend is an internal process on port `8806`; the router strips `/crow` before proxying and supplies the route prefix to the runtime. Keep `PUBLIC_ORIGIN=https://public-apps-sayyidkhan.zocomputer.io` in the environment. In private `config.json`, set `PORT` to `8806`, `HOST` to `127.0.0.1` and `APP_BASE_PATH` to `/crow`. Do not use a direct `*.zocomputer.io` service URL for Itachi’s Crow.
 
+Public pages accept top-level GET/HEAD navigation from links on other websites. API routes still reject foreign origins and cross-site requests. When checking access through the router, test a real external link: a direct URL probe omits the browser's `Sec-Fetch-Site: cross-site` header and can miss navigation failures.
+
 ## Publish an update
 
 1. Start from the intended GitHub branch and preserve unrelated changes.

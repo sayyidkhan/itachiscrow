@@ -558,7 +558,7 @@ function createInstagramLogin(config, fetchImpl, now) {
   return { session, begin, callback, disconnect };
 }
 
-function assertOrigin(req, config, allowOAuthCallback = false) {
+function assertOrigin(req, config, allowCrossSiteRequest = false) {
   let base;
   try { base = new URL(`http://${req.headers.host}`); } catch { throw new HttpError(403, 'origin_rejected', 'Unexpected request host.'); }
   const expected = config.publicOrigin ? new URL(config.publicOrigin) : base;
@@ -567,7 +567,7 @@ function assertOrigin(req, config, allowOAuthCallback = false) {
     && Number(base.port || 80) === req.socket?.localPort
     && (!req.headers['x-forwarded-host'] || req.headers['x-forwarded-host'] === expected.host);
   if (config.publicOrigin ? base.host !== expected.host && !localProxy : !isLocal) throw new HttpError(403, 'origin_rejected', 'Unexpected request host.');
-  if (!allowOAuthCallback && (req.headers['sec-fetch-site'] === 'cross-site' || (req.headers.origin && req.headers.origin !== expected.origin))) throw new HttpError(403, 'origin_rejected', 'This endpoint accepts requests from this application only.');
+  if (!allowCrossSiteRequest && (req.headers['sec-fetch-site'] === 'cross-site' || (req.headers.origin && req.headers.origin !== expected.origin))) throw new HttpError(403, 'origin_rejected', 'This endpoint accepts requests from this application only.');
   return expected;
 }
 
@@ -634,7 +634,9 @@ export function createHandler({ env = process.env, fetchImpl = globalThis.fetch,
     try {
       const url = new URL(req.url, 'http://localhost');
       const isCallback = url.pathname === '/api/instagram/callback' && req.method === 'GET';
-      const origin = assertOrigin(req, config, isCallback);
+      const isPageNavigation = !url.pathname.startsWith('/api/') && ['GET', 'HEAD'].includes(req.method)
+        && req.headers['sec-fetch-mode'] === 'navigate' && req.headers['sec-fetch-dest'] === 'document';
+      const origin = assertOrigin(req, config, isCallback || isPageNavigation);
       if (!url.pathname.startsWith('/api/')) { await serveStatic(req, res, distDir); return; }
       const session = instagramLogin.session(req);
       if (url.pathname === '/api/status' && req.method === 'GET') { json(res, 200, getStatus(config, session)); return; }

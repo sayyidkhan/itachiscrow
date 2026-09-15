@@ -32,7 +32,7 @@ Use Zo for normal code changes, browser/WebGL2 investigation, and GitHub commits
 
 - The Zo checkout lives at `Github/itachiscrow`.
 - The public development route is `https://public-apps-sayyidkhan.zocomputer.io/crow`; its exact permitted `PUBLIC_ORIGIN` is `https://public-apps-sayyidkhan.zocomputer.io`.
-- The `itachiscrow-dev` process service listens only on localhost port `8806` and is reached through the Garden of Zo public router. Keep `PORT: 8806`, `HOST: "127.0.0.1"` and `APP_BASE_PATH: "/crow"` in private `config.json` and preserve the router path-aware browser contract.
+- The `itachiscrow` process service (`svc_Kqp2wQoGh7g`, formerly `itachiscrow-dev`) listens only on localhost port `8806` and is reached through the Garden of Zo public router. Keep `PORT: 8806`, `HOST: "127.0.0.1"` and `APP_BASE_PATH: "/crow"` in private `config.json` and preserve the router path-aware browser contract.
 - The public route declaration is in `Start/garden-of-zo/zo-router/public.routes.json`. Do not recreate a direct public HTTP service for this app.
 
 ### Zo limitation
