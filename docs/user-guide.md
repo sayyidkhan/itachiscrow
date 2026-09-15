@@ -30,7 +30,11 @@ Choosing **Talk** starts voice and switches to floating captions over the map, w
 
 Every page uses the same **•••** menu: Map, Author Studio, Crow colours, Usage limits, Debug tools, Music, About, and Back to home. The current page is marked with a tick; map tools open the map when needed.
 
-The guide reports progress and failures. **Stop current action** cancels pending work. Dragging the map pauses the flight so you can inspect the surroundings. Open **Debug** for manual destination, landing, flight, discovery, and planning controls.
+The floating map toolbar keeps flight controls available outside chat. **Lift off** unfolds the crow's wings and rises from its perch; the same button pauses an active flight. **Free roam** stops the camera following the crow so you can drag, zoom and explore. **Follow crow** brings the camera back without moving the crow. **Land here** lets you choose a rooftop, square or path on the map; tap it again or press Escape to cancel.
+
+Arriving at a destination or completing a landing opens a nearby-place carousel with sights, parks, museums, cafés and restaurants returned by Google. Swipe the cards, use the arrows, or focus the carousel and press the arrow keys. Photos include contributor credits when available. Select a card to view details, save it for the session, or land there. **×** closes the carousel; **Nearby** reopens it without repeating a successful search. A new destination or landing spot clears old results. On smaller screens, chat and voice captions temporarily cover the carousel; closing them reveals it again.
+
+The guide reports progress and failures. **Stop current action** cancels pending work. Dragging the map also enters free roam. Open **Debug tools** for additional manual destination, flight, discovery, and planning controls.
 
 Long journeys show a globe transition and route card. A device’s reduced-motion preference shortens or skips sweeping camera movement. This is a visual exploration route, not walking directions or collision avoidance.
 

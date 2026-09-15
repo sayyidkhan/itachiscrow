@@ -3,20 +3,20 @@ const mapsKeys=window.CrowMapKeys;
 const MAPS_KEY=mapsKeys.key;
 const $=id=>document.getElementById(id);
 let map,Place,Marker,ready=false,playing=false,transitioning=false,progress=0,heading=125,speed=8,high=false,frameId,last=0,selected=null,detailSerial=0,placesLoaded=false;
-let crowParts=[], flightTime=0, bank=0, crowHeading=125;
+let crowParts=[], flightTime=0, bank=0, crowHeading=125, freeRoaming=false, nearbyPending=null;
 let startupFailed=false, sceneSteady=false, modelsMounted=false, startupTimer, sceneTimer, placesPromise;
 let startupCameraStage='waiting',startupCameraTimer,startupCameraFrame,startupCameraAttempts=0,startupPerchTimer,startupFramingAt=null;
 let MODEL_BASE=new URL('models/',document.currentScript?.src || document.baseURI);
 let colourWarning='';
 const FRAME_INTERVAL=1000/24;
-function setFlightView(active){document.body.classList.toggle('in-flight',active);}
+function setFlightView(active){if(active)freeRoaming=false;document.body.classList.toggle('in-flight',active);}
 function finishLoading(){
  if(startupFailed||!modelsMounted||ready)return;
  if(startupCameraStage==='waiting'){if(sceneSteady)frameInitialPerch();return;}
  if(startupCameraStage!=='confirmed')return;
  clearTimeout(startupTimer);clearTimeout(sceneTimer);clearTimeout(startupCameraTimer);cancelAnimationFrame(startupCameraFrame);ready=true;
  $('loading').hidden=true;for(const id of ['fly','restart','speed','height','nearby'])$(id).disabled=false;
- clearTimeout(startupPerchTimer);landedSurfaceAltitude=surfaceAltitudeAtCrow();$('fly').textContent='Take off ↗';updateProgress(0);
+ clearTimeout(startupPerchTimer);landedSurfaceAltitude=surfaceAltitudeAtCrow();$('fly').textContent='Lift off ↗';updateProgress(0);
  status(startLocation?'Ready · Your location':'Ready · Esplanade, Singapore');hint(colourWarning||(startLocation?'Your crow is perched nearby. Take off or choose a destination.':locationMessage));registerTools();emitCrow('ready');
 }
 function initialPerchMatches(){
@@ -82,7 +82,7 @@ function normalizeDestination(value){
  if(Number.isFinite(location.altitude))result.altitude=location.altitude;
  return result;
 }
-function getCrowContext(){return {mapReady:ready,destination:{...destination},spot:landingSpot?{...landingSpot}:null,savedPlaces:[...savedPlaces.values()].map(p=>({...p})),mode:scoutMode,landingMode,flightStage,routeDistanceMeters,locationStatus,locationMessage,hasUserLocation:Boolean(startLocation),startLocation:startLocation?{...startLocation}:null};}
+function getCrowContext(){return {mapReady:ready,destination:{...destination},spot:landingSpot?{...landingSpot}:null,savedPlaces:[...savedPlaces.values()].map(p=>({...p})),mode:scoutMode,freeRoaming,landingMode,flightStage,routeDistanceMeters,locationStatus,locationMessage,hasUserLocation:Boolean(startLocation),startLocation:startLocation?{...startLocation}:null};}
 function emitCrow(name,extra={}){try{localStorage.setItem('crow:author-destination',JSON.stringify(landingSpot||destination))}catch{}document.dispatchEvent(new CustomEvent('crow:'+name,{detail:{...getCrowContext(),...extra}}));}
 async function locateBrowser(){
  try{if(window.CrowLocation?.locate)return await window.CrowLocation.locate();}catch{}
@@ -102,9 +102,9 @@ function invalidateLocationRequest(){
  if(locationStatus==='locating'){locationStatus=lastLocationOutcome.status;locationMessage=lastLocationOutcome.message;}
 }
 function restoreUserLocation(place){
- destination={...place};landingSpot={...place};scoutMode='landed';landedSurfaceAltitude=null;bank=0;flightTime=0;crowHeading=heading=125;
+ destination={...place};landingSpot={...place};scoutMode='landed';freeRoaming=false;landedSurfaceAltitude=null;bank=0;flightTime=0;crowHeading=heading=125;
  poseScout({lat:place.lat,lng:place.lng,altitude:1.2},1);map.flyCameraTo({endCamera:scoutCamera(scoutPosition,true),durationMillis:0});
- updateProgress(0);$('fly').textContent='Take off ↗';status('Ready · '+place.name);hint('Your crow is perched nearby. Take off or choose a destination.');
+ updateProgress(0);$('fly').textContent='Lift off ↗';status('Ready · '+place.name);hint('Your crow is perched nearby. Lift off or choose a destination.');
 }
 async function useCurrentLocation(){
  if(!ready)throw Error('Wait for the map to finish loading.');
@@ -119,8 +119,8 @@ async function useCurrentLocation(){
 }
 function updateProgress(fraction){$('progress').style.width=Math.round(fraction*100)+'%';$('progress-text').textContent=Math.round(fraction*100)+'%';}
 function clearNearby(){
- nearbySerial++;placesLoaded=false;found.clear();markers.splice(0).forEach(marker=>marker.remove());
- $('places').replaceChildren();$('places').hidden=true;$('nearby').disabled=!ready;
+ nearbySerial++;nearbyPending=null;placesLoaded=false;found.clear();markers.splice(0).forEach(marker=>marker.remove());
+ $('places').replaceChildren();$('places').hidden=true;$('nearby-panel').hidden=true;$('nearby').disabled=!ready;
 }
 function cancelLandingMode(){
  const wasSelecting=landingMode;landingMode=false;document.body.classList.remove('choosing-landing');
@@ -230,7 +230,7 @@ function finishDestinationFlight(){
  scoutMode='hovering';flightStage=null;playing=false;transitioning=false;setFlightView(false);updateProgress(1);
  $('fly').textContent='Fly again ↗';status('Arrived · '+destination.name);hint('Choose a landing spot, or open a place and select Land here.');
  if(flightInfo){emitCrow('flight',{...flightInfo,stage:null,progress:1,arrived:true});flightInfo=null;}
- emitCrow('destination');
+ emitCrow('destination');nearby(true);
 }
 function animateLongFlight({target,source,sourcePose,sourceBase,sourceFold,initialCamera,approach,arrival,serial}){
  const departDuration=2200,cruiseDuration=3200+2000*Math.min(1,routeDistanceMeters/12000000),descendDuration=2200,approachDuration=1800;
@@ -325,7 +325,8 @@ function landAt(value){
  if(!ready)return Promise.reject(Error('Wait for the map to finish loading.'));
  let target;try{target=normalizeDestination(value)}catch(error){return Promise.reject(error)}
  invalidateLocationRequest();stop();cancelLandingMode();$('details').close();detailSerial++;landingSpot=null;landedSurfaceAltitude=null;
- if(scoutMode==='demo'){destination={...target};clearNearby();emitCrow('destination');}
+ clearNearby();
+ if(scoutMode==='demo'){destination={...target};emitCrow('destination');}
  scoutMode='landing';transitioning=true;setFlightView(true);const serial=journeySerial;
  const near=scoutPosition&&distance(scoutPosition,target)<300;
  const from=near?{...scoutPosition}:{...relativeOffset(target,-55,-35),altitude:64};
@@ -334,7 +335,7 @@ function landAt(value){
  poseScout(from);updateProgress(0);$('fly').textContent='Pause landing Ⅱ';status('Landing · '+target.name);hint('The crow is descending to your selected spot.');
  map.flyCameraTo({endCamera:scoutCamera(from),durationMillis:near?400:1400});emitCrow('landing-selected',{spot:{...target}});
  return animateJourney({duration:3400,delay:near?450:1450,from,to,landing:true,serial,onComplete(){
-  landingSpot=target;landedSurfaceAltitude=surfaceAltitudeAtCrow()??target.altitude??null;scoutMode='landed';$('fly').textContent='Take off ↗';status('Landed · '+target.name);hint('Look around in 360°, discover photos, or plan your visit with Crow.');emitCrow('landed');
+  landingSpot=target;landedSurfaceAltitude=surfaceAltitudeAtCrow()??target.altitude??null;scoutMode='landed';$('fly').textContent='Lift off ↗';status('Landed · '+target.name);hint('Explore nearby places below, or lift off again.');emitCrow('landed');nearby(true);
  }});
 }
 function surfaceAltitudeAtCrow(){
@@ -376,7 +377,19 @@ function takeOff(){
   onComplete(){scoutMode='hovering';$('fly').textContent='Fly again ↗';status('Airborne · '+destination.name);hint('The crow is clear of the rooftop. Choose another spot to land.');}
  });
 }
-window.CrowMap=Object.freeze({searchDestinations,searchCafes,flyTo,selectLandingMode,cancelLandingMode,landAt,takeOff,circleAround,useCurrentLocation,getContext:getCrowContext,pause(){stop();return getCrowContext();}});
+function freeRoam(){
+ if(!ready)throw Error('Wait for the map to finish loading.');
+ stop();cancelLandingMode();freeRoaming=true;
+ status('Free roam · '+destination.name);hint('Drag to explore, pinch or scroll to zoom. Follow crow brings you back.');emitCrow('context');return getCrowContext();
+}
+function followCrow(){
+ if(!ready)throw Error('Wait for the map to finish loading.');
+ stop();cancelLandingMode();freeRoaming=false;
+ const cam=scoutPosition?scoutCamera(scoutPosition,scoutMode==='landed'):camera(progress);
+ map.flyCameraTo({endCamera:cam,durationMillis:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?0:900});
+ status('With your crow · '+destination.name);hint(scoutMode==='landed'?'Lift off or choose a destination.':'Choose a place to land or fly somewhere new.');emitCrow('context');return getCrowContext();
+}
+window.CrowMap=Object.freeze({searchDestinations,searchCafes,flyTo,selectLandingMode,cancelLandingMode,landAt,takeOff,circleAround,useCurrentLocation,freeRoam,followCrow,getContext:getCrowContext,pause(){stop();return getCrowContext();}});
 
 // Prepared Esplanade loop; rounded junctions keep camera turns continuous.
 const corners=[{lat:1.28972,lng:103.85528},{lat:1.29010,lng:103.85620},{lat:1.28915,lng:103.85675},{lat:1.28870,lng:103.85580}];
@@ -453,7 +466,7 @@ async function mountCrow(Model){
 }
 function hint(s){$('hint').textContent=s;}
 function status(s){$('status').textContent=s;}
-function stop(){invalidateLocationRequest();clearTimeout(transitionTimer);cancelJourney();setFlightView(false);playing=false;transitioning=false;cancelAnimationFrame(frameId);map?.stopCameraAnimation?.();$('fly').innerHTML=scoutMode==='demo'?'Resume flight <span aria-hidden="true">↗</span>':scoutMode==='landed'?'Take off ↗':'Fly again ↗';status('Paused · explore the map');emitCrow('context');}
+function stop(){invalidateLocationRequest();clearTimeout(transitionTimer);cancelJourney();setFlightView(false);playing=false;transitioning=false;cancelAnimationFrame(frameId);map?.stopCameraAnimation?.();$('fly').innerHTML=scoutMode==='demo'?'Resume flight <span aria-hidden="true">↗</span>':scoutMode==='landed'?'Lift off ↗':'Fly again ↗';status('Paused · explore the map');emitCrow('context');}
 function draw(t){if(!playing)return;if(t-last<FRAME_INTERVAL){frameId=requestAnimationFrame(draw);return;}const dt=Math.min((t-last)/1000,.1);last=t;flightTime+=dt;progress+=dt*speed;if(progress>=total){progress=total;stop();$('fly').textContent='Fly again';status('Flight complete');hint('You’ve scouted the block. Tap Places to explore what’s nearby.');$('progress').style.width='100%';$('progress-text').textContent='100%';return;}
  const cam=camera(progress);const turn=angleDelta(flightBearing(progress),crowHeading);
  crowHeading=wrapAngle(crowHeading+turn*(1-Math.exp(-dt*6)));
@@ -500,21 +513,35 @@ async function openPlace(id){if(!id)return;clearTimeout(transitionTimer);stop();
  const actions=el('div','','actions');const g=safeLink(p.googleMapsURI||'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(p.displayName||'Place')+'&query_place_id='+encodeURIComponent(id),'Open in Google Maps');if(g)actions.append(g);const website=safeLink(p.websiteURI,'Website');if(website)actions.append(website);const save=el('button',saved.has(id)?'Saved this session ✓':'Save place');save.onclick=()=>{if(saved.has(id)){saved.delete(id);savedPlaces.delete(id)}else{saved.add(id);if(p.location)savedPlaces.set(id,normalizeDestination(p))}save.textContent=saved.has(id)?'Saved this session ✓':'Save place';emitCrow('context')};actions.append(save);if(p.location){const land=el('button','Land here ↘');land.onclick=()=>landAt(p).catch(error=>hint(error.message));actions.append(land)}pane.append(actions);pane.append(el('p','Place data: Google Maps','attribution'));
  for(const a of p.attributions||[]){const node=safeLink(a.providerURI,a.provider||'Data provider');if(node)pane.append(node)}
  }catch(e){if(serial!==detailSerial)return;pane.replaceChildren(el('h2','Details unavailable'),el('p','Google didn’t return place details. Demo limits or API permissions may apply.','error'));const p=found.get(id);if(p?.displayName)pane.append(el('p',p.displayName));const a=safeLink('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(p?.displayName||'Place')+'&query_place_id='+encodeURIComponent(id),'View on Google Maps');pane.append(a);const retry=el('button','Retry details');retry.onclick=()=>openPlace(id);pane.append(retry);}}
-async function nearby(){
- if(!ready)return;const rail=$('places');if(placesLoaded){rail.hidden=!rail.hidden;return;}
- const serial=++nearbySerial,center={lat:destination.lat,lng:destination.lng};
- rail.hidden=false;rail.replaceChildren(el('p','Finding nearby places…'));$('nearby').disabled=true;
+async function nearby(show=false){
+ if(!ready)return;const rail=$('places'),panel=$('nearby-panel');
+ if(placesLoaded){panel.hidden=show===true?false:!panel.hidden;return;}
+ panel.hidden=false;rail.hidden=false;
+ if(nearbyPending)return nearbyPending;
+ const serial=++nearbySerial,around=landingSpot||destination,center={lat:around.lat,lng:around.lng};
+ $('nearby-title').textContent='Around '+around.name;
+ rail.replaceChildren(el('p','Finding nearby places…'));$('nearby').disabled=true;
+ nearbyPending=(async()=>{
  try{
-  await ensurePlaces();const {places=[]}=await Place.searchNearby({fields:['id','displayName','location','primaryTypeDisplayName'],locationRestriction:{center,radius:scoutMode==='demo'?260:900},includedPrimaryTypes:['restaurant','cafe','store'],maxResultCount:12});
+  await ensurePlaces();if(serial!==nearbySerial)return;
+  const {places=[]}=await Place.searchNearby({fields:['id','displayName','location','primaryTypeDisplayName','photos'],locationRestriction:{center,radius:scoutMode==='demo'?260:900},includedPrimaryTypes:['tourist_attraction','museum','park','restaurant','cafe'],maxResultCount:12});
   if(serial!==nearbySerial)return;
   rail.replaceChildren();if(!places.length){rail.append(el('p','No places returned. Tap a map label instead.'));return;}
   for(const p of places){
-   found.set(p.id,p);const b=el('button',p.displayName||'Explore place');b.append(el('small',p.primaryTypeDisplayName||'View details'));b.onclick=()=>openPlace(p.id);rail.append(b);
+   found.set(p.id,p);const card=el('article','','nearby-card'),b=el('button',''),art=el('span','↗','nearby-art');
+   const photo=p.photos?.[0];
+   if(photo){
+    try{const img=el('img','');img.alt='';img.loading='lazy';img.width=180;img.height=76;img.src=photo.getURI({maxWidth:360});img.onerror=()=>art.replaceChildren(el('span','↗'));art.replaceChildren(img);}catch{}
+   }
+   b.append(art,el('strong',p.displayName||'Explore place'),el('small',p.primaryTypeDisplayName||'View details'));b.onclick=()=>openPlace(p.id);card.append(b);
+   if(photo?.authorAttributions?.length){const credits=el('div','Photo: ','nearby-credits');for(const author of photo.authorAttributions)credits.append(safeLink(author.uri,author.displayName)||el('span',author.displayName||'Contributor'));card.append(credits);}
+   rail.append(card);
    if(Marker&&p.location){try{const m=new Marker({position:p.location,label:p.displayName,altitudeMode:'CLAMP_TO_GROUND',extruded:false});m.addEventListener('gmp-click',e=>{e.stopPropagation();if(landingMode)landAt(p).catch(error=>hint(error.message));else openPlace(p.id)});map.append(m);markers.push(m)}catch{}}
   }
   placesLoaded=true;
- }catch{if(serial===nearbySerial)rail.replaceChildren(el('p','Place search unavailable. Tap a labelled business on the map, or try again.'));}
- finally{if(serial===nearbySerial)$('nearby').disabled=false;}
+ }catch{if(serial===nearbySerial){const retry=el('button','Try nearby again');retry.onclick=()=>nearby(true);rail.replaceChildren(el('p','Nearby places could not load. You can still explore the map.'),retry);}}
+ finally{if(serial===nearbySerial){$('nearby').disabled=false;nearbyPending=null;}}
+ })();return nearbyPending;
 }
 window.initCrow=async()=>{
  try{
@@ -538,7 +565,7 @@ window.initCrow=async()=>{
    if(landingMode&&e.position){e.preventDefault?.();const spot={name:'Landing spot near '+destination.name,location:e.position};if(e.placeId)spot.id=e.placeId;landAt(spot).catch(error=>hint(error.message));return;}
    if(e.placeId){e.preventDefault?.();openPlace(e.placeId)}
   });
-  map.addEventListener('pointerdown',()=>{if(playing||transitioning||locationStatus==='locating'){clearTimeout(transitionTimer);stop();hint(scoutMode==='demo'?'Exploring freely. Resume flight to return to the route.':'Exploring freely. Choose a spot to land.')}});
+  map.addEventListener('pointerdown',()=>{if(ready&&!landingMode)freeRoam();});
   $('world').append(map);
   $('loading').querySelector('h2').textContent=located?'Opening your location':'Opening Esplanade, Singapore';
   $('loading').querySelector('p').textContent=located?'Loading your surroundings and 3D crow…':locationMessage;

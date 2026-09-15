@@ -28,7 +28,7 @@ const document = Object.assign(new EventTarget(), {
   getElementById(id) { if (!elements.has(id)) elements.set(id, new Element()); return elements.get(id); },
   createElement() { return new Element(); },
 });
-let now = 0, nextId = 0, maps, lastTextRequest, lastNearbyRequest, nearbyResponse;
+let now = 0, nextId = 0, maps, lastTextRequest, lastNearbyRequest, nearbyResponse, nearbyCalls = 0;
 const callbacks = new Map(), cameraCalls = [];
 const schedule = (callback, delay = 0) => { const id = ++nextId; callbacks.set(id, { at: now + delay, callback }); return id; };
 function advance(ms) {
@@ -44,7 +44,7 @@ const testPlace = { id: 'place-1', displayName: 'Mountain Cafe', formattedAddres
   location: { lat: () => 27.71, lng: () => 85.32 }, async fetchFields() {} };
 class Place {
   static async searchByText(request) { lastTextRequest = request; return { places: [testPlace] }; }
-  static async searchNearby(request) { lastNearbyRequest = request; return nearbyResponse ?? { places: [testPlace] }; }
+  static async searchNearby(request) { nearbyCalls++; lastNearbyRequest = request; return nearbyResponse ?? { places: [testPlace] }; }
 }
 class Map3DElement extends Element {
   constructor(options) { super(); Object.assign(this, options); this.initialOptions = options; maps = this; }
@@ -89,6 +89,7 @@ advance(500);
 const api = window.CrowMap;
 assert.equal(api.getContext().mapReady, true);
 assert.equal(events.filter(event => event.name === 'ready').length, 1);
+assert.equal(nearbyCalls, 0, 'Loading the map does not automatically search nearby');
 const results = await api.searchDestinations('  Kathmandu  ');
 assert.equal(lastTextRequest.textQuery, 'Kathmandu');
 assert.equal(results[0].lat, 27.71);
@@ -120,12 +121,19 @@ assert.equal(api.getContext().destination.name, 'Kathmandu');
 assert.equal(cameraCalls.at(-1).endCamera.altitudeMode, 'RELATIVE_TO_MESH');
 assert(Math.abs(cameraCalls.at(-1).endCamera.center.lat - kathmandu.lat) < 1e-6);
 
+await new Promise(resolve => setImmediate(resolve));
+assert.equal(nearbyCalls, 1, 'Finishing a destination flight opens nearby places automatically');
+assert.equal(elements.get('nearby-panel').hidden, false);
 await elements.get('nearby').onclick();
+assert.equal(elements.get('nearby-panel').hidden, true);
+await elements.get('nearby').onclick();
+assert.equal(elements.get('nearby-panel').hidden, false);
+assert.equal(nearbyCalls, 1, 'Reopening the carousel reuses the current results');
 assert.equal(lastNearbyRequest.locationRestriction.center.lat, kathmandu.lat);
-assert.equal(elements.get('places').children[0].textContent, 'Mountain Cafe');
+assert.equal(elements.get('places').children[0].children[0].children[1].textContent, 'Mountain Cafe');
 const marker = maps.children.find(node => node.label === 'Mountain Cafe');
 assert(marker);
-await elements.get('places').children[0].onclick();
+await elements.get('places').children[0].children[0].onclick();
 const actionButtons = elements.get('detail-content').children.flatMap(node => node.children);
 actionButtons.find(node => node.textContent === 'Save place').onclick();
 assert.equal(api.getContext().savedPlaces[0].name, 'Mountain Cafe');
@@ -142,6 +150,9 @@ assert.equal(api.getContext().mode, 'landed');
 assert.equal(api.getContext().spot.lat, 27.71725);
 assert.equal(api.getContext().spot.altitude, 1422);
 assert.equal(events.filter(event => event.name === 'landed').length, 1);
+await new Promise(resolve => setImmediate(resolve));
+assert.equal(lastNearbyRequest.locationRestriction.center.lat, 27.71725, 'Arrival searches at the landing spot, not the previous destination centre');
+assert.equal(elements.get('nearby-panel').hidden, false);
 const parts = vm.runInContext('crowParts', sandbox);
 assert(parts.every(part => part.altitudeMode === 'RELATIVE_TO_MESH'));
 assert(Math.abs(parts[0].position.altitude - 1.2) < 1e-6);
@@ -197,6 +208,17 @@ for (let i = 1; i < takeoffSamples.length; i++) {
   assert(Math.abs(takeoffSamples[i].wing - takeoffSamples[i-1].wing) < .06, 'Wing spread eases into flight');
 }
 await assert.rejects(api.takeOff(), /Land on a spot/);
+const beforeRoam = JSON.stringify(maps.center), beforeRoamCrow = JSON.stringify(parts[0].position);
+api.freeRoam();
+assert.equal(api.getContext().freeRoaming, true);
+assert.equal(JSON.stringify(maps.center), beforeRoam, 'Free roam does not jump the camera');
+maps.center = { lat: 28, lng: 86, altitude: 1500 };
+advance(1000);
+assert.equal(maps.center.lat, 28, 'The camera stays where the visitor moves it');
+api.followCrow();
+assert.equal(api.getContext().freeRoaming, false);
+assert.equal(JSON.stringify(parts[0].position), beforeRoamCrow, 'Following the crow only moves the camera');
+assert.equal(maps.center.lat, parts[0].position.lat);
 
 const cancelledLanding = api.landAt({ name: 'Other square', lat: 27.718, lng: 85.323 });
 advance(1800); api.pause(); advance(5500);
@@ -227,7 +249,8 @@ resolveNearby({ places: [testPlace] });
 await pendingNearby;
 assert.equal(elements.get('places').children.length, 0, 'Stale results from the last destination must not reappear');
 advance(4000); assert.equal(api.getContext().flightStage, 'cruising');
-api.pause(); assert.equal((await newFlight).cancelled, true);
+api.freeRoam(); assert.equal((await newFlight).cancelled, true);
+assert.equal(api.getContext().freeRoaming, true);
 const cancelledCamera = JSON.stringify(maps.center); advance(13000);
 assert.equal(JSON.stringify(maps.center), cancelledCamera, 'Cancelled country travel must freeze the camera and never arrive later');
 assert.equal(api.getContext().flightStage, null);

@@ -12,7 +12,7 @@ const scenes = {
   cafe: '<path d="M38 144V58h184v86" fill="#d5b494"/><path d="M29 58h202l-15-25H44Z" fill="#bd7771"/><path d="M67 34 61 58m37-24-2 24m36-24v24m33-24 3 24m29-24 5 24" stroke="#f4d5b4" stroke-width="13"/><path d="M57 80h63v44H57m84 20V78h60v66" fill="#385f63"/><path d="M73 94h25v17H73m25-15q12 0 7 11h-7" stroke="#f2e1ba" fill="none" stroke-width="3"/>',
   arts: '<path d="M42 139V73h176v66" fill="#c4cfc5"/><path d="m28 73 102-42 103 42Z" fill="#e9d9b8"/><path d="M61 83v46m37-46v46m38-46v46m38-46v46m30-46v46" stroke="#698987" stroke-width="9"/><path d="M28 145h205" stroke="#e9d9b8" stroke-width="10"/>'
 };
-function illustration(theme) {
+export function illustration(theme) {
   const art = make('div', '', 'discovery-art ' + theme);
   art.innerHTML = `<svg viewBox="0 0 260 160" fill="none" aria-hidden="true"><path fill="currentColor" d="M0 0h260v160H0z"/><circle cx="211" cy="35" r="21" fill="#f2d5a2"/><path d="M20 35h40m-15 8h33" stroke="#e0eddd" stroke-width="3" stroke-linecap="round" opacity=".5"/>${scenes[theme] || scenes.city}</svg>`;
   return art;

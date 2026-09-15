@@ -54,7 +54,11 @@ try {
           }));
           assert.equal(state.headerHeight, width <= 760 ? 64 : 76);
           assert.equal(state.chatPosition, 'absolute');
-          assert.equal(state.oldControls, 'none');
+          assert.equal(state.oldControls, 'block');
+          for (const id of ['fly', 'free-roam', 'land-map', 'nearby']) {
+            assert(await page.locator('#' + id).isVisible());
+            assert(await page.locator('#' + id).isDisabled());
+          }
           assert(await page.locator('#loading').isVisible());
           assert(await page.locator('#companion').isHidden());
           assert(await page.locator('#chat-open').isVisible());
