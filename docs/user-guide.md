@@ -6,7 +6,7 @@
 
 Open **Let’s explore**. Location permission is optional: if unavailable, the app starts at its Esplanade, Singapore fallback. Starting the map does not automatically generate an AI picture.
 
-Use the conversation box or **Talk**. Text works without microphone permission. Try:
+Open **Chat** or choose **Talk** from the floating controls on the map. Text works without microphone permission. Try:
 
 - “Fly to Osaka and land at Shinsaibashi.”
 - “Circle around the Eiffel Tower in Paris.”
@@ -16,7 +16,11 @@ Use the conversation box or **Talk**. Text works without microphone permission. 
 
 Text and **Talk** share one composer below the conversation. Tap a starter suggestion to edit it before sending, or write your own message. **Enter** sends; **Shift+Enter** adds a new line. The square **Stop current action** button appears while a request is running. Scroll back to read earlier replies without being pulled to the bottom; **Latest messages** takes you back.
 
-On phones, the composer stays in the compact panel below the map. Tap **+** to expand the conversation and **−** to make room for the map again. Sending a message expands the conversation automatically. Every page uses the same **•••** menu: Map, Author Studio, Crow colours, Usage limits, Debug tools, Music, About, and Back to home. The current page is marked with a tick; map tools open the map when needed.
+Chat opens over the map on phones and desktops. Close it with **×** or **Escape**; your draft and conversation remain available when you reopen it. The map stays full-size. A **New** indicator appears when a reply arrives while chat is closed.
+
+Choosing **Talk** starts voice and switches to floating captions over the map, with **Mute mic** and **End call** controls. Captions show the latest exchange; open **Chat** for the full conversation without ending your call. Closing chat returns to the captions. Microphone or connection errors reopen chat with an explanation. Map attribution remains clear below both overlays.
+
+Every page uses the same **•••** menu: Map, Author Studio, Crow colours, Usage limits, Debug tools, Music, About, and Back to home. The current page is marked with a tick; map tools open the map when needed.
 
 The guide reports progress and failures. **Stop current action** cancels pending work. Dragging the map pauses the flight so you can inspect the surroundings. Open **Debug** for manual destination, landing, flight, discovery, and planning controls.
 

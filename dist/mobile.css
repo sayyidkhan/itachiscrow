@@ -1,7 +1,6 @@
 @media (max-width: 760px) {
   .explorer {
     --header-height: calc(64px + env(safe-area-inset-top));
-    --mobile-dock-height: 184px;
     position: fixed;
     top: var(--mobile-viewport-top, 0px);
     width: 100%;
@@ -16,17 +15,17 @@
   .explorer .brand h1 { font-size: 20px; }
   .explorer .brand p { font-size: 9px; letter-spacing: 1.2px; max-width: calc(100vw - 115px); }
   .explorer.conversation-first #world,
-  .explorer.conversation-first .vignette { bottom: calc(var(--mobile-dock-height) + 8px + env(safe-area-inset-bottom)); }
+  .explorer.conversation-first .vignette { bottom: 0; }
   .explorer.conversation-first.debug-open #world,
   .explorer.conversation-first.debug-open .vignette { bottom: 0; }
   .explorer.conversation-first:not(.debug-open) .loading {
-    top: calc(var(--header-height) + (100% - var(--header-height) - var(--mobile-dock-height) - 16px) / 2);
-    max-height: calc(100% - var(--header-height) - var(--mobile-dock-height) - 40px);
+    top: calc(var(--header-height) + (100% - var(--header-height)) / 2);
+    max-height: calc(100% - var(--header-height) - 40px);
     overflow-y: auto; padding: 18px; background: #102125;
   }
   .explorer .companion {
-    top: auto; left: 8px; right: 8px; bottom: calc(8px + env(safe-area-inset-bottom));
-    width: auto; max-height: min(65%, calc(100% - var(--header-height) - 48px));
+    top: auto; left: 8px; right: 8px; bottom: calc(48px + env(safe-area-inset-bottom));
+    width: auto; max-height: min(70%, calc(100% - var(--header-height) - 64px - env(safe-area-inset-bottom)));
     border-radius: 20px; box-shadow: 0 -6px 28px #0002;
   }
   .explorer .companion-heading { min-height: 62px; padding: 8px 10px 8px 14px; }
@@ -40,12 +39,10 @@
   .explorer .command-examples small { display: none; }
   .explorer .companion-composer { padding: 0 10px 10px; }
   .explorer .composer-hint { visibility: hidden; }
-  .explorer .companion:not(.mobile-expanded) .companion-body { display: none; }
-  .explorer .companion.mobile-expanded .companion-body { display: flex; }
-  .explorer .companion.has-conversation.mobile-expanded .companion-body { height: 360px; }
+  .explorer .companion.has-conversation .companion-body { height: 360px; }
   .explorer .companion .voice-transcript { max-height: none; }
   .explorer .chat-bubble { font-size: 14px; }
-  .explorer.compact-viewport .companion { max-height: calc(100% - var(--header-height) - 16px); }
+  .explorer.compact-viewport .companion { max-height: calc(100% - var(--header-height) - 64px - env(safe-area-inset-bottom)); }
   .explorer.compact-viewport .companion-heading { min-height: 54px; padding-top: 4px; padding-bottom: 4px; }
   .explorer.compact-viewport .companion-body { padding-top: 6px; padding-bottom: 6px; }
   .explorer.compact-viewport .chat-form textarea { max-height: 72px; }
@@ -53,4 +50,9 @@
   .explorer.compact-viewport #voice-error { max-height: 40px; overflow-y: auto; }
   .explorer .scout-panel { max-height: calc(100% - var(--header-height) - 48px); }
   .explorer .scout-scroll { max-height: none; }
+}
+@media (max-height: 500px) {
+  .voice-caption span { -webkit-line-clamp: 2; }
+  .voice-caption { padding: 6px 12px; }
+  .voice-caption.user { display: none; }
 }

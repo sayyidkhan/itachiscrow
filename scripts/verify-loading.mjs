@@ -56,7 +56,9 @@ try {
           assert.equal(state.chatPosition, 'absolute');
           assert.equal(state.oldControls, 'none');
           assert(await page.locator('#loading').isVisible());
-          assert(await page.locator('#chat-input').isVisible());
+          assert(await page.locator('#companion').isHidden());
+          assert(await page.locator('#chat-open').isVisible());
+          assert(await page.locator('#chat-open').isDisabled());
           const cdp = await context.newCDPSession(page);
           const shot = await cdp.send('Page.captureScreenshot', { format: 'png' });
           await writeFile(new URL(`map-${width}-pending.png`, output), Buffer.from(shot.data, 'base64'));

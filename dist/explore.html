@@ -4,8 +4,8 @@
 <link rel="stylesheet" href="panorama-journey.css">
 <link rel="stylesheet" href="layout.css?v=3">
 <link rel="stylesheet" href="simple.css">
-<link rel="stylesheet" href="conversation.css?v=4">
-<link rel="stylesheet" href="mobile.css?v=3">
+<link rel="stylesheet" href="conversation.css?v=5">
+<link rel="stylesheet" href="mobile.css?v=4">
 <link rel="icon" href="images/favicon.ico?v=2" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png?v=2">
 <link rel="icon" type="image/svg+xml" sizes="any" href="images/crow-mark.svg?v=2">
@@ -46,8 +46,23 @@
  <p id="scout-message" class="inline-status" role="status"></p>
  </div>
 </aside>
-<aside id="companion" class="companion" aria-label="Chat and voice guide">
- <div class="companion-heading"><span class="voice-orb" id="voice-orb" aria-hidden="true"><img class="crow-mark" src="images/crow-mark.svg" width="36" height="36" alt="" aria-hidden="true"></span><div class="companion-identity"><strong>Crow companion</strong><span id="connection-status" class="connection-status" role="status">Connecting…</span></div><button id="companion-toggle" aria-label="Expand or collapse conversation" aria-controls="companion-content" aria-expanded="true">−</button></div>
+<div id="chat-launcher" class="chat-launcher" aria-label="Conversation controls">
+ <button id="chat-open" type="button" aria-label="Open chat" aria-controls="companion" aria-expanded="false" disabled><img src="images/crow-mark.svg" width="24" height="24" alt=""><span>Chat</span><span id="chat-unread" class="chat-unread" hidden>New</span></button>
+ <button id="voice-launch" type="button" aria-label="Start live voice guide" disabled>Talk</button>
+</div>
+<section id="voice-overlay" class="voice-overlay" aria-label="Live voice conversation" hidden>
+ <div id="voice-captions" class="voice-captions" role="log" aria-live="polite" aria-label="Voice captions"></div>
+ <div class="voice-toolbar"><span id="voice-overlay-state" role="status"></span><div class="voice-overlay-actions">
+  <button id="voice-chat" type="button" aria-label="Open chat" aria-controls="companion" aria-expanded="false">Chat</button>
+  <button id="voice-overlay-mute" type="button" aria-pressed="false" hidden>Mute mic</button>
+  <button id="voice-overlay-audio" type="button" hidden>Enable audio</button>
+  <button id="voice-overlay-stop" type="button" hidden>Stop action</button>
+  <button id="voice-overlay-result" type="button" hidden>Open result</button>
+  <button id="voice-overlay-end" class="voice-end" type="button" aria-label="End live voice guide">End call</button>
+ </div></div>
+</section>
+<aside id="companion" class="companion" aria-label="Chat and voice guide" hidden>
+ <div class="companion-heading"><span class="voice-orb" id="voice-orb" aria-hidden="true"><img class="crow-mark" src="images/crow-mark.svg" width="36" height="36" alt="" aria-hidden="true"></span><div class="companion-identity"><strong>Crow companion</strong><span id="connection-status" class="connection-status" role="status">Connecting…</span></div><button id="companion-toggle" aria-label="Close chat" type="button">×</button></div>
  <div class="companion-body" id="companion-content"><div class="chat-welcome"><span class="chat-eyebrow">A little curiosity. A new perspective.</span><p class="command-intro">Where to next?</p><p class="command-hint">Pick a place, find a hidden gem, or plan a day. Let’s explore together.</p>
  <div class="command-examples"><button data-command="Fly to Gardens by the Bay in Singapore."><span aria-hidden="true">↗</span><span>Take me somewhere<small>Gardens by the Bay</small></span></button><button data-command="Find cafés near my current destination."><span aria-hidden="true">⌕</span><span>Find a local favourite<small>Cafés around here</small></span></button><button data-command="Plan a day at my current destination, with local food and hidden gems."><span aria-hidden="true">☼</span><span>Make a day of it<small>Food, sights & hidden gems</small></span></button></div></div>
  <div id="voice-transcript" class="voice-transcript" role="log" aria-label="Conversation" aria-live="polite"></div>
@@ -69,6 +84,6 @@
 <script src="place-search.js?v=23"></script>
 <script src="app.js?v=22"></script>
 <script src="chat-start.js"></script>
-<script type="module" src="scout.js?v=19"></script>
-<script src="mobile-ui.js?v=3" defer></script>
+<script type="module" src="scout.js?v=20"></script>
+<script src="mobile-ui.js?v=4" defer></script>
 </body></html>
