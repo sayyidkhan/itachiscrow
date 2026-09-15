@@ -14,13 +14,13 @@ async function start(t,options={}){
 function headers(){return {Origin:'https://crow.example','X-Forwarded-Host':'crow.example','Content-Type':'application/json'};}
 
 test('Zo runtime mirrors protected map and configuration contracts with persistent SQLite admission',async t=>{
- const base=await start(t,{env:{CROW_MAPS_FALLBACK_KEY_2:'third-test-key'}});
+ const base=await start(t,{env:{CROW_MAPS_KEY3:'third-test-key'}});
  const config=await fetch(base+'/config.js',{headers:{...headers(),'X-Forwarded-Prefix':'/crow'}});
  const configBody=await config.text();
  assert.match(configBody,/window\.CROW_BASE_PATH="\/crow"/);
  assert.match(configBody,/window\.CrowUrl=/);
- assert.match(configBody,/window\.CROW_MAPS_KEY=""/);
- assert.match(configBody,/window\.CROW_MAPS_FALLBACK_KEY_2="third-test-key"/);
+ assert.doesNotMatch(configBody,/window\.CROW_MAPS_KEY1=/);
+ assert.match(configBody,/window\.CROW_MAPS_KEY3="third-test-key"/);
  const page=await fetch(base+'/',{headers:headers()});
  assert.equal(page.status,200);
  const allowed=await fetch(base+'/api/map-session',{method:'POST',headers:headers()});
@@ -31,7 +31,7 @@ test('Zo runtime mirrors protected map and configuration contracts with persiste
 
 test('Zo runtime emits redacted Places diagnostics without exposing keys',async t=>{
  const diagnostics=[];
- const base=await start(t,{env:{CROW_MAPS_KEY:'private-key'},diagnostic:detail=>diagnostics.push(detail),fetchImpl:async()=>new Response('',{status:403})});
+ const base=await start(t,{env:{CROW_MAPS_KEY1:'private-key'},diagnostic:detail=>diagnostics.push(detail),fetchImpl:async()=>new Response('',{status:403})});
  const response=await fetch(base+'/api/places/search',{method:'POST',headers:headers(),body:JSON.stringify({textQuery:'Singapore cafés'})});
  assert.equal(response.status,503);
  assert.deepEqual(diagnostics,[{route:'/api/places/search',providerReached:true,googleErrorCategory:'authentication_or_restriction',httpStatus:403,attempt:1}]);

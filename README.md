@@ -59,9 +59,9 @@ For a hosted Zo or Sites deployment, configure these values as server-side secre
 | Variable | Purpose |
 | --- | --- |
 | `OPENAI_API_KEY` | Enables chat, voice, image generation, and travel planning. Keep server-side. |
-| `CROW_MAPS_KEY` | Primary Google Maps key used for the browser map and Places requests. |
-| `CROW_MAPS_FALLBACK_KEY` | Optional second Google Maps key used for controlled retry and rotation. It shares the same Google project quota when both keys belong to that project. |
-| `CROW_MAPS_FALLBACK_KEY_2` | Optional third Google Maps key in the same rotation. Keys in one Google project still share quota. |
+| `CROW_MAPS_KEY1` | Primary Google Maps key used for the browser map and Places requests. |
+| `CROW_MAPS_KEY2` | Optional second Google Maps key used for controlled retry and rotation. It shares the same Google project quota when both keys belong to that project. |
+| `CROW_MAPS_KEY3` | Optional third Google Maps key in the same rotation. Keys in one Google project still share quota. |
 | `PUBLIC_ORIGIN` | Exact public base URL of the deployed app, for example `https://your-app.zo.computer`. It protects backend routes from requests made by other origins. |
 
 The current renderer uses Google Maps JavaScript API's built-in 3D Maps support. It does **not** use the Map Tiles API, so `CROW_TILES_KEY` is not needed.

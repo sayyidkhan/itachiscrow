@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
-import {proxyPlaceSearch} from '../worker/usage-limits.mjs';
+import {proxyPlaceSearch,mapKeyEntries,mapBrowserConfig} from '../worker/usage-limits.mjs';
 
-const env={CROW_MAPS_KEY:'test-one',CROW_MAPS_FALLBACK_KEY:'test-two',CROW_MAPS_FALLBACK_KEY_2:'test-three'};
+const env={CROW_MAPS_KEY1:'test-one',CROW_MAPS_KEY2:'test-two',CROW_MAPS_KEY3:'test-three'};
 const source=readFileSync(new URL('../dist/map-keys.js',import.meta.url),'utf8');
 function browser(keys=env,href='https://crow.example/explore.html',storage=new Map()){
  const window={...keys},redirects=[];
@@ -30,9 +30,9 @@ test('browser rotates three keys across visits and exhausts each key once on fai
 
 test('browser handles missing, duplicate and two-key configurations without loops',()=>{
  assert.equal(browser({}).api.retry(),false);
- assert.equal(browser({...env,CROW_MAPS_FALLBACK_KEY:'test-one',CROW_MAPS_FALLBACK_KEY_2:' test-one '}).api.retry(),false);
- const first=browser({...env,CROW_MAPS_FALLBACK_KEY_2:''});assert.equal(first.api.retry(),true);
- assert.equal(browser({...env,CROW_MAPS_FALLBACK_KEY_2:''},first.redirects[0]).api.retry(),false);
+ assert.equal(browser({...env,CROW_MAPS_KEY2:'test-one',CROW_MAPS_KEY3:' test-one '}).api.retry(),false);
+ const first=browser({...env,CROW_MAPS_KEY3:''});assert.equal(first.api.retry(),true);
+ assert.equal(browser({...env,CROW_MAPS_KEY3:''},first.redirects[0]).api.retry(),false);
  assert.equal(browser(env,'https://crow.example/?mapsRetry=NaN').api.retry(),false);
 });
 
@@ -51,7 +51,7 @@ test('Places retries each distinct key once and keeps diagnostics redacted',asyn
  assert.equal(result.status,503);assert.deepEqual(used,['test-two','test-three','test-one']);
  for(const key of Object.values(env))assert.equal(JSON.stringify(diagnostics).includes(key),false);
  let calls=0;
- await proxyPlaceSearch(request(),{...env,CROW_MAPS_FALLBACK_KEY:'test-one',CROW_MAPS_FALLBACK_KEY_2:' test-one '},1,{fetchImpl:async()=>{calls++;return new Response('',{status:403});}});
+ await proxyPlaceSearch(request(),{...env,CROW_MAPS_KEY2:'test-one',CROW_MAPS_KEY3:' test-one '},1,{fetchImpl:async()=>{calls++;return new Response('',{status:403});}});
  assert.equal(calls,1);
  calls=0;
  await proxyPlaceSearch(request(),env,1,{fetchImpl:async()=>{calls++;return new Response('',{status:400});}});
@@ -63,4 +63,32 @@ test('place photo URLs use the third credential when the third slot succeeds',as
  runInNewContext(readFileSync(new URL('../dist/place-search.js',import.meta.url),'utf8'),{window,AbortSignal,fetch:async()=>Response.json({photoKeySlot:'backup2',places:[{location:{latitude:1,longitude:2},photos:[{name:'places/test/photos/test'}]}]})});
  const result=await window.CrowPlaceSearch.search(null,{textQuery:'Singapore'});
  assert.equal(new URL(result.places[0].photos[0].getURI({})).searchParams.get('key'),'test-three');
+});
+
+test('numbered keys sort numerically, allow gaps, and override legacy slots',async()=>{
+ const keys={CROW_MAPS_KEY10:'test-ten',CROW_MAPS_KEY2:'test-two',CROW_MAPS_KEY1:'test-one',CROW_MAPS_KEY4:'test-four',CROW_MAPS_KEY5:' test-four ',CROW_MAPS_KEY:'old-one',CROW_MAPS_FALLBACK_KEY:'old-two',OPENAI_API_KEY:'private-test-value'};
+ assert.deepEqual(mapKeyEntries(keys).map(entry=>entry.key),['test-one','test-two','test-four','test-ten']);
+ const storage=new Map();
+ assert.deepEqual(Array.from({length:5},()=>browser(keys,undefined,storage).api.key),['test-one','test-two','test-four','test-ten','test-one']);
+ const used=[];
+ for(let turn=1;turn<=4;turn++)await proxyPlaceSearch(request(),keys,turn,{fetchImpl:async(url,options)=>{used.push(options.headers['X-Goog-Api-Key']);return Response.json({places:[]});}});
+ assert.deepEqual(used,['test-one','test-two','test-four','test-ten']);
+ let href='https://crow.example/?mapsKey=key10';
+ const seen=[];
+ for(let i=0;i<4;i++){const page=browser(keys,href);seen.push(page.api.key);assert.equal(page.api.retry(),i<3);href=page.redirects[0];}
+ assert.equal(new Set(seen).size,4);
+ assert.equal(browser(keys).api.photoKey('key10'),'test-ten');
+ const config=mapBrowserConfig(keys),window={};runInNewContext(config,{window});
+ assert.equal(window.CROW_MAPS_KEY10,'test-ten');assert.equal(window.CROW_MAPS_KEY,'test-one');
+ assert.equal(config.includes('private-test-value'),false);
+ assert.equal(browser(window).api.photoKey('key10'),'test-ten');
+});
+
+test('legacy configurations and explicitly blank numbered keys remain supported',()=>{
+ const legacy={CROW_MAPS_KEY:'old-one',CROW_MAPS_FALLBACK_KEY:'old-two',CROW_MAPS_FALLBACK_KEY_2:'old-three'};
+ assert.deepEqual(mapKeyEntries(legacy).map(entry=>entry.key),['old-one','old-two','old-three']);
+ assert.equal(browser(legacy).api.key,'old-one');
+ const mixed={...legacy,CROW_MAPS_KEY1:'',CROW_MAPS_KEY2:'new-two'};
+ assert.deepEqual(mapKeyEntries(mixed).map(entry=>entry.key),['new-two','old-three']);
+ assert.equal(browser(mixed).api.key,'new-two');
 });

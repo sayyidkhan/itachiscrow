@@ -1,4 +1,15 @@
 export const usagePolicies={chat:[12,120],search:[20,100],map:[4,10],image:[6,24],voice:[3,12],research:[3,20]};
+export function mapKeyEntries(env){
+ const numbered=Object.fromEntries(Object.entries(env).filter(([name,value])=>/^CROW_MAPS_KEY[1-9]\d*$/.test(name)&&typeof value==='string'));
+ const aliases=['CROW_MAPS_KEY','CROW_MAPS_FALLBACK_KEY','CROW_MAPS_FALLBACK_KEY_2'];
+ aliases.forEach((name,i)=>{if(!Object.hasOwn(numbered,'CROW_MAPS_KEY'+(i+1)))numbered['CROW_MAPS_KEY'+(i+1)]=env[name]||'';});
+ return Object.entries(numbered).sort(([a],[b])=>Number(a.slice(13))-Number(b.slice(13))).map(([name,key])=>({name,slot:['primary','backup','backup2'][Number(name.slice(13))-1]||'key'+name.slice(13),key:key.trim()})).filter((entry,i,all)=>entry.key&&all.findIndex(other=>other.key===entry.key)===i);
+}
+export function mapBrowserConfig(env){
+ const entries=mapKeyEntries(env);
+ const config=entries.map(({name,key})=>`window.${name}=${JSON.stringify(key)};`).join('');
+ return config+['CROW_MAPS_KEY','CROW_MAPS_FALLBACK_KEY','CROW_MAPS_FALLBACK_KEY_2'].map((name,i)=>`window.${name}=${JSON.stringify(entries.find(entry=>entry.name==='CROW_MAPS_KEY'+(i+1))?.key||'')};`).join('');
+}
 export function usageGroup(path){return path==='/api/chat'?'chat':path==='/api/places/search'?'search':path==='/api/map-session'?'map':path==='/api/live/session'?'voice':path==='/api/portrait'||path.startsWith('/api/panorama')?'image':path==='/api/plan'||path==='/api/discover'?'research':null;}
 export const usageSQL=`INSERT INTO usage_limits(id,minute,minute_count,hour,hour_count,expires) VALUES(?,?,1,?,1,?)
 ON CONFLICT(id) DO UPDATE SET minute=excluded.minute,minute_count=CASE WHEN usage_limits.minute=excluded.minute THEN usage_limits.minute_count+1 ELSE 1 END,hour=excluded.hour,hour_count=CASE WHEN usage_limits.hour=excluded.hour THEN usage_limits.hour_count+1 ELSE 1 END,expires=excluded.expires
@@ -33,11 +44,12 @@ export async function proxyPlaceSearch(request,env,turn,{fetchImpl=fetch,onDiagn
  if(typeof input.textQuery!=='string'||!input.textQuery.trim()||input.textQuery.length>250)return Response.json({error:{message:'Enter a place name under 250 characters.'}},{status:400});
  const body={textQuery:input.textQuery,pageSize:6};if(input.includedType==='cafe')body.includedType='cafe';
  const circle=input.locationBias?.circle;if(circle&&Number.isFinite(circle.center?.latitude)&&Number.isFinite(circle.center?.longitude)&&Math.abs(circle.center.latitude)<=90&&Math.abs(circle.center.longitude)<=180)body.locationBias={circle:{center:circle.center,radius:2000}};
- const entries=[['primary',env.CROW_MAPS_KEY],['backup',env.CROW_MAPS_FALLBACK_KEY],['backup2',env.CROW_MAPS_FALLBACK_KEY_2]].map(([slot,key])=>({slot,key:String(key||'').trim()})).filter((entry,i,all)=>entry.key&&all.findIndex(other=>other.key===entry.key)===i);
+ const entries=mapKeyEntries(env);
  if(!entries.length){reportPlaceDiagnostic(onDiagnostic,{providerReached:false,googleErrorCategory:'missing_configuration',httpStatus:null});return Response.json({error:{message:'Place search is temporarily unavailable. Try again shortly.'}},{status:503,headers:{'Retry-After':'30'}})}
  const start=(Math.max(1,Number(turn)||1)-1)%entries.length,keys=entries.slice(start).concat(entries.slice(0,start));
- for(const [index,{key,slot}] of keys.entries()){try{
- const response=await fetchImpl('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':key,'X-Goog-FieldMask':'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.googleMapsUri,places.photos',Referer:env.PUBLIC_ORIGIN||'https://itachis-crow.promptalchemistlabs.chatgpt.site/'},body:JSON.stringify(body),signal:AbortSignal.timeout(15000),redirect:'error'});
+ const deadline=Date.now()+45000;
+ for(const [index,{key,slot}] of keys.entries()){if(Date.now()>=deadline)break;try{
+ const response=await fetchImpl('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':key,'X-Goog-FieldMask':'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.googleMapsUri,places.photos',Referer:env.PUBLIC_ORIGIN||'https://itachis-crow.promptalchemistlabs.chatgpt.site/'},body:JSON.stringify(body),signal:AbortSignal.timeout(Math.max(1,Math.min(15000,deadline-Date.now()))),redirect:'error'});
  if(response.ok){reportPlaceDiagnostic(onDiagnostic,{providerReached:true,googleErrorCategory:'ok',httpStatus:response.status,attempt:index+1});return Response.json({...await response.json(),photoKeySlot:slot},{headers:{'Cache-Control':'no-store'}});}
  reportPlaceDiagnostic(onDiagnostic,{providerReached:true,googleErrorCategory:googleErrorCategory(response.status),httpStatus:response.status,attempt:index+1});
  if(![401,403,429,500,502,503,504].includes(response.status))break;

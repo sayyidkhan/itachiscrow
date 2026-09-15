@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadEnvFile } from 'node:process';
 import { createHandler } from './index.mjs';
-import { enforceUsage, proxyPlaceSearch, usageGroup } from '../worker/usage-limits.mjs';
+import { enforceUsage, proxyPlaceSearch, usageGroup, mapBrowserConfig } from '../worker/usage-limits.mjs';
 
 const ROOT=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const migrationPath=resolve(ROOT,'drizzle/0000_abnormal_avengers.sql');
@@ -45,7 +45,7 @@ function requestBasePath(req,env){
 }
 
 function browserConfig(env,basePath){
- return `window.CROW_BASE_PATH=${JSON.stringify(basePath)};window.CrowUrl=path=>typeof path==='string'&&path.startsWith('/')&&!path.startsWith('//')?window.CROW_BASE_PATH+path:path;if(window.CROW_BASE_PATH){const crowFetch=window.fetch.bind(window);window.fetch=(input,init)=>crowFetch(typeof input==='string'?window.CrowUrl(input):input,init);}window.CROW_MAPS_KEY=${JSON.stringify(env.CROW_MAPS_KEY||'')};window.CROW_MAPS_FALLBACK_KEY=${JSON.stringify(env.CROW_MAPS_FALLBACK_KEY||'')};window.CROW_MAPS_FALLBACK_KEY_2=${JSON.stringify(env.CROW_MAPS_FALLBACK_KEY_2||'')};`;
+ return `window.CROW_BASE_PATH=${JSON.stringify(basePath)};window.CrowUrl=path=>typeof path==='string'&&path.startsWith('/')&&!path.startsWith('//')?window.CROW_BASE_PATH+path:path;if(window.CROW_BASE_PATH){const crowFetch=window.fetch.bind(window);window.fetch=(input,init)=>crowFetch(typeof input==='string'?window.CrowUrl(input):input,init);}${mapBrowserConfig(env)}`;
 }
 
 function sameOrigin(req,env){
