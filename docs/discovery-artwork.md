@@ -18,4 +18,4 @@ Each image used the following prompt, substituting its subject below:
 
 ## Use
 
-Destination cards show their corresponding landmarks. Local picks, day plans and nearby fallbacks reuse these as thematic artwork, not venue photography. Keep that distinction visible and preserve Google photo credits. Paths resolve relative to `discovery.js` so both `/crow/` on Zo and the GPT root deployment work. Missing images settle on a text fallback without repeated requests.
+Destination cards show their corresponding landmarks. Local picks and day plans reuse these as thematic artwork, not venue photography. Nearby cards use Google venue photos or a neutral “No photo available” placeholder, never this artwork. Keep that distinction visible and preserve Google photo credits. Paths resolve relative to `discovery.js` so both `/crow/` on Zo and the GPT root deployment work. Missing images settle on a text fallback without repeated requests.

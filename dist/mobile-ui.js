@@ -4,11 +4,18 @@
   const input = $('chat-input');
   let voiceActive = false;
   let captions = [];
+  const travel = $('travel-transition');
+  const travelAnchor = document.createComment('Journey overlay');
+  travel.before(travelAnchor);
 
   function surfaces() {
     $('chat-launcher').hidden = !companion.hidden || voiceActive;
     $('voice-overlay').hidden = !companion.hidden || !voiceActive;
     for (const id of ['chat-open', 'voice-chat']) $(id).setAttribute('aria-expanded', String(!companion.hidden));
+    travel.classList.toggle('travel-contained', !companion.hidden || voiceActive);
+    if (!companion.hidden) companion.querySelector('.companion-heading').after(travel);
+    else if (voiceActive) $('voice-overlay').prepend(travel);
+    else travelAnchor.after(travel);
   }
   function openChat() {
     companion.hidden = false;

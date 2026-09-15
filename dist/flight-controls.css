@@ -55,9 +55,10 @@
 .nearby-art { display: grid; place-items: center; height: 76px; background: radial-gradient(ellipse at 20% 100%, #b2e1b933, transparent 60%), linear-gradient(145deg, #315f60, #172d38); color: #b5efd8; font-size: 28px; overflow: hidden; }
 .nearby-art img { width: 100%; height: 100%; object-fit: cover; }
 .nearby-art { position: relative; }
-.nearby-art .discovery-art { width: 100%; height: 100%; aspect-ratio: auto; }
-.nearby-art .discovery-art img { width: 100%; height: 100%; object-fit: cover; }
-.nearby-illustration-label { position: absolute; bottom: 4px; right: 5px; padding: 1px 4px; border-radius: 3px; background: #10282dcc; color: #d8eee3; font: 8px/1.5 system-ui; }
+.nearby-art:has(.nearby-placeholder-label) { display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+.nearby-placeholder-icon { font: 26px/1 system-ui; color: #a4c4bd; }
+.nearby-placeholder-label { font: 10px/1.4 system-ui; color: #bfd3cd; }
+.nearby-distance { display: block; padding: 0 10px 9px; color: #b5dace; font-size: 10px; }
 .nearby-card strong { display: block; padding: 9px 10px 0; font-size: 13px; line-height: 1.3; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .explorer .nearby-card small { margin: 0; padding: 5px 10px 10px; font-size: 10px; line-height: 1.3; }
 .nearby-credits { padding: 0 10px 8px; font-size: 9px; overflow-wrap: anywhere; }
@@ -90,4 +91,31 @@
 }
 @media (max-height: 450px) {
   .nearby-art, .nearby-credits { display: none; }
+  .nearby-art:has(.nearby-placeholder-label) { display: none; }
+  .explorer .nearby-card small { display: none; }
+  .nearby-distance { padding-top: 5px; }
+}
+.explorer.conversation-first.long-flight .travel-transition:not(.travel-contained) {
+  top: calc(var(--header-height) + 80px); bottom: auto; left: 20px; transform: none;
+  width: min(360px, calc(100% - 40px)); padding: 12px 16px; animation: none; z-index: 3;
+}
+.explorer.long-flight .bottom #hint { display: none; }
+.explorer.conversation-first .travel-transition.travel-contained {
+  position: relative; inset: auto; transform: none; width: auto; min-width: 0;
+  margin: 0; padding: 10px 14px; flex: 0 0 auto; border: 0; border-radius: 0;
+  border-bottom: 1px solid var(--glass-border); background: #b5efd808;
+  box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; animation: none;
+}
+.explorer .travel-transition .travel-route { gap: 10px; margin: 8px 0; }
+.explorer .travel-transition .travel-route > span:not(.travel-route-line) { flex: 1; max-width: none; min-width: 0; font: 14px/1.3 system-ui; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.explorer .travel-transition .travel-route-line { flex: 0 0 26px; min-width: 26px; height: 18px; }
+.explorer .travel-transition > p { display: none; }
+.explorer .voice-overlay > .travel-contained { border: 1px solid var(--glass-border); border-radius: 16px; background: var(--glass-highlight), var(--glass-tint); }
+@media (max-width: 760px) {
+  .explorer.conversation-first.long-flight .travel-transition:not(.travel-contained) { left: 12px; width: calc(100% - 24px); }
+}
+@media (max-height: 500px) {
+  .explorer .travel-contained .travel-caption { display: none; }
+  .explorer.conversation-first .travel-transition.travel-contained { padding: 5px 12px; }
+  .explorer .travel-contained .travel-route { margin: 0 0 4px; }
 }

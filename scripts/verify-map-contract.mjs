@@ -13,6 +13,7 @@ class Element extends EventTarget {
   }
   append(...children) { this.children.push(...children); }
   replaceChildren(...children) { this.children = children; }
+  setAttribute(name, value) { (this.attributes ??= {})[name] = String(value); }
   querySelector() { return new Element(); }
   remove() { this.removed = true; }
   close() { this.open = false; }

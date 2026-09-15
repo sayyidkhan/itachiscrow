@@ -597,13 +597,16 @@ async function nearby(show=false){
   if(serial!==nearbySerial)return;
   rail.replaceChildren();if(!places.length){rail.append(el('p','No places returned. Tap a map label instead.'));return;}
   for(const p of places){
-   found.set(p.id,p);const card=el('article','','nearby-card'),b=el('button',''),art=el('span','↗','nearby-art');
+   found.set(p.id,p);const card=el('article','','nearby-card'),b=el('button',''),art=el('span','','nearby-art');
+   const noPhoto=()=>{const icon=el('span','⌖','nearby-placeholder-icon');icon.setAttribute('aria-hidden','true');art.replaceChildren(icon,el('span','No photo available','nearby-placeholder-label'));card.querySelector('.nearby-credits')?.remove();};
+   noPhoto();
    const photo=p.photos?.[0];
    if(photo){
-    try{const img=el('img','');img.alt='';img.loading='lazy';img.width=180;img.height=76;img.src=photo.getURI({maxWidth:360});img.onerror=()=>art.replaceChildren(el('span','↗'));art.replaceChildren(img);}catch{}
+    try{const img=el('img','');img.alt=p.displayName||'Place photo';img.loading='lazy';img.width=180;img.height=76;img.src=photo.getURI({maxWidth:360});img.onerror=noPhoto;art.replaceChildren(img);}catch{}
    }
    b.append(art,el('strong',p.displayName||'Explore place'),el('small',p.primaryTypeDisplayName||'View details'));b.onclick=()=>openPlace(p.id);card.append(b);
-   if(photo?.authorAttributions?.length){const credits=el('div','Photo: ','nearby-credits');for(const author of photo.authorAttributions)credits.append(safeLink(author.uri,author.displayName)||el('span',author.displayName||'Contributor'));card.append(credits);}
+   if(p.location){const metres=Math.round(distance(center,normalizeDestination(p)));b.append(el('span',metres<1000?metres+' m away':(metres/1000).toFixed(1)+' km away','nearby-distance'));}
+   if(art.querySelector('img')&&photo?.authorAttributions?.length){const credits=el('div','Photo: ','nearby-credits');for(const author of photo.authorAttributions)credits.append(safeLink(author.uri,author.displayName)||el('span',author.displayName||'Contributor'));card.append(credits);}
    rail.append(card);
    if(Marker&&p.location){try{const m=new Marker({position:p.location,label:p.displayName,altitudeMode:'CLAMP_TO_GROUND',extruded:false});m.addEventListener('gmp-click',e=>{e.stopPropagation();if(landingMode)landAt(p).catch(error=>hint(error.message));else openPlace(p.id)});map.append(m);markers.push(m)}catch{}}
   }

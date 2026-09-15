@@ -35,7 +35,7 @@ try {
       assert(await send.isDisabled());
       assert.equal(await page.evaluate(() => window.micRequests), 0);
       await page.locator('[data-discovery="somewhere"]').click();
-      assert.equal(await page.locator('.discovery-card').count(), 6);
+      assert.equal(await page.locator('.discovery-card').count(), 7);
       assert.equal(await input.inputValue(), '');
       assert.equal(requests.length, 0, 'Browsing destination ideas does not send chat');
       await page.getByRole('button', {name:'← Back',exact:true}).click();

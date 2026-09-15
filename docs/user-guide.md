@@ -42,7 +42,7 @@ Choose **Circle** in the map toolbar to orbit the current landmark or selected l
 
 The guide reports progress and failures. **Stop current action** cancels pending work. Dragging the map also enters free roam. Open **Debug tools** for additional manual destination, flight, discovery, and planning controls.
 
-Long journeys show a globe transition and route card. A device’s reduced-motion preference shortens or skips sweeping camera movement. This is a visual exploration route, not walking directions or collision avoidance.
+Long journeys show a globe transition and route card. With chat open, the route and progress sit below its heading; in voice mode they sit above the captions. Closing chat keeps the journey visible on the map. A device’s reduced-motion preference shortens or skips sweeping camera movement. This is a visual exploration route, not walking directions or collision avoidance.
 
 ## Crow mode and Author mode
 
@@ -68,7 +68,7 @@ The separate crow colour editor is at **`/crow-studio.html`**. Colour preference
 
 Drag a panorama to look around and scroll to zoom. Use **Save image** to download it. AI scenes may have seams, distorted geometry, or invented surroundings; the Google map and generated scene are different views.
 
-Nearby place cards show whatever details Google returns. Follow their original links to confirm hours and availability. Saved places and plans are session state. Instagram needs an eligible connected account and separate owner setup; hashtag matches are not proof a post was taken at the exact location.
+Nearby place cards show Google results around the current destination or landing spot, with distance from that stop. They use photos of those venues when available; missing or failed photos show “No photo available”, never an illustration of another destination. Follow their original links to confirm hours and availability. Saved places and plans are session state. Instagram needs an eligible connected account and separate owner setup; hashtag matches are not proof a post was taken at the exact location.
 
 ## If something goes wrong
 

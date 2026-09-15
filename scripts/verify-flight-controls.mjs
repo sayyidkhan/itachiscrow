@@ -31,7 +31,7 @@ try {
           if(window.nearbyMode==='error')throw Error('Provider unavailable');
           if(window.nearbyMode==='pending')await new Promise(resolve=>window.releaseNearby=resolve);
           if(window.nearbyMode==='empty')return {places:[]};
-          return {places:Array.from({length:8},(_,i)=>({id:'place-'+i,displayName:'Waterfront place '+(i+1),primaryTypeDisplayName:'Museum',location:{lat:request.locationRestriction.center.lat+i*.0001,lng:request.locationRestriction.center.lng},async fetchFields(){},photos:[{getURI:()=>new URL('images/crow-mark.svg',document.baseURI).href,authorAttributions:[{displayName:'Photo contributor',uri:'https://example.com/photographer'}]}]}))};
+          return {places:Array.from({length:8},(_,i)=>({id:'place-'+i,displayName:'Waterfront place '+(i+1),primaryTypeDisplayName:'Museum',location:{lat:request.locationRestriction.center.lat+i*.0001,lng:request.locationRestriction.center.lng},async fetchFields(){},photos:i===7?[]:[{getURI:()=>new URL('images/crow-mark.svg',document.baseURI).href,authorAttributions:[{displayName:'Photo contributor',uri:'https://example.com/photographer'}]}]}))};
         }
       }
       window.google={maps:{importLibrary:async name=>name==='places'?{Place}:{Map3DElement:Map3D,Model3DElement:Model}}};
@@ -52,6 +52,36 @@ try {
         assert(await page.locator('#' + id).isEnabled(), id + ' is enabled');
       }
       assert.equal(await page.evaluate(() => nearbyRequests.length), 0);
+      await page.locator('#chat-open').click();
+      await page.locator('#chat-input').fill('Keep this draft');
+      await page.evaluate(() => {
+        document.getElementById('companion').classList.add('has-conversation');
+        document.dispatchEvent(new CustomEvent('crow:flight', {detail:{stage:'cruising',routeDistanceMeters:13585000,progress:.45,from:{name:'Esplanade, Singapore'},to:{name:'Golden Gate Bridge, San Francisco'}}}));
+      });
+      const journeyBounds = await page.evaluate(() => {
+        const rect = selector => document.querySelector(selector).getBoundingClientRect().toJSON();
+        return {travel:rect('#travel-transition'),heading:rect('.companion-heading'),body:rect('.companion-body'),input:rect('#chat-input'),panel:rect('#companion')};
+      });
+      assert(journeyBounds.travel.top >= journeyBounds.heading.bottom, 'Travel never covers chat heading or close button');
+      assert(journeyBounds.travel.bottom <= journeyBounds.body.top, 'Travel never covers conversation');
+      assert(journeyBounds.input.bottom <= journeyBounds.panel.bottom, 'Composer stays inside chat during travel');
+      assert(journeyBounds.body.height > 20, 'Conversation remains readable during travel');
+      await page.screenshot({path:new URL(`travel-chat-${width}x${height}.png`,output).pathname});
+      await page.locator('#companion-toggle').click();
+      assert(await page.locator('#travel-transition').isVisible(), 'Closing chat preserves journey progress');
+      const standalone = await page.evaluate(() => ({travel:document.getElementById('travel-transition').getBoundingClientRect().toJSON(),controls:document.querySelector('.controls').getBoundingClientRect().toJSON(),chat:document.getElementById('chat-launcher').getBoundingClientRect().toJSON()}));
+      assert(standalone.travel.top >= standalone.controls.bottom, 'Travel clears flight controls');
+      assert(standalone.travel.bottom <= standalone.chat.top || standalone.travel.right <= standalone.chat.left, 'Travel clears chat launcher');
+      await page.evaluate(() => window.dispatchEvent(new CustomEvent('crow:voice-state',{detail:{status:'connected',muted:false}})));
+      assert.equal(await page.locator('#voice-overlay > #travel-transition').count(),1, 'Voice contains journey progress');
+      await page.locator('#voice-chat').click();
+      assert.equal(await page.locator('#chat-input').inputValue(),'Keep this draft');
+      assert.equal(await page.locator('#companion > #travel-transition').count(),1);
+      await page.evaluate(() => document.dispatchEvent(new CustomEvent('crow:flight',{detail:{cancelled:true}})));
+      assert(await page.locator('#travel-transition').isHidden(), 'Cancelled journey is hidden inside chat');
+      await page.evaluate(() => window.dispatchEvent(new CustomEvent('crow:voice-state',{detail:{status:'idle'}})));
+      await page.locator('#chat-input').fill('');
+      await page.locator('#companion-toggle').click();
       await page.locator('#fly').click();
       await page.waitForFunction(() => window.CrowMap.getContext().mode === 'taking-off');
       await page.waitForFunction(() => window.CrowMap.getContext().mode === 'hovering');
@@ -70,16 +100,14 @@ try {
       await page.locator('.nearby-card').first().waitFor();
       assert.equal(await page.evaluate(() => nearbyRequests.length), 1);
       assert.equal(await page.locator('.nearby-card').count(), 8);
+      assert.deepEqual(await page.evaluate(() => nearbyRequests.at(-1).locationRestriction), {center:{lat:1.2886,lng:103.851},radius:900});
+      assert.equal(await page.locator('.nearby-distance').first().textContent(),'0 m away');
+      assert.equal(await page.locator('.nearby-card').last().locator('.nearby-placeholder-label').textContent(),'No photo available');
       assert.equal(await page.locator('.nearby-credits a').first().getAttribute('href'), 'https://example.com/photographer');
       await page.locator('.nearby-art img').first().dispatchEvent('error');
-      await page.locator('.nearby-art .discovery-art img').first().waitFor({ state: 'attached' });
-      const fallbackImage = page.locator('.nearby-art .discovery-art img').first();
-      if (await fallbackImage.isVisible()) await fallbackImage.evaluate(image => image.decode());
-      assert.equal(await page.locator('.nearby-illustration-label').first().textContent(), 'Illustration');
-      await page.locator('.nearby-art .discovery-art img').first().dispatchEvent('error');
-      await page.waitForTimeout(100);
-      assert.equal(await page.locator('.nearby-art .art-unavailable').count(), 1);
-      assert.equal(await page.locator('.nearby-art .art-unavailable img').count(), 0);
+      assert.equal(await page.locator('.nearby-card').first().locator('.nearby-placeholder-label').textContent(),'No photo available');
+      assert.equal(await page.locator('.nearby-card').first().locator('img, .nearby-credits').count(),0);
+      assert.equal(await page.locator('#places .discovery-art, #places img[src*="destinations/"]').count(),0,'Nearby never uses curated landmark artwork');
       const bounds = await page.evaluate(() => {
         const rect = selector => document.querySelector(selector).getBoundingClientRect().toJSON();
         return { panel: rect('#nearby-panel'), toolbar: rect('.controls'), map: rect('#world'), chat: rect('#chat-launcher'), overflow: document.documentElement.scrollWidth > innerWidth };
@@ -126,6 +154,7 @@ try {
       await page.locator('.nearby-card').first().waitFor();
       await page.evaluate(() => releaseNearby());
       assert.equal(await page.locator('#nearby-title').textContent(), 'Around Latest stop');
+      assert.deepEqual(await page.evaluate(() => nearbyRequests.at(-1).locationRestriction.center),{lat:1.32,lng:103.88},'Nearby searches follow the latest destination');
       await page.evaluate(() => { nearbyMode = 'empty'; return CrowMap.flyTo({ name: 'Quiet stop', lat: 1.33, lng: 103.89 }); });
       await page.getByText('No places returned.', { exact: false }).waitFor();
       await page.locator('#nearby-close').click();
