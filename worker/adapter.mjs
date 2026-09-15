@@ -16,7 +16,7 @@ export default {
       if(!permit.allowed)return Response.json({error:{code:'usage_limit',message:`You’ve reached the ${group} limit. Try again in ${permit.retryAfter} seconds.`,retryAfter:permit.retryAfter}},{status:429,headers:{'Retry-After':String(permit.retryAfter),'Cache-Control':'no-store'}});
       if(permit.turn===1)ctx?.waitUntil(env.DB.prepare('DELETE FROM usage_limits WHERE id IN (SELECT id FROM usage_limits WHERE expires<? LIMIT 100)').bind(Date.now()).run().catch(()=>{}));
       if(group==='map')return Response.json({allowed:true},{headers:{'Cache-Control':'no-store'}});
-      if(group==='search')return proxyPlaceSearch(request,env,permit.turn);
+      if(group==='search')return proxyPlaceSearch(request,env,permit.turn,{onDiagnostic(detail){console.info(JSON.stringify({event:'places_search',...detail}));}});
     }
     if (url.pathname === '/config.js') {
       return new Response(mapBrowserConfig(env), {
