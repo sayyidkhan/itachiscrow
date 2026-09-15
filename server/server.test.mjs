@@ -5,11 +5,46 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { once } from 'node:events';
 import { request as httpRequest } from 'node:http';
-import { createConfig, createLiveSession, fetchInstagram, generatePanorama, explorePanorama, generatePortrait, discoverOffers, generatePlan, getStatus, startServer } from './index.mjs';
+import { createConfig, createLiveSession, fetchInstagram, generatePanorama, explorePanorama, generatePortrait, discoverOffers, generatePlan, recommendPlaces, getStatus, startServer } from './index.mjs';
 
 const place = { name: 'Gardens by the Bay', lat: 1.2816, lng: 103.8636, address: 'Singapore' };
 const config = createConfig({ OPENAI_API_KEY: 'sk-test-secret', INSTAGRAM_ACCESS_TOKEN: 'meta-secret', INSTAGRAM_USER_ID: '123456' });
 const ok = body => new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+
+test('recommendations require web research and retain only distinct source-backed places', async () => {
+  const sourceUrl = 'https://www.gardensbythebay.com.sg/';
+  const pick = { name: 'Gardens by the Bay', query: 'Gardens by the Bay, Singapore', description: 'An afternoon among the Supertrees.', label: 'Afternoon', theme: 'gardens', sourceUrl };
+  const result = await recommendPlaces({ destination: place, mode: 'local', mood: 'Outdoors' }, { config, fetchImpl: async (_url, options) => {
+    const body = JSON.parse(options.body);
+    assert.equal(body.store, false);
+    assert.equal(body.tool_choice, 'required');
+    assert.deepEqual(body.tools, [{ type: 'web_search' }]);
+    assert.equal(body.text.format.strict, true);
+    assert.deepEqual(JSON.parse(body.input).destination, place);
+    return ok({ status: 'completed', output: [
+      { type: 'web_search_call', action: { sources: [{ url: sourceUrl }] } },
+      { type: 'message', content: [{ type: 'output_text', text: JSON.stringify({ summary: 'A green escape.', places: [pick, pick, { ...pick, query: 'Unknown place', sourceUrl: 'https://invented.example/' }, { ...pick, query: 'Unsafe', sourceUrl: 'javascript:alert(1)' }, null] }) }] }
+    ] });
+  } });
+  assert.deepEqual(result.places, [pick]);
+  assert.equal(result.mode, 'local');
+});
+
+test('recommendations reject invalid modes, moods and coordinates before calling a provider', async () => {
+  const options = { config, fetchImpl: () => assert.fail('Unexpected provider request') };
+  for (const body of [{ destination: place, mode: 'other', mood: 'Outdoors' }, { destination: place, mode: 'day', mood: 'Outdoors' }, { destination: { ...place, lat: 95 }, mode: 'local', mood: 'Outdoors' }]) {
+    await assert.rejects(recommendPlaces(body, options), error => error.status === 400);
+  }
+});
+
+test('recommendations report malformed, interrupted and empty responses honestly', async () => {
+  const body = { destination: place, mode: 'day', mood: 'Food trail' };
+  for (const response of [{ status: 'incomplete' }, { status: 'completed', output: [] }, { status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: 'null' }] }] }]) {
+    await assert.rejects(recommendPlaces(body, { config, fetchImpl: async () => ok(response) }), error => error.status === 502);
+  }
+  const result = await recommendPlaces(body, { config, fetchImpl: async () => ok({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: '{"summary":"No verified places.","places":[]}' }] }] }) });
+  assert.deepEqual(result.places, []);
+});
 
 async function start(t, options = {}) {
   const server = startServer({ port: 0, env: {}, ...options });

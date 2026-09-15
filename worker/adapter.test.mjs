@@ -19,6 +19,9 @@ test('Sites adapter preserves assets, configuration, validation and provider con
   const model=await worker.fetch(request('/models/body.glb'),env);assert.equal(model.headers.get('content-type'),'model/gltf-binary');
   const foreign=await worker.fetch(request('/api/panorama',{}, {origin:'https://other.example'}),env);assert.equal(foreign.status,403);
   const invalid=await worker.fetch(request('/api/panorama',{}),env);assert.equal(invalid.status,400);
+  assert.equal((await worker.fetch(request('/api/recommendations',{}),env)).status,400);
+  assert.equal((await worker.fetch(request('/api/recommendations',{}, {origin:'https://other.example'}),env)).status,403);
+  assert.equal((await worker.fetch(request('/api/recommendations',{}),{...env,DB:undefined})).status,503);
   const originalFetch=globalThis.fetch;
   const env2={...env};
   const calls=[];
@@ -42,4 +45,22 @@ test('Sites adapter preserves assets, configuration, validation and provider con
     const missing=await worker.fetch(request('/api/portrait',{destination:spot,useSavedPhoto:true}),{...env2,CROW_OWNER_PHOTO:'/private/reference.jpg'});
     assert.equal(missing.status,400);
   }finally{globalThis.fetch=originalFetch;}
+});
+
+test('Sites recommendations preserve the shared structured provider contract', async () => {
+  const origin='https://crow.example';
+  const place={name:'Esplanade',query:'Esplanade, Singapore',description:'A waterfront walk.',label:'Morning',theme:'waterfront',sourceUrl:'https://www.esplanade.com/'};
+  const originalFetch=globalThis.fetch;
+  globalThis.fetch=async (_url,options)=>{
+    const body=JSON.parse(options.body);
+    assert.equal(body.text.format.name,'place_recommendations');
+    assert.equal(body.tool_choice,'required');
+    assert.equal(JSON.parse(body.input).mode,'day');
+    return Response.json({status:'completed',output:[{type:'web_search_call',action:{sources:[{url:place.sourceUrl}]}},{type:'message',content:[{type:'output_text',text:JSON.stringify({summary:'A waterfront day.',places:[place]})}]}]});
+  };
+  try {
+    const response=await worker.fetch(new Request(origin+'/api/recommendations',{method:'POST',headers:{origin,'Content-Type':'application/json'},body:JSON.stringify({destination:{name:'Singapore',lat:1.29,lng:103.85},mode:'day',mood:'Slow & scenic'})}),{PUBLIC_ORIGIN:origin,OPENAI_API_KEY:'test-key',DB:{prepare:()=>({bind:()=>({first:async()=>({hour_count:1})})})}});
+    assert.equal(response.status,200);
+    assert.deepEqual((await response.json()).places,[place]);
+  } finally { globalThis.fetch=originalFetch; }
 });

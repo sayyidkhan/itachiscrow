@@ -11,7 +11,8 @@
 <link rel="icon" type="image/svg+xml" sizes="any" href="images/crow-mark.svg?v=2">
 <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png?v=2">
 <link rel="stylesheet" href="brand.css?v=2">
-<link rel="stylesheet" href="map-glass.css?v=1"></head>
+<link rel="stylesheet" href="map-glass.css?v=1">
+<link rel="stylesheet" href="discovery.css?v=1"></head>
 <body class="explorer conversation-first">
 <main id="world" aria-label="Interactive 3D travel map"></main>
 <div class="vignette" aria-hidden="true"></div>
@@ -63,9 +64,10 @@
  </div></div>
 </section>
 <aside id="companion" class="companion" aria-label="Chat and voice guide" hidden>
- <div class="companion-heading"><span class="voice-orb" id="voice-orb" aria-hidden="true"><img class="crow-mark" src="images/crow-mark.svg" width="36" height="36" alt="" aria-hidden="true"></span><div class="companion-identity"><strong>Crow companion</strong><span id="connection-status" class="connection-status" role="status">Connecting…</span></div><button id="companion-toggle" aria-label="Close chat" type="button">×</button></div>
+ <div class="companion-heading"><span class="voice-orb" id="voice-orb" aria-hidden="true"><img class="crow-mark" src="images/crow-mark.svg" width="36" height="36" alt="" aria-hidden="true"></span><div class="companion-identity"><strong>Crow companion</strong><span id="connection-status" class="connection-status" role="status">Connecting…</span></div><button id="discovery-open" type="button" aria-label="Browse destination ideas" aria-controls="discovery-panel">Ideas</button><button id="companion-toggle" aria-label="Close chat" type="button">×</button></div>
  <div class="companion-body" id="companion-content"><div class="chat-welcome"><span class="chat-eyebrow">A little curiosity. A new perspective.</span><p class="command-intro">Where to next?</p><p class="command-hint">Pick a place, find a hidden gem, or plan a day. Let’s explore together.</p>
- <div class="command-examples"><button data-command="Fly to Gardens by the Bay in Singapore."><span aria-hidden="true">↗</span><span>Take me somewhere<small>Gardens by the Bay</small></span></button><button data-command="Find cafés near my current destination."><span aria-hidden="true">⌕</span><span>Find a local favourite<small>Cafés around here</small></span></button><button data-command="Plan a day at my current destination, with local food and hidden gems."><span aria-hidden="true">☼</span><span>Make a day of it<small>Food, sights & hidden gems</small></span></button></div></div>
+ <div class="command-examples"><button type="button" data-discovery="somewhere"><span aria-hidden="true">↗</span><span>Take me somewhere<small>Browse destination ideas</small></span></button><button type="button" data-discovery="local"><span aria-hidden="true">⌕</span><span>Find a local favourite<small>Picks for your kind of day</small></span></button><button type="button" data-discovery="day"><span aria-hidden="true">☼</span><span>Make a day of it<small>First coffee to last light</small></span></button></div></div>
+ <section id="discovery-panel" class="discovery-panel" aria-label="Destination ideas" hidden></section>
  <div id="voice-transcript" class="voice-transcript" role="log" aria-label="Conversation" aria-live="polite"></div>
  <button id="chat-latest" class="chat-latest" type="button" hidden>Latest messages ↓</button>
  </div><div class="companion-composer">
@@ -85,6 +87,6 @@
 <script src="place-search.js?v=23"></script>
 <script src="app.js?v=22"></script>
 <script src="chat-start.js"></script>
-<script type="module" src="scout.js?v=20"></script>
+<script type="module" src="scout.js?v=21"></script>
 <script src="mobile-ui.js?v=4" defer></script>
 </body></html>

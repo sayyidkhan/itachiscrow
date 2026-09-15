@@ -9,7 +9,7 @@ Server-enforced per-IP limits use persistent D1 counters. Requests are charged b
 | Map starts | 4 | 10 |
 | Generated images / panoramas | 6 | 24 |
 | Voice session starts | 3 | 12 |
-| Research / trip plans | 3 | 20 |
+| Research / trip plans / AI place recommendations | 3 | 20 |
 
 Limits use fixed minute/hour windows and HTTP 429 with Retry-After. Atomic conditional UPSERT prevents concurrent over-admission. Counter identity is a daily SHA-256 hash of the connecting IP and operation; raw IPs are not stored. Expired counters are cleaned in bounded batches. Users sharing an IP share allowances. Missing database protection fails closed with HTTP 503.
 

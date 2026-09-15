@@ -14,7 +14,15 @@ Open **Chat** or choose **Talk** from the floating controls on the map. Text wor
 - “Find cafés nearby.”
 - “Plan three days here focused on food.”
 
-Text and **Talk** share one composer below the conversation. Tap a starter suggestion to edit it before sending, or write your own message. **Enter** sends; **Shift+Enter** adds a new line. The square **Stop current action** button appears while a request is running. Scroll back to read earlier replies without being pulled to the bottom; **Latest messages** takes you back.
+Text and **Talk** share one composer below the conversation. **Enter** sends; **Shift+Enter** adds a new line. The square **Stop current action** button appears while a request is running. Scroll back to read earlier replies without being pulled to the bottom; **Latest messages** takes you back.
+
+The three welcome choices open a second menu inside chat:
+
+- **Take me somewhere** opens illustrated destination cards. **Fly here** finds the place on Google Maps and flies there without generating an image.
+- **Find a local favourite** lets you choose hidden gems, coffee and bites, arts and culture, or outdoors. Choose **Find local picks** for AI suggestions near the map's current destination, with web source links.
+- **Make a day of it** offers a balanced day, food trail, or slow scenic wander. **Build my day** creates a sourced morning-to-evening itinerary. Fly to individual stops or **Save this day** as a Markdown file.
+
+Use **Ideas** in the chat header to return to these menus after starting a conversation. Browsing preserves your draft and history. Research starts only when you request picks or refresh them; changing moods alone does not call AI. Results are reused in the current page session and reset when the destination changes. The card artwork is decorative illustration, not a photograph of the venue. Suggestions are not reservations; use the source links to confirm details.
 
 Chat opens over the map on phones and desktops. Close it with **×** or **Escape**; your draft and conversation remain available when you reopen it. The map stays full-size. A **New** indicator appears when a reply arrives while chat is closed.
 

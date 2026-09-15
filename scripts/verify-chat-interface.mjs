@@ -34,9 +34,11 @@ try {
       await page.locator('#chat-open').click();
       assert(await send.isDisabled());
       assert.equal(await page.evaluate(() => window.micRequests), 0);
-      await page.locator('[data-command]').first().click();
-      assert.match(await input.inputValue(), /Gardens by the Bay/);
-      assert.equal(requests.length, 0, 'Suggestions fill a draft without sending');
+      await page.locator('[data-discovery="somewhere"]').click();
+      assert.equal(await page.locator('.discovery-card').count(), 6);
+      assert.equal(await input.inputValue(), '');
+      assert.equal(requests.length, 0, 'Browsing destination ideas does not send chat');
+      await page.getByRole('button', {name:'← Back',exact:true}).click();
       await input.fill('First line');
       await input.press('Shift+Enter');
       await input.press('x');

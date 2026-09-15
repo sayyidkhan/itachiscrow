@@ -38,6 +38,7 @@ Browser Google keys are visible by design. OpenAI and Meta secrets stay server-s
 | --- | --- |
 | `dist/app.js`, `dist/explore.html` | Map, crow transforms, camera, flight controls |
 | `dist/chat.js`, `dist/live.js`, `dist/travel.js` | Conversation, voice, application actions, result flows |
+| `dist/discovery.js`, `dist/discovery.css` | Illustrated destination browser, local AI picks and day itineraries inside chat |
 | `dist/map-keys.js`, `dist/place-search.js` | Browser key selection and server place-search client |
 | `dist/author.js`, `dist/customise.html` | Author Studio |
 | `dist/scene-author.js`, `dist/scene-author.css` | Crow/Author scene switch and generated variations |
@@ -89,6 +90,8 @@ Add `CROW_MAPS_KEY4`, `CROW_MAPS_KEY5`, and so on to extend the rotation. Number
 Configure numbered keys separately in each deployment's secrets. Zo's managed service environment does not transfer to GPT Sites through GitHub.
 
 Direct Google imagery, SDK place details, and photos are outside the app counters. Voice admission limits session creation, not audio duration. Provider quotas and billing controls remain separate.
+
+`POST /api/recommendations` uses the shared server handler in both runtimes and consumes the research allowance. It accepts a validated destination, `local` or `day` mode and an allowlisted mood, then requests structured AI results with web search. Only distinct places with a source URL present in the returned search sources are retained. No AI coordinates are used: selecting **Fly here** resolves a named place using the existing Google Places flow. Empty, failed or cancelled research is shown explicitly. `npm run verify:discovery` checks the menus, map action, source links, download, errors, cancellation and location changes at six viewport sizes using mocked providers.
 
 ## Diagnose before retrying
 

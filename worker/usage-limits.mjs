@@ -10,7 +10,7 @@ export function mapBrowserConfig(env){
  const config=entries.map(({name,key})=>`window.${name}=${JSON.stringify(key)};`).join('');
  return config+['CROW_MAPS_KEY','CROW_MAPS_FALLBACK_KEY','CROW_MAPS_FALLBACK_KEY_2'].map((name,i)=>`window.${name}=${JSON.stringify(entries.find(entry=>entry.name==='CROW_MAPS_KEY'+(i+1))?.key||'')};`).join('');
 }
-export function usageGroup(path){return path==='/api/chat'?'chat':path==='/api/places/search'?'search':path==='/api/map-session'?'map':path==='/api/live/session'?'voice':path==='/api/portrait'||path.startsWith('/api/panorama')?'image':path==='/api/plan'||path==='/api/discover'?'research':null;}
+export function usageGroup(path){return path==='/api/chat'?'chat':path==='/api/places/search'?'search':path==='/api/map-session'?'map':path==='/api/live/session'?'voice':path==='/api/portrait'||path.startsWith('/api/panorama')?'image':path==='/api/plan'||path==='/api/discover'||path==='/api/recommendations'?'research':null;}
 export const usageSQL=`INSERT INTO usage_limits(id,minute,minute_count,hour,hour_count,expires) VALUES(?,?,1,?,1,?)
 ON CONFLICT(id) DO UPDATE SET minute=excluded.minute,minute_count=CASE WHEN usage_limits.minute=excluded.minute THEN usage_limits.minute_count+1 ELSE 1 END,hour=excluded.hour,hour_count=CASE WHEN usage_limits.hour=excluded.hour THEN usage_limits.hour_count+1 ELSE 1 END,expires=excluded.expires
 WHERE (usage_limits.minute<>excluded.minute OR usage_limits.minute_count<?) AND (usage_limits.hour<>excluded.hour OR usage_limits.hour_count<?)

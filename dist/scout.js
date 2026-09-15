@@ -4,13 +4,14 @@ import { createPanoramaJourney } from './panorama-journey.js';
 import { CrowChat } from './chat.js?v=2';
 import { CrowLive } from './live.js?v=2';
 import { createTravelExperience } from './travel.js';
+import { createDiscovery } from './discovery.js?v=1';
 
 const $ = id => document.getElementById(id);
-const emptyContext = {mapReady:false,destination:{name:'Chelsea, New York',lat:40.74334,lng:-73.99423},spot:null,savedPlaces:[]};
+const emptyContext = {mapReady:false,destination:{name:'Esplanade, Singapore',lat:1.2897,lng:103.8556},spot:null,savedPlaces:[]};
 let context = window.CrowMap?.getContext() || emptyContext;
 let capabilities = {}, scene = null, viewer = null, plan = null;
 let generation = null, planning = null, searchSerial = 0, spotSerial = 0, instagramSerial = 0;
-let managedLandings=0, actionAbort=null, sceneTask=null, commandBusy=false;
+let managedLandings=0, actionAbort=null, sceneTask=null, commandBusy=false, busySerial=0;
 let currentTab = 'explore', liveState = {status:'idle',muted:false};
 let instagramConnection = {}, oauthPopup = null;
 const flightStages={departing:'Leaving the familiar',cruising:'Crossing the globe',descending:'A new place comes into view',approaching:'Almost there'};
@@ -46,6 +47,7 @@ function refreshContext(next){
   const spotChanged=identity(next.spot)!==identity(context.spot);
   context={...emptyContext,...next};
   travel.updateContext(context);
+  discovery.updateContext();
   if(changed||spotChanged){$('command-result').hidden=true;scene=null;$('reopen-scene').hidden=true;$('scene-open').hidden=true;$('step-look').classList.remove('active');generation?.abort();generation=null;if($('panorama-dialog').open)$('panorama-dialog').close();clearPlan();}
   if(changed){searchSerial++;spotSerial++;$('destination-results').replaceChildren();$('spot-results').replaceChildren();$('instagram-hashtag').value=context.destination.name.split(',')[0].replace(/[^\p{L}\p{N}_]/gu,'').toLowerCase();instagramSerial++;$('instagram-refresh').disabled=false;$('instagram-posts').replaceChildren();$('instagram-status').textContent=capabilities.instagram?'Refresh to discover this destination’s recent hashtag posts.':'Connect Instagram through Meta to see recent public hashtag photos.';}
   const findingStart=!context.mapReady&&context.locationStatus==='locating';
@@ -254,14 +256,20 @@ const live = new CrowLive({
   onTranscript(event){let entry=transcripts.get('current');if(!entry||entry.role!==event.role){entry={role:event.role,element:addMessage(event.role,''),text:''};transcripts.set('current',entry);}entry.text+=event.delta;entry.element.lastElementChild.textContent=entry.text.slice(-5000);scrollConversation();window.dispatchEvent(new CustomEvent('crow:voice-caption',{detail:{role:event.role,text:entry.text}}));},
   onAction:executeAction
 });
-const chat=new CrowChat({getContext:liveContext,onAction:executeAction,onMessage:addMessage,onProgress:text=>note(text),onError:error=>note(error.message,true),onBusy:busy=>{commandBusy=busy;$('companion').classList.toggle('busy',busy);$('chat-send').disabled=busy||!$('chat-input').value.trim();$('chat-input').setAttribute('aria-busy',String(busy));$('command-stop').hidden=!busy&&!liveState.pendingAction;}});
+function setCommandBusy(busy){busySerial++;commandBusy=busy;$('companion').classList.toggle('busy',busy);$('chat-send').disabled=busy||!$('chat-input').value.trim();$('chat-input').setAttribute('aria-busy',String(busy));$('command-stop').hidden=!busy&&!liveState.pendingAction;}
+const chat=new CrowChat({getContext:liveContext,onAction:executeAction,onMessage:addMessage,onProgress:text=>note(text),onError:error=>note(error.message,true),onBusy:setCommandBusy});
+const discovery=createDiscovery({getContext:()=>context,request,onFly:async destination=>{
+  if(commandBusy||liveState.pendingAction)throw Error('Finish or stop the current action before starting a flight.');
+  live.cancelActions();abortActions();setCommandBusy(true);
+  const serial=busySerial;
+  try{return await executeAction('fly_to',{destination});}finally{if(busySerial===serial)setCommandBusy(false);}
+}});
 function stopCommand(){chat.stop();chat.completedConversation=null;live.cancelActions();abortActions();note('Stopped. Where next?');}
 $('command-stop').onclick=stopCommand;
 $('chat-form').onsubmit=event=>{event.preventDefault();const message=$('chat-input').value.trim();if(!message)return;if(commandBusy&&!/^(stop|pause|cancel)[.!]?$/i.test(message)){note('Finish or stop the current request before sending another.');return;}$('chat-input').value='';$('chat-input').dispatchEvent(new Event('input'));if(/^(stop|pause|cancel)[.!]?$/i.test(message)){addMessage('user',message);stopCommand();addMessage('assistant','Stopped.');return;}live.cancelActions();abortActions();chat.send(message);};
 $('chat-input').addEventListener('input',()=>{$('chat-send').disabled=commandBusy||!$('chat-input').value.trim();});
 $('chat-input').dispatchEvent(new Event('input'));
 $('chat-input').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();$('chat-form').requestSubmit();}});
-for(const button of document.querySelectorAll('[data-command]'))button.onclick=()=>{$('chat-input').value=button.dataset.command;$('chat-input').dispatchEvent(new Event('input'));$('chat-input').focus();};
 window.addEventListener('pagehide',()=>chat.stop());
 async function connectStatus(){
   try{const status=await request('/api/status');capabilities=status.capabilities||{};instagramConnection=status.instagram||{};$('connection-status').textContent=capabilities.chat?'Your guide to anywhere':capabilities.live?'Voice ready · Chat unavailable':'Chat unavailable';$('instagram-status').textContent=capabilities.instagram?'Instagram connected. Refresh to find recent public hashtag photos.':'Connect Instagram through Meta to see recent public hashtag photos.';

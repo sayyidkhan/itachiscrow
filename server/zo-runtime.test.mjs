@@ -14,6 +14,14 @@ async function start(t,options={}){
 
 function headers(){return {Origin:'https://crow.example','X-Forwarded-Host':'crow.example','Content-Type':'application/json'};}
 
+test('Zo recommendations share research allowance and reject foreign origins', async t => {
+ const base=await start(t,{env:{OPENAI_API_KEY:'test-key'},fetchImpl:()=>assert.fail('Invalid input must not reach provider')});
+ const send=origin=>fetch(base+'/api/recommendations',{method:'POST',headers:{...headers(),Origin:origin},body:'{}'});
+ assert.equal((await send('https://other.example')).status,403);
+ for(let i=0;i<3;i++)assert.equal((await send('https://crow.example')).status,400);
+ assert.equal((await send('https://crow.example')).status,429);
+});
+
 test('Zo runtime mirrors protected map and configuration contracts with persistent SQLite admission',async t=>{
  const base=await start(t,{env:{CROW_MAPS_KEY3:'third-test-key'}});
  const config=await fetch(base+'/config.js',{headers:{...headers(),'X-Forwarded-Prefix':'/crow'}});
