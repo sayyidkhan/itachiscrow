@@ -1,9 +1,19 @@
-.explorer .steering-control { position: absolute; z-index: 4; left: 16px; bottom: calc(48px + env(safe-area-inset-bottom)); width: 112px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.explorer #steering-toggle, .explorer #crow-joystick { background: var(--glass-highlight), var(--glass-tint); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); }
+.explorer .steering-control { position: absolute; z-index: 4; left: 16px; bottom: calc(48px + env(safe-area-inset-bottom)); width: 156px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; pointer-events: none; }
+.explorer .steering-control button { pointer-events: auto; }
+.explorer #steering-toggle, .explorer #crow-joystick, .explorer .steering-action { background: var(--glass-highlight), var(--glass-tint); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); }
 .explorer #steering-toggle { min-height: 44px; padding: 8px 13px; border-radius: 24px; font-size: 12px; display: flex; align-items: center; gap: 7px; }
 .explorer #steering-toggle[aria-expanded=true] { color: #b5efd8; }
 #steering-panel { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 #steering-panel[hidden] { display: none; }
+.steering-orbit { position: relative; width: 156px; height: 104px; }
+.explorer .steering-action { position: absolute; right: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: 44px; height: 44px; padding: 0; border-radius: 50%; color: #d3f5e6; touch-action: manipulation; }
+.steering-action span { font: 10px/1.1 system-ui; }
+.explorer #steering-roll { top: 0; }
+.explorer #steering-speed { bottom: 0; }
+.explorer #steering-speed-value { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.explorer #steering-speed[data-speed="2"] { color: #b0f4d2; border-color: #b0f4d280; }
+.explorer #steering-speed[data-speed="3"] { color: #ffe0a2; border-color: #ffe0a280; background-color: #4b351f; }
+.explorer .steering-action:disabled { opacity: .5; }
 .explorer #crow-joystick { position: relative; display: grid; place-items: center; width: 104px; height: 104px; padding: 0; border-radius: 50%; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
 .explorer #crow-joystick:active { cursor: grabbing; }
 #crow-joystick::before { content: ''; position: absolute; inset: 12px; border: 1px dashed #dbffed44; border-radius: 50%; }
@@ -15,10 +25,37 @@
 .explorer.debug-open .steering-control, .explorer.long-flight .steering-control { display: none; }
 @media (max-width: 1000px) {
   .explorer .steering-control { left: 12px; }
-  .explorer:has(#companion:not([hidden])) .steering-control { display: none; }
-  .explorer:has(#voice-overlay:not([hidden])) .steering-control { display: none; }
+  .explorer:has(#companion:not([hidden])), .explorer:has(#voice-overlay:not([hidden])) { --steering-clearance: 60px; }
+  .explorer.steering-open:has(#companion:not([hidden])), .explorer.steering-open:has(#voice-overlay:not([hidden])) { --steering-clearance: 200px; }
+  .explorer.conversation-first :is(.companion, .voice-overlay) { bottom: calc(48px + env(safe-area-inset-bottom) + var(--steering-clearance, 0px)); max-height: calc(100% - var(--header-height) - 64px - env(safe-area-inset-bottom) - var(--steering-clearance, 0px)); }
+}
+@media (max-width: 1000px) and (max-height: 600px) {
+  .explorer.conversation-first:has(#companion:not([hidden])), .explorer.conversation-first:has(#voice-overlay:not([hidden])) { --steering-clearance: 0px; }
+  .explorer :is(.companion, .voice-overlay) { left: 116px; right: 8px; width: auto; }
+  .explorer.steering-open:has(#companion:not([hidden])) .steering-orbit,
+  .explorer.steering-open:has(#voice-overlay:not([hidden])) .steering-orbit { width: 96px; height: 152px; }
+  .explorer.steering-open:has(#companion:not([hidden])) #crow-joystick,
+  .explorer.steering-open:has(#voice-overlay:not([hidden])) #crow-joystick { width: 96px; height: 96px; }
+  .explorer.steering-open:has(#companion:not([hidden])) #steering-roll,
+  .explorer.steering-open:has(#voice-overlay:not([hidden])) #steering-roll { top: auto; bottom: 0; left: 0; right: auto; }
+  .explorer.steering-open:has(#companion:not([hidden])) #steering-speed,
+  .explorer.steering-open:has(#voice-overlay:not([hidden])) #steering-speed { bottom: 0; right: 0; }
+  .explorer.steering-open:has(#companion:not([hidden])) #steering-help,
+  .explorer.steering-open:has(#voice-overlay:not([hidden])) #steering-help { display: none; }
+  .explorer .companion-heading { gap: 3px; padding-left: 8px; }
+  .explorer .companion .voice-orb { display: none; }
+  .explorer .companion-heading strong { font-size: 12px; }
+  .explorer .companion-heading button { width: 36px; }
+  .explorer .command-examples { grid-template-columns: 1fr; }
+  .explorer .command-examples button { min-height: 44px; flex-direction: row; align-items: center; }
+  .explorer .composer-hint { display: none; }
 }
 @media (max-height: 450px) {
   .explorer #crow-joystick { width: 80px; height: 80px; }
   #steering-panel small { display: none; }
+  .explorer .steering-orbit { width: 132px; height: 96px; }
+  .explorer.steering-open:has(#companion:not([hidden])) #crow-joystick,
+  .explorer.steering-open:has(#voice-overlay:not([hidden])) #crow-joystick { width: 80px; height: 80px; margin-left: 8px; }
+  .explorer.steering-open:has(#companion:not([hidden])) .steering-orbit,
+  .explorer.steering-open:has(#voice-overlay:not([hidden])) .steering-orbit { height: 132px; }
 }

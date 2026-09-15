@@ -2,12 +2,12 @@
   const $ = id => document.getElementById(id);
   const pad = $('crow-joystick'), knob = $('joystick-knob'), panel = $('steering-panel');
   const keys = new Set();
-  let pointer = null, vector = [0, 0, 0], session = 0, running = false, pending = false, frame = 0;
+  let pointer = null, vector = [0, 0, 0], session = 0, running = false, pending = false, frame = 0, rollPending = false;
   function reset() {
     session++;
     const wasPending = pending, wasRunning = running;
     pending = false; running = false; vector = [0, 0, 0]; keys.clear();
-    cancelAnimationFrame(frame);
+    clearInterval(frame);
     const captured = pointer; pointer = null;
     if (captured !== null && pad.hasPointerCapture(captured)) pad.releasePointerCapture(captured);
     knob.style.transform = '';
@@ -29,9 +29,9 @@
         if (token !== session) return;
         if (!window.CrowMap.getContext().steering) { reset(); return; }
         window.CrowMap.steer(...vector);
-        frame = requestAnimationFrame(update);
       };
       update();
+      if (token === session && running) frame = setInterval(update, 100);
     } catch (error) {
       if (token === session) { reset(); $('hint').textContent = error.message; }
     }
@@ -69,18 +69,53 @@
   pad.addEventListener('keyup', event => { if (keys.delete(event.key)) { event.preventDefault(); keyVector(); } });
   pad.addEventListener('blur', reset);
   $('steering-toggle').onclick = () => {
-    reset(); panel.hidden = !panel.hidden;
+    reset(); if (rollPending) window.CrowMap?.pause(); panel.hidden = !panel.hidden;
     $('steering-toggle').setAttribute('aria-expanded', String(!panel.hidden));
     document.body.classList.toggle('steering-open', !panel.hidden);
     if (!panel.hidden) pad.focus({ preventScroll: true });
   };
   function reflect() {
-    const ready = Boolean(window.CrowMap?.getContext().mapReady);
+    const state = window.CrowMap?.getContext(), ready = Boolean(state?.mapReady);
     pad.disabled = !ready; $('steering-toggle').disabled = !ready;
+    $('steering-roll').disabled = !ready || rollPending || state.rolling;
+    $('steering-speed').disabled = !ready;
+    const speed = state?.steeringSpeed || 1;
+    $('steering-speed-value').textContent = speed + '×';
+    $('steering-speed').dataset.speed = speed;
+    $('steering-speed').setAttribute('aria-label', `Flight speed ${speed}×. Change to ${speed % 3 + 1}×`);
   }
+  for (const id of ['steering-roll', 'steering-speed']) {
+    const button = $(id);
+    let actionPointer = null, suppressClickUntil = 0;
+    button.addEventListener('pointerdown', event => {
+      if (pointer === null || button.disabled) return;
+      event.preventDefault(); actionPointer = event.pointerId;
+      button.setPointerCapture(actionPointer);
+    });
+    button.addEventListener('pointerup', event => {
+      if (event.pointerId !== actionPointer) return;
+      event.preventDefault(); actionPointer = null;
+      const rect = button.getBoundingClientRect();
+      suppressClickUntil = performance.now() + 500;
+      if (event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom) button.click();
+    });
+    for (const name of ['pointercancel', 'lostpointercapture']) button.addEventListener(name, () => { actionPointer = null; });
+    button.addEventListener('click', event => {
+      if (event.isTrusted && performance.now() < suppressClickUntil) { event.preventDefault(); event.stopImmediatePropagation(); }
+    }, true);
+  }
+  $('steering-speed').onclick = () => window.CrowMap.setSteeringSpeed(window.CrowMap.getContext().steeringSpeed % 3 + 1);
+  $('steering-roll').onclick = async () => {
+    rollPending = true; reflect();
+    if (!running) window.dispatchEvent(new Event('crow:manual-control'));
+    try { await window.CrowMap.roll(); }
+    catch (error) { $('hint').textContent = error.message; }
+    finally { rollPending = false; reflect(); }
+  };
   for (const name of ['ready', 'context', 'destination']) document.addEventListener('crow:' + name, reflect);
   function closePanel() {
     reset(); panel.hidden = true;
+    if (rollPending) window.CrowMap?.pause();
     $('steering-toggle').setAttribute('aria-expanded', 'false');
     document.body.classList.remove('steering-open');
   }

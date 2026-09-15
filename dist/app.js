@@ -5,6 +5,7 @@ const $=id=>document.getElementById(id);
 let map,Place,Marker,ready=false,playing=false,transitioning=false,progress=0,heading=125,speed=8,high=false,frameId,last=0,selected=null,detailSerial=0,placesLoaded=false;
 let crowParts=[], flightTime=0, bank=0, crowHeading=125, freeRoaming=false, nearbyPending=null;
 let manualFlight=null,manualIntent=0;
+let steeringSpeed=1,crowRoll=0,rollAnimation=null;
 let startupFailed=false, sceneSteady=false, modelsMounted=false, startupTimer, sceneTimer, placesPromise;
 let startupCameraStage='waiting',startupCameraTimer,startupCameraFrame,startupCameraAttempts=0,startupPerchTimer,startupFramingAt=null;
 let MODEL_BASE=new URL('models/',document.currentScript?.src || document.baseURI);
@@ -83,7 +84,7 @@ function normalizeDestination(value){
  if(Number.isFinite(location.altitude))result.altitude=location.altitude;
  return result;
 }
-function getCrowContext(){return {mapReady:ready,destination:{...destination},spot:landingSpot?{...landingSpot}:null,position:scoutPosition?{...scoutPosition}:null,heading:crowHeading,steering:Boolean(manualFlight),savedPlaces:[...savedPlaces.values()].map(p=>({...p})),mode:scoutMode,freeRoaming,landingMode,flightStage,routeDistanceMeters,locationStatus,locationMessage,hasUserLocation:Boolean(startLocation),startLocation:startLocation?{...startLocation}:null};}
+function getCrowContext(){return {mapReady:ready,destination:{...destination},spot:landingSpot?{...landingSpot}:null,position:scoutPosition?{...scoutPosition}:null,heading:crowHeading,steering:Boolean(manualFlight),steeringSpeed,rolling:Boolean(rollAnimation),savedPlaces:[...savedPlaces.values()].map(p=>({...p})),mode:scoutMode,freeRoaming,landingMode,flightStage,routeDistanceMeters,locationStatus,locationMessage,hasUserLocation:Boolean(startLocation),startLocation:startLocation?{...startLocation}:null};}
 function emitCrow(name,extra={}){try{localStorage.setItem('crow:author-destination',JSON.stringify(landingSpot||destination))}catch{}document.dispatchEvent(new CustomEvent('crow:'+name,{detail:{...getCrowContext(),...extra}}));}
 async function locateBrowser(){
  try{if(window.CrowLocation?.locate)return await window.CrowLocation.locate();}catch{}
@@ -163,7 +164,7 @@ function poseScout(position,fold=0,altitudeBase=null,pitch=0){
   part.altitudeMode=altitudeBase===null?'RELATIVE_TO_MESH':'ABSOLUTE';part.position={...position,altitude:position.altitude+(altitudeBase??0)};
   // Sweep the extended wings backwards and narrow their spread as the crow settles.
   part.scale=i===0?2.2:{x:2.2*(1-.67*fold),y:2.2,z:2.2};
-  part.orientation={heading:wrapAngle(crowHeading+(i===1?-67*fold:i===2?67*fold:0)),tilt:wrapAngle(-12*fold+pitch),roll:wrapAngle(i===1?flap:i===2?-flap:0)};
+  part.orientation={heading:wrapAngle(crowHeading+(i===1?-67*fold:i===2?67*fold:0)),tilt:wrapAngle(-12*fold+pitch),roll:wrapAngle(crowRoll+(i===1?flap:i===2?-flap:0))};
  });
 }
 function relativeOffset(point,north,east){
@@ -414,8 +415,8 @@ async function beginSteering(){
   if(document.hidden||now-state.updated>600){endSteering();return;}
   const dt=Math.max(0,Math.min((now-state.previous)/1000,.08));state.previous=now;flightTime+=dt;
   crowHeading=wrapAngle(crowHeading+state.x*65*dt);
-  const metres=state.y*35*dt,point=relativeOffset(scoutPosition,Math.cos(crowHeading*radians)*metres,Math.sin(crowHeading*radians)*metres);
-  poseScout({...point,altitude:Math.max(20,Math.min(500,scoutPosition.altitude+state.z*18*dt))});
+  const metres=state.y*35*steeringSpeed*dt,point=relativeOffset(scoutPosition,Math.cos(crowHeading*radians)*metres,Math.sin(crowHeading*radians)*metres);
+  poseScout({...point,altitude:Math.max(20,Math.min(500,scoutPosition.altitude+state.z*18*steeringSpeed*dt))});
   map.flyCameraTo({endCamera:scoutCamera(scoutPosition),durationMillis:0});
   state.frame=requestAnimationFrame(step);
  };
@@ -426,6 +427,48 @@ function steer(x,y,z=0){
  if(manualFlight)Object.assign(manualFlight,{x,y,z,updated:performance.now()});
 }
 function endSteering(){if(manualFlight)stop();return getCrowContext();}
+function setSteeringSpeed(multiplier){
+ if(![1,2,3].includes(multiplier))throw Error('Choose 1×, 2× or 3× speed.');
+ steeringSpeed=multiplier;emitCrow('context');return getCrowContext();
+}
+function cancelRoll(){
+ if(!rollAnimation)return;
+ const animation=rollAnimation;rollAnimation=null;crowRoll=0;
+ cancelAnimationFrame(animation.frame);
+ if(scoutPosition)poseScout(scoutPosition,0,scoutAltitudeBase);
+ animation.resolve({cancelled:true});
+}
+async function rollCrow(){
+ if(!ready)throw Error('Wait for the map to finish loading.');
+ if(rollAnimation)return {cancelled:true};
+ if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){hint('Roll is off while reduced motion is enabled.');return {reducedMotion:true};}
+ if(!manualFlight){
+  stop();cancelLandingMode();
+  if(scoutMode==='landed'){
+   const result=await takeOff();if(result?.cancelled)return result;
+  }
+  freeRoaming=false;
+  map.flyCameraTo({endCamera:scoutCamera(scoutPosition),durationMillis:0});
+ }
+ if(document.hidden)return {cancelled:true};
+ return new Promise(resolve=>{
+  const animation={frame:0,resolve,start:performance.now(),previous:performance.now()};rollAnimation=animation;
+  status('Barrel roll');emitCrow('context');
+  const step=now=>{
+   if(rollAnimation!==animation)return;
+   if(document.hidden){cancelRoll();emitCrow('context');return;}
+   const t=Math.min(1,(now-animation.start)/1400);
+   if(!manualFlight)flightTime+=Math.min(.08,(now-animation.previous)/1000);
+   animation.previous=now;crowRoll=360*(t*t*(3-2*t));
+   poseScout(scoutPosition,0,scoutAltitudeBase);
+   if(t===1){
+    rollAnimation=null;crowRoll=0;poseScout(scoutPosition,0,scoutAltitudeBase);
+    status(manualFlight?'Steering your crow':'Roll complete');emitCrow('context');resolve(getCrowContext());
+   }else animation.frame=requestAnimationFrame(step);
+  };
+  animation.frame=requestAnimationFrame(step);
+ });
+}
 async function navigateCrow(command){
  const directions={forward:[0,1,0],backward:[0,-1,0],left:[-1,0,0],right:[1,0,0],higher:[0,0,1],lower:[0,0,-1]};
  if(command==='free_roam')return freeRoam();
@@ -448,10 +491,10 @@ async function navigateCrow(command){
   };step(startTime);
  });
 }
-window.addEventListener('blur',()=>{if(manualFlight)endSteering();});
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&(manualFlight||scoutMode==='taking-off'))stop();});
+window.addEventListener('blur',()=>{if(manualFlight||rollAnimation)stop();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&(manualFlight||rollAnimation||scoutMode==='taking-off'))stop();});
 window.addEventListener('pagehide',()=>stop());
-window.CrowMap=Object.freeze({searchDestinations,searchCafes,flyTo,selectLandingMode,cancelLandingMode,landAt,takeOff,circleAround,useCurrentLocation,freeRoam,followCrow,beginSteering,steer,endSteering,navigate:navigateCrow,getContext:getCrowContext,pause(){stop();return getCrowContext();}});
+window.CrowMap=Object.freeze({searchDestinations,searchCafes,flyTo,selectLandingMode,cancelLandingMode,landAt,takeOff,circleAround,useCurrentLocation,freeRoam,followCrow,beginSteering,steer,endSteering,setSteeringSpeed,roll:rollCrow,navigate:navigateCrow,getContext:getCrowContext,pause(){stop();return getCrowContext();}});
 
 // Prepared Esplanade loop; rounded junctions keep camera turns continuous.
 const corners=[{lat:1.28972,lng:103.85528},{lat:1.29010,lng:103.85620},{lat:1.28915,lng:103.85675},{lat:1.28870,lng:103.85580}];
@@ -529,6 +572,7 @@ async function mountCrow(Model){
 function hint(s){$('hint').textContent=s;}
 function status(s){$('status').textContent=s;}
 function stop(){
+ cancelRoll();
  if(manualFlight){
   cancelAnimationFrame(manualFlight.frame);manualFlight=null;scoutMode='hovering';
   destination={name:destination.name,lat:scoutPosition.lat,lng:scoutPosition.lng};

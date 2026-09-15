@@ -460,3 +460,37 @@ advance(25000);
 assert.equal((await cancelledOrbit).cancelled,true);
 assert.equal(JSON.stringify(api.getContext().position),stoppedOrbit,'Cancelled orbit frames never move the crow');
 console.log('Landmark orbit contract passed: repeat, slow frames, completion and cancellation.');
+
+sandbox.requestAnimationFrame = callback => schedule(callback, 20);
+const travelRates = [];
+for (const multiplier of [1, 2, 3]) {
+  api.setSteeringSpeed(multiplier);
+  await api.beginSteering();
+  vm.runInContext('crowHeading=0', sandbox);
+  const initialPosition = api.getContext().position;
+  for (let i=0;i<10;i++) { api.steer(0,1); advance(100); }
+  travelRates.push((api.getContext().position.lat-initialPosition.lat)*111320);
+  api.endSteering();
+}
+for (let i=0;i<3;i++) assert(Math.abs(travelRates[i]-35*(i+1))<.01,'Speed scales real distance without changing the animation clock');
+assert.throws(()=>api.setSteeringSpeed(4),/1×, 2× or 3×/);
+api.setSteeringSpeed(1);
+await api.beginSteering();
+const rollingFlight=api.roll();
+for (let i=0;i<7;i++) { api.steer(0,1); advance(100); }
+assert.equal(api.getContext().steering,true,'Rolling does not cancel active steering');
+assert(Math.abs(vm.runInContext('crowParts[0].orientation.roll',sandbox)-180)<1);
+assert.equal(cameraCalls.at(-1).endCamera.roll,0,'Only the crow rotates');
+for (let i=0;i<8;i++) { api.steer(0,1); advance(100); }
+assert.equal((await rollingFlight).rolling,false);
+assert.equal(vm.runInContext('crowParts[0].orientation.roll',sandbox),0);
+const stoppedRoll=api.roll();advance(100);api.pause();advance(2000);
+assert.equal((await stoppedRoll).cancelled,true);
+assert.equal(vm.runInContext('crowParts[0].orientation.roll',sandbox),0);
+sandbox.requestAnimationFrame = callback => schedule(callback,1000);
+const slowRoll=api.roll();advance(2000);
+assert.equal((await slowRoll).rolling,false,'Slow rendering cannot stretch a roll indefinitely');
+window.matchMedia=()=>({matches:true});
+assert.equal((await api.roll()).reducedMotion,true);
+assert.equal(api.getContext().rolling,false);
+console.log('Steering contract passed: 1×/2×/3× distance, simultaneous roll, level camera, cancellation, slow frames and reduced motion.');

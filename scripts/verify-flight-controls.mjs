@@ -199,6 +199,7 @@ try {
         await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...centre,y:centre.y-30}]});
         await page.waitForFunction(lat => Math.abs(CrowMap.getContext().position.lat-lat)>.00001,neutral.lat);
         await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
+        await page.waitForFunction(() => !CrowMap.getContext().steering);
         assert.equal(await page.evaluate(() => CrowMap.getContext().steering),false,'Touch cancellation stops steering');
         await page.evaluate(() => CrowMap.beginSteering());
         await page.waitForTimeout(800);
@@ -211,6 +212,101 @@ try {
       await page.keyboard.up('ArrowUp');
       assert.equal(await page.evaluate(() => CrowMap.getContext().steering), false);
       const beforeVoice = await page.evaluate(() => CrowMap.getContext());
+      await page.locator('#chat-open').click();
+      await page.locator('#chat-input').fill('Keep chatting while I fly');
+      for (const id of ['crow-joystick', 'steering-roll', 'steering-speed']) {
+        assert(await page.locator('#' + id).isVisible(), id + ' stays visible with chat open');
+        assert(await page.locator('#' + id).evaluate(el => {
+          const r = el.getBoundingClientRect();
+          return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+        }), id + ' receives pointer input with chat open');
+      }
+      const dockBounds = await page.evaluate(() => {
+        const rect = id => document.getElementById(id).getBoundingClientRect().toJSON();
+        return {pad:rect('crow-joystick'),chat:rect('companion'),roll:rect('steering-roll'),speed:rect('steering-speed'),send:rect('chat-send')};
+      });
+      assert(dockBounds.pad.bottom <= dockBounds.chat.top || dockBounds.pad.top >= dockBounds.chat.bottom || dockBounds.pad.right <= dockBounds.chat.left, 'Chat clears steering');
+      assert(dockBounds.send.bottom <= dockBounds.chat.bottom, 'Send remains reachable alongside steering');
+      assert(dockBounds.roll.bottom <= height - 40 && dockBounds.speed.bottom <= height - 40, 'Action buttons clear attribution');
+      await page.screenshot({path:new URL(`steering-chat-${width}x${height}.png`,output).pathname});
+      const rates = [];
+      for (const multiplier of [1, 2, 3, 1]) {
+        assert.equal(await page.locator('#steering-speed-value').textContent(), multiplier + '×');
+        assert.equal(await page.evaluate(() => CrowMap.getContext().steeringSpeed), multiplier);
+        await pad.focus();
+        const origin = await page.evaluate(() => ({position:CrowMap.getContext().position,time:performance.now()}));
+        await page.keyboard.down('ArrowUp');
+        await page.waitForFunction(() => CrowMap.getContext().steering);
+        await page.waitForTimeout(600);
+        await page.keyboard.up('ArrowUp');
+        const end = await page.evaluate(() => ({position:CrowMap.getContext().position,time:performance.now()}));
+        const metres = Math.hypot((end.position.lat-origin.position.lat)*111320,(end.position.lng-origin.position.lng)*111320*Math.cos(origin.position.lat*Math.PI/180));
+        rates.push(metres/((end.time-origin.time)/1000));
+        if (rates.length < 4) await page.locator('#steering-speed').click();
+      }
+      assert(rates[1] > rates[0]*1.5 && rates[2] > rates[0]*2.3, 'Speed changes real travel distance: '+JSON.stringify(rates));
+      assert(rates[3] < rates[2]*.5, 'Speed wraps back to 1×');
+      await page.locator('#steering-roll').click();
+      assert.equal(await page.evaluate(() => CrowMap.getContext().rolling), false, 'Reduced motion skips the roll');
+      await page.emulateMedia({reducedMotion:'no-preference'});
+      await page.locator('#steering-roll').click();
+      await page.waitForFunction(() => document.querySelector('test-model').orientation.roll > 90);
+      assert.equal(await page.evaluate(() => testMap.roll), 0, 'The crow rolls while the camera remains level');
+      assert(await page.locator('#steering-roll').isDisabled(), 'Repeated rolls cannot stack');
+      await page.waitForFunction(() => !CrowMap.getContext().rolling);
+      assert.equal(await page.evaluate(() => document.querySelector('test-model').orientation.roll), 0, 'Roll finishes upright');
+      await page.locator('#steering-roll').click();
+      await page.waitForFunction(() => CrowMap.getContext().rolling);
+      await page.evaluate(() => CrowMap.pause());
+      assert.equal(await page.evaluate(() => document.querySelector('test-model').orientation.roll), 0, 'Stop restores upright pose');
+      assert.equal(await page.evaluate(() => CrowMap.getContext().rolling), false);
+      if (width === 390 && height === 844) {
+        const cdp = await context.newCDPSession(page);
+        const point = async selector => { const r = await page.locator(selector).boundingBox(); return {x:r.x+r.width/2,y:r.y+r.height/2}; };
+        const stick = {...await point('#crow-joystick'),id:1}; stick.y-=28;
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[stick]});
+        await page.waitForFunction(()=>CrowMap.getContext().steering);
+        const boost = {...await point('#steering-speed'),id:2};
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[stick,boost]});
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[boost]});
+        await page.waitForFunction(()=>CrowMap.getContext().steeringSpeed===2);
+        assert(await page.evaluate(()=>CrowMap.getContext().steering),'Second-finger speed tap preserves steering');
+        const roll = {...await point('#steering-roll'),id:2};
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[stick,roll]});
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[roll]});
+        await page.waitForFunction(()=>CrowMap.getContext().rolling);
+        assert(await page.evaluate(()=>CrowMap.getContext().steering),'Second-finger roll preserves steering');
+        await page.waitForFunction(()=>!CrowMap.getContext().rolling);
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+        assert.equal(await page.evaluate(()=>CrowMap.getContext().steering),false,'Releasing touch still stops movement');
+        assert.equal(await page.evaluate(()=>CrowMap.getContext().steeringSpeed),2,'A secondary touch changes speed once');
+        await page.evaluate(()=>CrowMap.setSteeringSpeed(1));
+        await page.evaluate(() => {
+          window.originalAnimationFrame = window.requestAnimationFrame;
+          window.requestAnimationFrame = callback => setTimeout(() => originalAnimationFrame(callback), 750);
+        });
+        await pad.focus();
+        await page.keyboard.down('ArrowUp');
+        await page.waitForFunction(()=>CrowMap.getContext().steering);
+        await page.waitForTimeout(1800);
+        assert(await page.evaluate(()=>CrowMap.getContext().steering),'Held input survives slow rendering frames');
+        await page.keyboard.up('ArrowUp');
+        await page.evaluate(()=>{window.requestAnimationFrame=window.originalAnimationFrame;});
+        assert.equal(await page.evaluate(()=>CrowMap.getContext().steering),false,'Release stops steering even during slow frames');
+      }
+      await page.emulateMedia({reducedMotion:'reduce'});
+      assert.equal(await page.locator('#chat-input').inputValue(), 'Keep chatting while I fly');
+      await page.locator('#chat-input').fill('');
+      await page.locator('#companion-toggle').click();
+      await page.evaluate(() => window.dispatchEvent(new CustomEvent('crow:voice-state',{detail:{status:'connected',muted:false}})));
+      assert(await pad.isVisible(), 'Voice captions preserve steering');
+      await pad.focus();
+      await page.keyboard.down('ArrowRight');
+      await page.waitForFunction(() => CrowMap.getContext().steering);
+      await page.keyboard.up('ArrowRight');
+      assert(await page.locator('#voice-overlay').isVisible(), 'Steering keeps voice controls visible');
+      await page.screenshot({path:new URL(`steering-voice-${width}x${height}.png`,output).pathname});
+      await page.evaluate(() => window.dispatchEvent(new CustomEvent('crow:voice-state',{detail:{status:'idle'}})));
       await page.evaluate(() => CrowMap.navigate('higher'));
       const afterVoice = await page.evaluate(() => CrowMap.getContext());
       assert(afterVoice.position.altitude > beforeVoice.position.altitude + 20);
