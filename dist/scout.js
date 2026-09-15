@@ -1,8 +1,8 @@
 import {createSceneAuthor} from './scene-author.js';
 import { PanoramaViewer } from './panorama.js?v=2';
 import { createPanoramaJourney } from './panorama-journey.js';
-import { CrowChat } from './chat.js?v=2';
-import { CrowLive } from './live.js?v=2';
+import { CrowChat } from './chat.js?v=3';
+import { CrowLive } from './live.js?v=3';
 import { createTravelExperience } from './travel.js';
 import { createDiscovery } from './discovery.js?v=1';
 
@@ -205,7 +205,8 @@ function waitForMap(signal){
  });
 }
 async function resolveCommandPlace(query,city){
- if(/^(here|there|this place|current location)$/i.test(query.trim()))return context.spot||context.destination;
+ if(/^(here|current location)$/i.test(query.trim()))return context.spot||(context.position?{...context.position,name:'Current crow location'}:context.destination);
+ if(/^(there|this place)$/i.test(query.trim()))return context.spot||context.destination;
  const places=await window.CrowMap.searchDestinations(city?`${query}, ${city}`:landmarkQuery(query));
  if(!places.length)throw Error(`I couldn’t find ${query}. Try a landmark or a more specific address.`);
  return places[0];
@@ -227,7 +228,13 @@ async function executeAction(name,args,{signal,sessionId}={}){
    catch(error){return {status:'partial',landed:true,spot:place,summary:'Landed successfully, but the 360 view could not be generated.',error:error.message};}
  };
  try{
-   if(['travel_to','fly_to','land_at','circle_around','take_off'].includes(name)){await waitForMap(controller.signal);guard();}
+   if(['travel_to','fly_to','land_at','circle_around','take_off','navigate'].includes(name)){window.dispatchEvent(new Event('crow:remote-control'));await waitForMap(controller.signal);guard();}
+   if(name==='navigate'){
+     closeResult();
+     if(args.command==='land_here')managedLandings++;
+     let result;try{result=await window.CrowMap.navigate(args.command);}finally{if(args.command==='land_here')managedLandings--;}
+     guard();return {status:result?.cancelled?'cancelled':'completed',command:args.command,position:result?.position,heading:result?.heading};
+   }
    if(name==='travel_to'){
      closeResult();
      note(`Finding ${args.landing_spot} in ${args.destination}…`);
@@ -265,6 +272,7 @@ const discovery=createDiscovery({getContext:()=>context,request,onFly:async dest
   try{return await executeAction('fly_to',{destination});}finally{if(busySerial===serial)setCommandBusy(false);}
 }});
 function stopCommand(){chat.stop();chat.completedConversation=null;live.cancelActions();abortActions();note('Stopped. Where next?');}
+window.addEventListener('crow:manual-control',stopCommand);
 $('command-stop').onclick=stopCommand;
 $('chat-form').onsubmit=event=>{event.preventDefault();const message=$('chat-input').value.trim();if(!message)return;if(commandBusy&&!/^(stop|pause|cancel)[.!]?$/i.test(message)){note('Finish or stop the current request before sending another.');return;}$('chat-input').value='';$('chat-input').dispatchEvent(new Event('input'));if(/^(stop|pause|cancel)[.!]?$/i.test(message)){addMessage('user',message);stopCommand();addMessage('assistant','Stopped.');return;}live.cancelActions();abortActions();chat.send(message);};
 $('chat-input').addEventListener('input',()=>{$('chat-send').disabled=commandBusy||!$('chat-input').value.trim();});

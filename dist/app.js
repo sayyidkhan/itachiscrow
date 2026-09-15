@@ -4,6 +4,7 @@ const MAPS_KEY=mapsKeys.key;
 const $=id=>document.getElementById(id);
 let map,Place,Marker,ready=false,playing=false,transitioning=false,progress=0,heading=125,speed=8,high=false,frameId,last=0,selected=null,detailSerial=0,placesLoaded=false;
 let crowParts=[], flightTime=0, bank=0, crowHeading=125, freeRoaming=false, nearbyPending=null;
+let manualFlight=null,manualIntent=0;
 let startupFailed=false, sceneSteady=false, modelsMounted=false, startupTimer, sceneTimer, placesPromise;
 let startupCameraStage='waiting',startupCameraTimer,startupCameraFrame,startupCameraAttempts=0,startupPerchTimer,startupFramingAt=null;
 let MODEL_BASE=new URL('models/',document.currentScript?.src || document.baseURI);
@@ -82,7 +83,7 @@ function normalizeDestination(value){
  if(Number.isFinite(location.altitude))result.altitude=location.altitude;
  return result;
 }
-function getCrowContext(){return {mapReady:ready,destination:{...destination},spot:landingSpot?{...landingSpot}:null,savedPlaces:[...savedPlaces.values()].map(p=>({...p})),mode:scoutMode,freeRoaming,landingMode,flightStage,routeDistanceMeters,locationStatus,locationMessage,hasUserLocation:Boolean(startLocation),startLocation:startLocation?{...startLocation}:null};}
+function getCrowContext(){return {mapReady:ready,destination:{...destination},spot:landingSpot?{...landingSpot}:null,position:scoutPosition?{...scoutPosition}:null,heading:crowHeading,steering:Boolean(manualFlight),savedPlaces:[...savedPlaces.values()].map(p=>({...p})),mode:scoutMode,freeRoaming,landingMode,flightStage,routeDistanceMeters,locationStatus,locationMessage,hasUserLocation:Boolean(startLocation),startLocation:startLocation?{...startLocation}:null};}
 function emitCrow(name,extra={}){try{localStorage.setItem('crow:author-destination',JSON.stringify(landingSpot||destination))}catch{}document.dispatchEvent(new CustomEvent('crow:'+name,{detail:{...getCrowContext(),...extra}}));}
 async function locateBrowser(){
  try{if(window.CrowLocation?.locate)return await window.CrowLocation.locate();}catch{}
@@ -389,7 +390,64 @@ function followCrow(){
  map.flyCameraTo({endCamera:cam,durationMillis:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?0:900});
  status('With your crow · '+destination.name);hint(scoutMode==='landed'?'Lift off or choose a destination.':'Choose a place to land or fly somewhere new.');emitCrow('context');return getCrowContext();
 }
-window.CrowMap=Object.freeze({searchDestinations,searchCafes,flyTo,selectLandingMode,cancelLandingMode,landAt,takeOff,circleAround,useCurrentLocation,freeRoam,followCrow,getContext:getCrowContext,pause(){stop();return getCrowContext();}});
+async function beginSteering(){
+ if(!ready)throw Error('Wait for the map to finish loading.');
+ stop();cancelLandingMode();
+ if(scoutMode==='landed'){
+  const result=await takeOff();
+  if(result?.cancelled)return result;
+ }
+ if(document.hidden)return {cancelled:true};
+ clearNearby();$('details').close();detailSerial++;
+ const position=scoutPosition?{...scoutPosition}:flightPosition(progress);
+ position.altitude=Math.max(20,Math.min(500,position.altitude));
+ landingSpot=null;landedSurfaceAltitude=null;scoutMode='steering';playing=true;setFlightView(true);
+ poseScout(position);map.stopCameraAnimation?.();
+ const state={x:0,y:0,z:0,updated:performance.now(),previous:performance.now(),frame:0};manualFlight=state;
+ $('fly').textContent='Pause flight Ⅱ';status('Steering your crow');hint('Push forward to fly, left or right to turn. Release to hover.');emitCrow('context');
+ const step=now=>{
+  if(manualFlight!==state)return;
+  if(document.hidden||now-state.updated>600){endSteering();return;}
+  const dt=Math.max(0,Math.min((now-state.previous)/1000,.08));state.previous=now;flightTime+=dt;
+  crowHeading=wrapAngle(crowHeading+state.x*65*dt);
+  const metres=state.y*35*dt,point=relativeOffset(scoutPosition,Math.cos(crowHeading*radians)*metres,Math.sin(crowHeading*radians)*metres);
+  poseScout({...point,altitude:Math.max(20,Math.min(500,scoutPosition.altitude+state.z*18*dt))});
+  map.flyCameraTo({endCamera:scoutCamera(scoutPosition),durationMillis:0});
+  state.frame=requestAnimationFrame(step);
+ };
+ state.frame=requestAnimationFrame(step);return getCrowContext();
+}
+function steer(x,y,z=0){
+ if(![x,y,z].every(value=>Number.isFinite(value)&&Math.abs(value)<=1))throw Error('Steering values must be between -1 and 1.');
+ if(manualFlight)Object.assign(manualFlight,{x,y,z,updated:performance.now()});
+}
+function endSteering(){if(manualFlight)stop();return getCrowContext();}
+async function navigateCrow(command){
+ const directions={forward:[0,1,0],backward:[0,-1,0],left:[-1,0,0],right:[1,0,0],higher:[0,0,1],lower:[0,0,-1]};
+ if(command==='free_roam')return freeRoam();
+ if(command==='follow')return followCrow();
+ if(command==='stop')return window.CrowMap.pause();
+ if(command==='land_here'){
+  if(!ready||!scoutPosition)throw Error('Wait for the crow to appear.');
+  return landAt({name:'Current crow location',lat:scoutPosition.lat,lng:scoutPosition.lng});
+ }
+ if(!Object.hasOwn(directions,command))throw Error('Choose a supported flight direction.');
+ const intent=++manualIntent;
+ const result=await beginSteering();
+ if(result?.cancelled||intent!==manualIntent||!manualFlight)return {cancelled:true};
+ const state=manualFlight,startTime=performance.now();
+ return new Promise(resolve=>{
+  const step=now=>{
+   if(manualFlight!==state||document.hidden){if(manualFlight===state)endSteering();resolve({cancelled:true});return;}
+   if(now-startTime>=2000){endSteering();resolve(getCrowContext());return;}
+   steer(...directions[command]);requestAnimationFrame(step);
+  };step(startTime);
+ });
+}
+window.addEventListener('blur',()=>{if(manualFlight)endSteering();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&(manualFlight||scoutMode==='taking-off'))stop();});
+window.addEventListener('pagehide',()=>stop());
+window.CrowMap=Object.freeze({searchDestinations,searchCafes,flyTo,selectLandingMode,cancelLandingMode,landAt,takeOff,circleAround,useCurrentLocation,freeRoam,followCrow,beginSteering,steer,endSteering,navigate:navigateCrow,getContext:getCrowContext,pause(){stop();return getCrowContext();}});
 
 // Prepared Esplanade loop; rounded junctions keep camera turns continuous.
 const corners=[{lat:1.28972,lng:103.85528},{lat:1.29010,lng:103.85620},{lat:1.28915,lng:103.85675},{lat:1.28870,lng:103.85580}];
@@ -466,7 +524,14 @@ async function mountCrow(Model){
 }
 function hint(s){$('hint').textContent=s;}
 function status(s){$('status').textContent=s;}
-function stop(){invalidateLocationRequest();clearTimeout(transitionTimer);cancelJourney();setFlightView(false);playing=false;transitioning=false;cancelAnimationFrame(frameId);map?.stopCameraAnimation?.();$('fly').innerHTML=scoutMode==='demo'?'Resume flight <span aria-hidden="true">↗</span>':scoutMode==='landed'?'Lift off ↗':'Fly again ↗';status('Paused · explore the map');emitCrow('context');}
+function stop(){
+ if(manualFlight){
+  cancelAnimationFrame(manualFlight.frame);manualFlight=null;scoutMode='hovering';
+  destination={name:destination.name,lat:scoutPosition.lat,lng:scoutPosition.lng};
+ }
+ invalidateLocationRequest();clearTimeout(transitionTimer);cancelJourney();setFlightView(false);playing=false;transitioning=false;cancelAnimationFrame(frameId);map?.stopCameraAnimation?.();
+ $('fly').innerHTML=scoutMode==='demo'?'Resume flight <span aria-hidden="true">↗</span>':scoutMode==='landed'?'Lift off ↗':'Fly again ↗';status('Paused · explore the map');emitCrow('context');
+}
 function draw(t){if(!playing)return;if(t-last<FRAME_INTERVAL){frameId=requestAnimationFrame(draw);return;}const dt=Math.min((t-last)/1000,.1);last=t;flightTime+=dt;progress+=dt*speed;if(progress>=total){progress=total;stop();$('fly').textContent='Fly again';status('Flight complete');hint('You’ve scouted the block. Tap Places to explore what’s nearby.');$('progress').style.width='100%';$('progress-text').textContent='100%';return;}
  const cam=camera(progress);const turn=angleDelta(flightBearing(progress),crowHeading);
  crowHeading=wrapAngle(crowHeading+turn*(1-Math.exp(-dt*6)));

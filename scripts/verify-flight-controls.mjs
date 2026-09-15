@@ -8,10 +8,13 @@ await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.CROW_BROWSER_EXECUTABLE, args: ['--no-sandbox'] });
 try {
   for (const [width, height] of [[320, 568], [390, 844], [430, 932], [740, 390], [390, 380], [1280, 844]]) {
-    const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce' });
+    if (process.env.CROW_TEST_VIEWPORT && process.env.CROW_TEST_VIEWPORT !== `${width}x${height}`) continue;
+    const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce', hasTouch: true });
     await context.route('**/config.js', route => route.fulfill({ contentType: 'text/javascript', body: 'window.CROW_MAPS_KEY1="test";' }));
     await context.route('**/api/map-session', route => route.fulfill({ json: { ok: true } }));
-    await context.route('**/api/status', route => route.fulfill({ json: { capabilities: { chat: true, live: true } } }));
+    await context.route('**/api/status', route => route.fulfill({ json: { capabilities: { chat: true, live: true, panorama: true } } }));
+    let panoramaRequests = 0;
+    await context.route('**/api/panorama', route => { panoramaRequests++; return route.fulfill({status:503,json:{error:{message:'Generation disabled in verification'}}}); });
     await context.route('https://maps.googleapis.com/maps/api/js?*', route => route.fulfill({ contentType: 'text/javascript', body: `
       (()=>{window.nearbyRequests=[]; window.nearbyMode='success';
       class Map3D extends HTMLElement {
@@ -41,9 +44,10 @@ try {
     try {
       await page.goto(new URL('explore.html', base).href);
       await page.waitForFunction(() => window.CrowMap?.getContext().mapReady);
+      await page.locator('#auto-scene').evaluate(input => { input.checked = false; });
       for (const id of ['fly', 'free-roam', 'land-map', 'nearby']) {
         assert(await page.locator('#' + id).isVisible());
-        assert(await page.locator('#' + id).isEnabled());
+        assert(await page.locator('#' + id).isEnabled(), id + ' is enabled');
       }
       assert.equal(await page.evaluate(() => nearbyRequests.length), 0);
       await page.locator('#fly').click();
@@ -116,8 +120,105 @@ try {
       assert.equal(await page.locator('#nearby-title').textContent(), 'Around Latest stop');
       await page.evaluate(() => { nearbyMode = 'empty'; return CrowMap.flyTo({ name: 'Quiet stop', lat: 1.33, lng: 103.89 }); });
       await page.getByText('No places returned.', { exact: false }).waitFor();
+      await page.locator('#nearby-close').click();
+      await page.locator('#steering-toggle').click();
+      const pad = page.locator('#crow-joystick');
+      const steeringBounds = await pad.boundingBox();
+      assert(steeringBounds.y >= bounds.toolbar.bottom, 'Joystick stays below the toolbar');
+      assert(steeringBounds.y + steeringBounds.height < height - 40, 'Joystick clears attribution');
+      const start = await page.evaluate(() => CrowMap.getContext());
+      await pad.focus();
+      await page.keyboard.down('ArrowUp');
+      await page.waitForFunction(lat => Math.abs(CrowMap.getContext().position.lat - lat) > .00003, start.position.lat);
+      await page.keyboard.up('ArrowUp');
+      const stopped = await page.evaluate(() => CrowMap.getContext());
+      assert.equal(stopped.steering, false);
+      assert.equal(stopped.destination.lat, stopped.position.lat, 'Nearby context follows the steered crow');
+      assert.equal(stopped.destination.lng, stopped.position.lng);
+      await page.waitForTimeout(180);
+      assert.deepEqual(await page.evaluate(() => CrowMap.getContext().position), stopped.position);
+      await page.keyboard.down('ArrowRight');
+      await page.waitForFunction(heading => Math.abs(CrowMap.getContext().heading - heading) > 12, stopped.heading);
+      await page.keyboard.up('ArrowRight');
+      const beforePointer = await page.evaluate(() => CrowMap.getContext().position);
+      await page.mouse.move(steeringBounds.x + steeringBounds.width / 2, steeringBounds.y + 10);
+      await page.mouse.down();
+      await page.waitForFunction(lat => Math.abs(CrowMap.getContext().position.lat - lat) > .00002, beforePointer.lat);
+      await page.mouse.move(steeringBounds.x + steeringBounds.width + 20, steeringBounds.y - 20);
+      await page.mouse.up();
+      assert.equal(await page.evaluate(() => CrowMap.getContext().steering), false);
+      if (width === 390 && height === 844) {
+        const cdp = await context.newCDPSession(page);
+        const centre = {x:steeringBounds.x+steeringBounds.width/2,y:steeringBounds.y+steeringBounds.height/2};
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[centre]});
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...centre,y:centre.y-30}]});
+        await page.waitForFunction(() => CrowMap.getContext().steering);
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[centre]});
+        await page.waitForTimeout(100);
+        const neutral = await page.evaluate(() => CrowMap.getContext().position);
+        await page.waitForTimeout(150);
+        assert.deepEqual(await page.evaluate(() => CrowMap.getContext().position),neutral,'Neutral joystick holds position');
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...centre,y:centre.y-30}]});
+        await page.waitForFunction(lat => Math.abs(CrowMap.getContext().position.lat-lat)>.00001,neutral.lat);
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
+        assert.equal(await page.evaluate(() => CrowMap.getContext().steering),false,'Touch cancellation stops steering');
+        await page.evaluate(() => CrowMap.beginSteering());
+        await page.waitForTimeout(800);
+        assert.equal(await page.evaluate(() => CrowMap.getContext().steering),false,'Lost input heartbeat stops steering');
+      }
+      await pad.focus();
+      await page.keyboard.down('ArrowUp');
+      await page.waitForFunction(() => CrowMap.getContext().steering);
+      await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+      await page.keyboard.up('ArrowUp');
+      assert.equal(await page.evaluate(() => CrowMap.getContext().steering), false);
+      const beforeVoice = await page.evaluate(() => CrowMap.getContext());
+      await page.evaluate(() => CrowMap.navigate('higher'));
+      const afterVoice = await page.evaluate(() => CrowMap.getContext());
+      assert(afterVoice.position.altitude > beforeVoice.position.altitude + 20);
+      assert.equal(afterVoice.steering, false, 'Voice directions finish hovering');
+      await page.evaluate(() => { window.cancelledNavigation = CrowMap.navigate('forward'); });
+      await page.waitForFunction(() => CrowMap.getContext().steering);
+      await page.evaluate(() => CrowMap.pause());
+      assert.equal(await page.evaluate(async () => (await cancelledNavigation).cancelled), true);
+      await page.evaluate(() => CrowMap.navigate('land_here'));
+      await page.waitForFunction(() => CrowMap.getContext().mode === 'landed');
+      await page.locator('#nearby-close').click();
+      await page.locator('#steering-toggle').click();
+      await pad.focus();
+      await page.keyboard.down('ArrowUp');
+      await page.waitForFunction(() => CrowMap.getContext().mode === 'taking-off');
+      await page.keyboard.up('ArrowUp');
+      await page.waitForTimeout(1400);
+      assert.equal(await page.evaluate(() => CrowMap.getContext().steering), false, 'Release during takeoff cancels late steering');
+      await page.screenshot({ path: new URL(`steering-${width}x${height}.png`, output).pathname });
+      await page.locator('#steering-toggle').click();
+      let commandResult, command = 'left';
+      await context.route('**/api/chat', route => {
+        const body = route.request().postDataJSON();
+        if (body.results) commandResult = body.results;
+        return route.fulfill({json: body.results ? {text:command === 'left' ? 'Turned left.' : 'Landed here.',calls:[]} : {conversationId:'steering-check',calls:[{name:'navigate',call_id:command,arguments:JSON.stringify({command})}]}});
+      });
+      await page.locator('#chat-open').click();
+      await page.locator('#chat-input').fill('Turn left');
+      await page.locator('#chat-send').click();
+      await page.getByText('Turned left.', {exact:true}).waitFor();
+      assert.equal(JSON.parse(commandResult[0].output).command, 'left');
+      assert.equal(JSON.parse(commandResult[0].output).status, 'completed');
+      assert.equal(await page.evaluate(() => CrowMap.getContext().steering), false);
+      command = 'land_here';
+      await page.locator('#auto-scene').evaluate(input => { input.checked = true; });
+      const landPosition = await page.evaluate(() => CrowMap.getContext().position);
+      await page.locator('#chat-input').fill('Land here');
+      await page.locator('#chat-send').click();
+      await page.getByText('Landed here.', {exact:true}).waitFor();
+      const landed = await page.evaluate(() => CrowMap.getContext());
+      assert.equal(landed.mode,'landed');
+      assert.equal(landed.spot.lat,landPosition.lat);
+      assert.equal(landed.spot.lng,landPosition.lng);
+      assert.equal(panoramaRequests,0,'Directional land here never generates an image, even with auto-scene enabled');
       assert.deepEqual(errors, []);
-      console.log(width + '×' + height + ': liftoff, free roam, follow, landing, arrival cards, attribution, scrolling, overlays, retry and stale results passed.');
+      console.log(width + '×' + height + ': flight, carousel, joystick, keyboard, cancellation, bounded directions, command handler and attribution passed.');
     } catch (error) {
       await page.screenshot({ path: new URL(`failure-${width}x${height}.png`, output).pathname });
       console.error({ width, height, errors, loading: await page.locator('#loading').textContent() });

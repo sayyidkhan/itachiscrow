@@ -18,6 +18,7 @@ const ACTIONS = Object.freeze({
   fly_to: { field: 'destination', limit: 240 },
   land_at: {fields:{spot:'text',generate_view:'boolean'},defaults:{generate_view:true}},
   take_off: { field: null },
+  navigate: { field: 'command', limit: 20 },
   generate_panorama: {fields:{regenerate:'boolean'},defaults:{regenerate:false}},
   plan_trip: { field: 'request', limit: 1200 },
 });
@@ -39,6 +40,7 @@ export function validateLiveAction(name, rawArguments) {
   try { args = typeof rawArguments === 'string' ? JSON.parse(rawArguments) : rawArguments; }
   catch { throw new Error('The assistant sent invalid action arguments. Please try the request again.'); }
   if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('Action arguments must be an object.');
+  if (name === 'navigate' && !['forward', 'backward', 'left', 'right', 'higher', 'lower', 'stop', 'land_here', 'free_roam', 'follow'].includes(args.command)) throw new Error('Unsupported crow direction.');
   const { field, limit, fields, defaults={} } = ACTIONS[name];
   if(fields){
     if(Object.keys(args).some(key=>!Object.hasOwn(fields,key)))throw Error('Unexpected action arguments.');
@@ -354,7 +356,10 @@ export class CrowLive {
     }
     if (event.type === 'response.completed' && response && !response.continued && response.calls.length) {
       response.continued = true;
-      if(response.calls.some(call=>call.name==='stop'))this.cancelActions();
+      if(response.calls.some(call=>{
+        if(call.name==='stop')return true;
+        try{return call.name==='navigate'&&validateLiveAction(call.name,call.arguments).command==='stop';}catch{return false;}
+      }))this.cancelActions();
       response.actionSignal=this._actionAbort.signal;
       this._actionQueue = this._actionQueue.then(() => this._completeActions(response, generation)).catch(error => {
         if (this._current(generation)) this._error(error);

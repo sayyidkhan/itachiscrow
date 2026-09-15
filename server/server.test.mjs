@@ -179,7 +179,10 @@ test('GPT-Live sends the current Live session schema with bounded server-defined
   assert.equal(request.body.session.type, undefined);
   assert.equal(request.body.session.delegation.type, 'responses');
   assert.equal(request.body.session.delegation.responses.parallel_tool_calls, false);
-  assert.deepEqual(request.body.session.delegation.responses.tools.slice(1).map(tool => tool.name), ['travel_to', 'circle_around', 'stop', 'picture_me_here', 'find_cafes', 'fly_to', 'land_at', 'take_off', 'generate_panorama', 'plan_trip']);
+  assert.deepEqual(request.body.session.delegation.responses.tools.slice(1).map(tool => tool.name), ['navigate', 'travel_to', 'circle_around', 'stop', 'picture_me_here', 'find_cafes', 'fly_to', 'land_at', 'take_off', 'generate_panorama', 'plan_trip']);
+  const navigate = request.body.session.delegation.responses.tools.find(tool => tool.name === 'navigate');
+  assert.deepEqual(navigate.parameters.properties.command.enum, ['forward', 'backward', 'left', 'right', 'higher', 'lower', 'stop', 'land_here', 'free_roam', 'follow']);
+  assert.equal(navigate.parameters.additionalProperties, false);
   const takeOff = request.body.session.delegation.responses.tools.find(tool => tool.name === 'take_off');
   assert.deepEqual(takeOff.parameters, { type: 'object', properties: {}, required: [], additionalProperties: false });
   assert.deepEqual(result, { session: { id: 'live_123' }, transport: { type: 'webrtc', sdp: 'v=0\r\nanswer' } });

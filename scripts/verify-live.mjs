@@ -59,6 +59,27 @@ function responseEvent(channel, event, delegationId = 'delegation_1') {
   channel.receive({ type: 'response.event', delegation_id: delegationId, event });
 }
 
+test('voice directional commands are allowlisted and duplicate delivery cannot steer twice', async () => {
+  for (const command of ['forward','backward','left','right','higher','lower','stop','land_here','free_roam','follow']) {
+    assert.deepEqual(validateLiveAction('navigate', { command }), { command });
+  }
+  for (const args of [{ command: 'teleport' }, { command: 'forward', duration: 999 }, { command: null }, {}]) {
+    assert.throws(() => validateLiveAction('navigate', args));
+  }
+  const actions = [];
+  const f = fixture({ onAction: async (name, args) => { actions.push({name, args}); return {status:'completed'}; } });
+  const channel = await f.connect();
+  for (const id of ['steer-1','steer-2']) {
+    responseEvent(channel, {type:'response.created',response:{id}});
+    responseEvent(channel, {type:'response.output_item.done',item:{type:'function_call',call_id:'same-turn',name:'navigate',arguments:'{"command":"left"}'}});
+    responseEvent(channel, {type:'response.completed',response:{id,output:[]}});
+    await tick();
+  }
+  assert.deepEqual(actions, [{name:'navigate',args:{command:'left'}}]);
+  assert.equal(f.errors.length, 0);
+  await f.close();
+});
+
 test('WebRTC uses the Live startup, captions, mute acknowledgment, context, and graceful-close protocol', async () => {
   const f = fixture();
   const channel = await f.connect({ destination: { name: 'Kyoto', location: { lat: 35, lng: 135 } }, days: 3 });
@@ -181,6 +202,28 @@ test('stopping a session aborts action work and discards late results and queued
   assert.equal(channel.sent.some(event => event.item?.type === 'function_call_output'), false);
   channel.receive({ type: 'session.closed', usage: { seconds: 2 } });
   await closing;
+});
+
+test('a spoken stop interrupts an in-progress directional command before the action queue drains', async () => {
+  const actions = [];
+  let movingSignal;
+  const f = fixture({ onAction: (_name, args, {signal}) => {
+    actions.push(args.command);
+    if(args.command === 'stop')return {status:'stopped'};
+    movingSignal = signal;
+    return new Promise(resolve => signal.addEventListener('abort', () => resolve({status:'cancelled'}), {once:true}));
+  } });
+  const channel = await f.connect();
+  for (const command of ['forward','stop']) {
+    responseEvent(channel, {type:'response.created',response:{id:command}});
+    responseEvent(channel, {type:'response.output_item.done',item:{type:'function_call',call_id:command,name:'navigate',arguments:JSON.stringify({command})}});
+    responseEvent(channel, {type:'response.completed',response:{id:command,output:[]}});
+    await tick();
+  }
+  assert.equal(movingSignal.aborted,true);
+  assert.deepEqual(actions,['forward','stop']);
+  assert.equal(f.errors.length,0);
+  await f.close();
 });
 
 test('startup API errors are visible and release the microphone', async () => {

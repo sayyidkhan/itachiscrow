@@ -1,0 +1,24 @@
+.explorer .steering-control { position: absolute; z-index: 4; left: 16px; bottom: calc(48px + env(safe-area-inset-bottom)); width: 112px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.explorer #steering-toggle, .explorer #crow-joystick { background: var(--glass-highlight), var(--glass-tint); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); }
+.explorer #steering-toggle { min-height: 44px; padding: 8px 13px; border-radius: 24px; font-size: 12px; display: flex; align-items: center; gap: 7px; }
+.explorer #steering-toggle[aria-expanded=true] { color: #b5efd8; }
+#steering-panel { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+#steering-panel[hidden] { display: none; }
+.explorer #crow-joystick { position: relative; display: grid; place-items: center; width: 104px; height: 104px; padding: 0; border-radius: 50%; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+.explorer #crow-joystick:active { cursor: grabbing; }
+#crow-joystick::before { content: ''; position: absolute; inset: 12px; border: 1px dashed #dbffed44; border-radius: 50%; }
+#joystick-knob { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #c8f5e4; color: #163d32; box-shadow: 0 3px 12px #0004, inset 0 1px 0 #fff9; pointer-events: none; }
+#steering-panel small { max-width: 112px; text-align: center; line-height: 1.3; color: #edfff7; font-size: 10px; text-shadow: 0 1px 4px #000, 0 1px 10px #000; }
+.explorer .steering-control button:focus-visible { outline: 2px solid #d4ffeb; outline-offset: 3px; }
+.explorer.steering-open .nearby-panel { display: none; }
+.explorer:has(#nearby-panel:not([hidden])):not(.steering-open) .steering-control { display: none; }
+.explorer.debug-open .steering-control, .explorer.long-flight .steering-control { display: none; }
+@media (max-width: 1000px) {
+  .explorer .steering-control { left: 12px; }
+  .explorer:has(#companion:not([hidden])) .steering-control { display: none; }
+  .explorer:has(#voice-overlay:not([hidden])) .steering-control { display: none; }
+}
+@media (max-height: 450px) {
+  .explorer #crow-joystick { width: 80px; height: 80px; }
+  #steering-panel small { display: none; }
+}
