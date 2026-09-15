@@ -17,11 +17,11 @@
     button.classList.remove('vote-shimmer');
     button.hidden = true;
   }
-  button.addEventListener('click', () => {
+  document.querySelectorAll('.project-vote').forEach(link => link.addEventListener('click', () => {
     opened = true;
     save();
-    setTimeout(hide, 0);
-  });
+    if (document.body.classList.contains('explorer')) setTimeout(hide, 0);
+  }));
   if (!document.body.classList.contains('explorer')) return;
   document.addEventListener('crow:destination', ({ detail }) => {
     if (detail?.mode === 'arriving') {

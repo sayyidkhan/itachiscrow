@@ -7,7 +7,7 @@
     const tools = [['debug', 'Debug tools', 'scout-open'], ['music', 'Music', 'music-open'], ['about', 'About', 'info']];
     const link = (file, label, extra = '') => `<a href="${file}" ${extra}${file === current ? ' aria-current="page"' : ''}><span>${label}</span><span aria-hidden="true">${file === current ? '✓' : file === 'index.html' ? '←' : '↗'}</span></a>`;
     host.classList.add('crow-navigation');
-    host.innerHTML = `<button class="crow-menu-toggle" type="button" aria-label="More options" aria-expanded="false" aria-controls="crow-navigation-links">•••</button><nav id="crow-navigation-links" aria-label="Main navigation" hidden>${pages.map(([file, label]) => link(file, label)).join('')}<div class="crow-menu-tools">${tools.map(([action, label]) => link(`explore.html#${action}`, label, `data-map-tool="${action}"`)).join('')}</div>${link('index.html', 'Back to home', 'class="crow-menu-home"')}</nav>`;
+    host.innerHTML = `<button class="crow-menu-toggle" type="button" aria-label="More options" aria-expanded="false" aria-controls="crow-navigation-links"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><nav id="crow-navigation-links" aria-label="Main navigation" hidden>${pages.map(([file, label]) => link(file, label)).join('')}<div class="crow-menu-tools">${tools.map(([action, label]) => link(`explore.html#${action}`, label, `data-map-tool="${action}"`)).join('')}</div>${link('index.html', 'Back to home', 'class="crow-menu-home"')}</nav>`;
     const toggle = host.querySelector('button');
     const navigation = host.querySelector('nav');
     const scene = document.getElementById('scene-open');

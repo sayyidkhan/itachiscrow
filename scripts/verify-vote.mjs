@@ -8,7 +8,7 @@ const output = new URL('../_debug/vote/', import.meta.url);
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.CROW_BROWSER_EXECUTABLE, args: ['--no-sandbox'] });
 try {
-  for (const width of [320, 390, 740, 1280]) {
+  for (const width of [320, 390, 600, 740, 1280]) {
     const context = await browser.newContext({ viewport: { width, height: 844 }, reducedMotion: width === 320 ? 'reduce' : 'no-preference' });
     await context.route('**/config.js', route => route.fulfill({ contentType: 'text/javascript', body: '' }));
     await context.route('**/api/status', route => route.fulfill({ json: { capabilities: {} } }));
@@ -25,6 +25,17 @@ try {
     assert(await button.isVisible());
     assert.equal(await button.getAttribute('href'), voteUrl);
     assert.equal(await button.getAttribute('target'), '_blank');
+    const homeBounds = await page.evaluate(() => {
+      const rect = selector => document.querySelector(selector).getBoundingClientRect().toJSON();
+      return { explore: rect('.hero-actions .button'), vote: rect('#project-vote'), headerVote: rect('.header-vote'), menu: rect('.crow-menu-toggle'), note: rect('.entry-note'), overflow: document.documentElement.scrollWidth > innerWidth };
+    });
+    assert(!homeBounds.overflow);
+    assert.equal(homeBounds.explore.y, homeBounds.vote.y, 'Hero actions share a row');
+    assert.equal(homeBounds.explore.height, homeBounds.vote.height, 'Hero actions have equal height');
+    assert(homeBounds.explore.right <= homeBounds.vote.x);
+    assert(homeBounds.note.y >= homeBounds.vote.bottom, 'Helper text sits below both buttons');
+    assert(homeBounds.headerVote.right <= homeBounds.menu.x);
+    assert.equal(await page.locator('.crow-menu-toggle svg path').getAttribute('d'), 'M4 6h16M4 12h16M4 18h16');
     await page.screenshot({ path: new URL(`home-${width}.png`, output).pathname, fullPage: true });
     await page.goto(new URL('explore.html', base).href);
     await page.waitForFunction(() => !document.querySelector('.crow-menu-toggle').disabled);

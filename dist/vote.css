@@ -20,7 +20,15 @@
 .project-vote[hidden] { display: none; }
 .project-vote:hover { background: #59452f; border-color: #ffe3af; }
 .project-vote:focus-visible { outline: 2px solid #ffe3af; outline-offset: 3px; }
-.hero .project-vote { margin-top: 18px; }
+.hero-copy { min-width: 0; }
+.hero-actions { display: flex; align-items: stretch; gap: 12px; }
+.hero-actions > a { min-width: 0; min-height: 52px; border-radius: 10px; }
+.hero-actions .button { gap: 16px; padding: 14px 18px; white-space: nowrap; }
+.hero-actions .project-vote { white-space: normal; text-align: center; padding: 12px 14px; }
+.hero-actions .project-vote > [aria-hidden] { flex-shrink: 0; }
+.home-header { gap: 12px; }
+.home-header .header-vote { margin-left: auto; flex-shrink: 0; }
+.home-header .crow-navigation { margin-left: 0; }
 .project-vote::after {
   content: '';
   position: absolute;
@@ -37,11 +45,21 @@
 .explorer .topbar:has(.project-vote:not([hidden])) .brand { flex: 1 1 auto; max-width: none; overflow: hidden; }
 .explorer .topbar:has(.project-vote:not([hidden])) .brand :is(h1, p) { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 @media (max-width: 600px) {
-  .explorer .project-vote .vote-long-label { display: none; }
   .explorer .project-vote { padding: 10px; gap: 5px; }
+  .explorer .project-vote .vote-label { display: block; max-width: 110px; white-space: normal; text-align: center; }
+  .home-header .crow-brand > span { display: none; }
+  .home-header { padding-inline: 24px; }
+  .hero-actions { gap: 8px; }
+  .hero-actions .button { flex: 1 1 44%; padding: 12px 10px; gap: 8px; font-size: 12px; }
+  .hero-actions .project-vote { flex: 1 1 56%; padding: 10px; gap: 5px; font-size: 12px; }
+  .hero-actions .project-vote > [aria-hidden] { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .vote-shimmer::after { animation: none; }
+}
+@media (max-width: 480px) {
+  .explorer .topbar:has(.project-vote:not([hidden])) .brand > div { display: none; }
+  .explorer .project-vote .vote-label { max-width: none; white-space: nowrap; }
 }
 @media (forced-colors: active) {
   .project-vote { border: 1px solid ButtonText; color: LinkText; }

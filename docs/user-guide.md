@@ -28,7 +28,7 @@ Chat opens over the map on phones and desktops. Close it with **×** or **Escape
 
 Choosing **Talk** starts voice and switches to floating captions over the map, with **Mute mic** and **End call** controls. Captions show the latest exchange; open **Chat** for the full conversation without ending your call. Closing chat returns to the captions. Microphone or connection errors reopen chat with an explanation. Map attribution remains clear below both overlays.
 
-Every page uses the same **•••** menu: Map, Author Studio, Crow colours, Usage limits, Debug tools, Music, About, and Back to home. The current page is marked with a tick; map tools open the map when needed.
+Every page uses the same **hamburger** menu: Map, Author Studio, Crow colours, Usage limits, Debug tools, Music, About, and Back to home. The current page is marked with a tick; map tools open the map when needed.
 
 The floating map toolbar keeps flight controls available outside chat. **Lift off** unfolds the crow's wings and rises from its perch; the same button pauses an active flight. **Free roam** stops the camera following the crow so you can drag, zoom and explore. **Follow crow** brings the camera back without moving the crow. **Land here** lets you choose a rooftop, square or path on the map; tap it again or press Escape to cancel.
 
@@ -46,7 +46,7 @@ Long journeys show a globe transition and route card. With chat open, the route 
 
 ## Vote for the project
 
-Choose **Vote for this project** on the homepage to open the hackathon gallery in a new tab. On the map, a gold **Vote** button appears beside **•••** after the first completed destination flight, then every third flight with at least two minutes between prompts. It shines twice and disappears after 15 seconds, staying available while hovered or focused. Reduced-motion settings disable the shimmer. Opening the voting link stops map prompts for the rest of that tab’s session; it does not cast a vote automatically.
+Choose **Vote for our project** on the homepage to open the hackathon gallery in a new tab. On the map, a gold **Vote** button appears beside **hamburger** after the first completed destination flight, then every third flight with at least two minutes between prompts. It shines twice and disappears after 15 seconds, staying available while hovered or focused. Reduced-motion settings disable the shimmer. Opening the voting link stops map prompts for the rest of that tab’s session; it does not cast a vote automatically.
 
 ## Crow mode and Author mode
 

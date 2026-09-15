@@ -2,6 +2,8 @@
 .crow-navigation .crow-menu-toggle { display: block; width: 44px; height: 44px; min-height: 44px; padding: 0; border: 1px solid #365053; border-radius: 14px; background: #172c30; color: #b6efcf; font: 600 18px/1 system-ui, sans-serif; letter-spacing: 2px; cursor: pointer; }
 .crow-navigation .crow-menu-toggle[aria-expanded=true] { border-color: #a2e7cd; }
 .crow-navigation .crow-menu-toggle:disabled { opacity: 1; cursor: wait; }
+.crow-navigation .crow-menu-toggle { display: grid; place-items: center; letter-spacing: normal; }
+.crow-menu-toggle svg { display: block; }
 .crow-navigation #crow-navigation-links { position: absolute; display: block; z-index: 30; top: calc(100% + 10px); right: 0; width: 232px; max-width: calc(100vw - 32px); max-height: calc(100dvh - 100px - env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; padding: 6px; border: 1px solid #365053; border-radius: 16px; background: #102125; box-shadow: 0 16px 40px #0006; text-align: left; }
 .crow-navigation #crow-navigation-links[hidden] { display: none; }
 .crow-navigation #crow-navigation-links :is(a, button) { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; min-height: 44px; margin: 0; padding: 11px 12px; border: 0; border-radius: 9px; background: transparent; color: #dce8e4; text-align: left; text-decoration: none; font: inherit; letter-spacing: normal; cursor: pointer; }
