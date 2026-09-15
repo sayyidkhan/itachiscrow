@@ -4,7 +4,7 @@ const make = (tag, text = '', className = '') => {
   element.className = className;
   return element;
 };
-const artwork = { gardens: 'gardens', city: 'marina', temple: 'kyoto', arts: 'paris', waterfront: 'sydney', cafe: 'kampong' };
+const artwork = { gardens: 'gardens', city: 'marina', temple: 'kyoto', arts: 'paris', waterfront: 'sydney', cafe: 'kampong', bridge: 'golden-gate' };
 export function illustration(theme) {
   const selected = Object.hasOwn(artwork, theme) ? theme : 'city';
   const art = make('div', '', 'discovery-art ' + selected);
@@ -25,14 +25,15 @@ const destinations = [
   { name: 'Gardens by the Bay', query: 'Gardens by the Bay, Singapore', label: 'Singapore · Green escape', description: 'Supertrees and a garden from tomorrow.', theme: 'gardens' },
   { name: 'Marina Bay', query: 'Esplanade, Singapore', label: 'Singapore · Waterfront', description: 'Follow the water, take in the skyline.', theme: 'city' },
   { name: 'Kyoto', query: 'Kiyomizu-dera, Kyoto, Japan', label: 'Japan · Slow wander', description: 'Temple rooftops above a sea of green.', theme: 'temple' },
-  { name: 'Paris', query: 'Eiffel Tower, Paris, France', label: 'France · City icon', description: 'A different perspective on the classics.', theme: 'arts' },
+  { name: 'Eiffel Tower', query: 'Eiffel Tower, Paris, France', label: 'Paris · France', description: 'Circle the iron spire above the Seine.', theme: 'arts' },
+  { name: 'Golden Gate Bridge', query: 'Golden Gate Bridge, San Francisco, California', label: 'San Francisco · USA', description: 'Orange towers, ocean air and sweeping bay views.', theme: 'bridge' },
   { name: 'Sydney Harbour', query: 'Sydney Opera House, Sydney, Australia', label: 'Australia · By the sea', description: 'Sculptural sails and wide-open water.', theme: 'waterfront' },
   { name: 'Kampong Glam', query: 'Sultan Mosque, Kampong Glam, Singapore', label: 'Singapore · Culture trail', description: 'Colourful lanes, shophouses and stories.', theme: 'cafe' }
 ];
 const moods = { local: ['Hidden gems', 'Coffee & bites', 'Arts & culture', 'Outdoors'], day: ['A little of everything', 'Food trail', 'Slow & scenic'] };
 const titles = { somewhere: 'A little further afield', local: 'Find your kind of local', day: 'A day worth wandering' };
 
-export function createDiscovery({ getContext, request, onFly }) {
+export function createDiscovery({ getContext, request, onFly, onCircle }) {
   const $ = id => document.getElementById(id);
   const panel = $('discovery-panel');
   const companion = $('companion');
@@ -126,18 +127,20 @@ export function createDiscovery({ getContext, request, onFly }) {
       const body = make('div', '', 'discovery-card-body');
       body.append(make('span', `${mode === 'day' ? String(index + 1).padStart(2, '0') + ' · ' : ''}${place.label}`, 'discovery-label'), make('h3', place.name), make('p', place.description));
       const actions = make('div', '', 'discovery-card-actions');
-      const go = button('Fly here ↗', async () => {
+      const travelButton = (label, action) => button(label, async event => {
         if (flying) return;
+        const go = event.currentTarget;
         flying = true; go.disabled = true; go.textContent = 'Finding place…';
         try {
-          const arrived = await onFly(place.query);
+          const arrived = await action(place.query);
           if (arrived?.status === 'cancelled') return;
           if (arrived?.status === 'error') throw Error(arrived.error || 'The flight could not start.');
-          if (!companion.hidden) $('companion-toggle').click();
+          if (action === onFly && !companion.hidden) $('companion-toggle').click();
         } catch (error) { $('command-status').textContent = error.message; $('command-status').classList.add('error'); }
-        finally { flying = false; go.disabled = false; go.textContent = 'Fly here ↗'; }
+        finally { flying = false; go.disabled = false; go.textContent = label; }
       });
-      actions.append(go);
+      actions.append(travelButton('Fly here ↗', onFly));
+      if (mode === 'somewhere') actions.append(travelButton('Circle landmark ↻', onCircle));
       if (place.sourceUrl) {
         try {
           const url = new URL(place.sourceUrl);

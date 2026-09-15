@@ -16,8 +16,8 @@ try {
     await context.route('**/api/status', route => route.fulfill({ json: { capabilities: { chat: true, live: true, plan: true } } }));
     await context.route('**/app.js*', route => route.fulfill({ contentType: 'text/javascript', body: `
       window.mapContext = {mapReady:true,destination:{name:'Esplanade, Singapore',lat:1.2897,lng:103.8556},spot:null,savedPlaces:[]};
-      window.flights=[];
-      window.CrowMap={getContext:()=>window.mapContext,pause(){},async searchDestinations(query){window.searched=query;return [{name:query,lat:1.29,lng:103.85}];},async flyTo(place){window.flights.push(place);return {};}};
+      window.flights=[];window.orbits=[];
+      window.CrowMap={getContext:()=>window.mapContext,pause(){},async searchDestinations(query){window.searched=query;return [{name:query,lat:1.29,lng:103.85}];},async flyTo(place){window.flights.push(place);return {};},async circleAround(place){window.orbits.push(place);return {};}};
       document.getElementById('loading').hidden=true;
     ` }));
     await context.route('**/api/recommendations', async route => {
@@ -35,8 +35,8 @@ try {
       await page.locator('#chat-open').click();
       await page.locator('#chat-input').fill('Keep my draft');
       await page.locator('[data-discovery="somewhere"]').click();
-      assert.equal(await page.locator('.discovery-card').count(), 6);
-      assert.equal(await page.locator('.discovery-art img').count(), 6);
+      assert.equal(await page.locator('.discovery-card').count(), 7);
+      assert.equal(await page.locator('.discovery-art img').count(), 7);
       for (const picture of await page.locator('.discovery-art img').all()) {
         await picture.scrollIntoViewIfNeeded();
         await picture.evaluate(image => image.decode());
@@ -50,6 +50,14 @@ try {
       await page.waitForFunction(() => window.flights.length === 1);
       assert.match(await page.evaluate(() => window.searched), /Gardens by the Bay/);
       await page.locator('#companion').waitFor({ state: 'hidden' });
+      for (const landmark of ['Eiffel Tower', 'Golden Gate Bridge']) {
+        await page.locator('#chat-open').click();
+        const card = page.locator('.discovery-card').filter({ has: page.getByRole('heading', { name: landmark, exact: true }) });
+        await card.getByRole('button', { name: 'Circle landmark' }).click();
+        await page.waitForFunction(name => window.orbits.some(place => place.name.includes(name)), landmark);
+        assert.match(await page.evaluate(() => window.searched), new RegExp(landmark));
+        await page.locator('#companion').waitFor({ state: 'hidden' });
+      }
       await page.locator('#chat-open').click();
       await page.getByRole('button', { name: 'Local favourites', exact: true }).click();
       await page.getByRole('button', { name: 'Coffee & bites', exact: true }).click();

@@ -47,7 +47,7 @@ try {
       await page.waitForFunction(() => window.CrowMap?.getContext().mapReady);
       await page.waitForFunction(() => ['fly', 'free-roam', 'land-map', 'nearby', 'steering-toggle'].every(id => !document.getElementById(id).disabled));
       await page.locator('#auto-scene').evaluate(input => { input.checked = false; });
-      for (const id of ['fly', 'free-roam', 'land-map', 'nearby']) {
+      for (const id of ['fly', 'free-roam', 'circle-map', 'land-map', 'nearby']) {
         assert(await page.locator('#' + id).isVisible());
         assert(await page.locator('#' + id).isEnabled(), id + ' is enabled');
       }
@@ -225,6 +225,44 @@ try {
       assert.equal(landed.spot.lat,landPosition.lat);
       assert.equal(landed.spot.lng,landPosition.lng);
       assert.equal(panoramaRequests,0,'Directional land here never generates an image, even with auto-scene enabled');
+      await page.locator('#companion-toggle').click();
+      for (const landmark of [
+        {name:'Eiffel Tower, Paris',lat:48.85837,lng:2.294481,radius:420,altitude:180},
+        {name:'Golden Gate Bridge, San Francisco',lat:37.8199,lng:-122.4783,radius:900,altitude:220}
+      ]) {
+        await page.evaluate(place => CrowMap.flyTo(place), landmark);
+        await page.locator('#circle-map').click();
+        const view = await page.evaluate(() => ({ state:CrowMap.getContext(), camera:testMap.center }));
+        assert.equal(view.state.mode,'hovering','Reduced motion uses a still landmark view');
+        assert(Math.abs((view.state.position.lat-landmark.lat)*111320+landmark.radius)<1);
+        assert.equal(view.state.position.altitude,landmark.altitude);
+        assert.equal(view.camera.lat,view.state.position.lat,'The embedded crow stays in the camera foreground');
+        assert.equal(await page.locator('#circle-map').getAttribute('aria-pressed'),'false');
+      }
+      if (width === 390 && height === 844) {
+        await page.emulateMedia({reducedMotion:'no-preference'});
+        await page.locator('#circle-map').click();
+        await page.waitForFunction(() => CrowMap.getContext().mode==='circling');
+        assert.equal(await page.locator('#circle-map').getAttribute('aria-pressed'),'true');
+        const initialOrbit = await page.evaluate(() => CrowMap.getContext().position);
+        await page.waitForFunction(position => Math.abs(CrowMap.getContext().position.lng-position.lng)>.0001,initialOrbit);
+        await page.locator('#circle-map').click();
+        const pausedOrbit = await page.evaluate(() => CrowMap.getContext().position);
+        assert.equal(await page.evaluate(() => CrowMap.getContext().mode),'hovering');
+        await page.waitForTimeout(250);
+        assert.deepEqual(await page.evaluate(() => CrowMap.getContext().position),pausedOrbit,'Stopping cancels orbit frames');
+        await page.locator('#circle-map').click();
+        await page.waitForFunction(() => CrowMap.getContext().mode==='circling');
+        await page.locator('#free-roam').click();
+        assert.equal(await page.evaluate(() => CrowMap.getContext().freeRoaming),true);
+        await page.locator('#circle-map').click();
+        await page.waitForFunction(() => CrowMap.getContext().mode==='circling');
+        assert.equal(await page.evaluate(() => CrowMap.getContext().freeRoaming),false);
+        await page.waitForFunction(() => CrowMap.getContext().mode==='hovering',null,{timeout:35000});
+        assert.match(await page.locator('#status').textContent(),/Orbit complete/);
+        assert.equal(await page.locator('#circle-map').getAttribute('aria-pressed'),'false');
+        assert.equal(panoramaRequests,0,'Orbit never generates an image');
+      }
       assert.deepEqual(errors, []);
       console.log(width + '×' + height + ': flight, carousel, joystick, keyboard, cancellation, bounded directions, command handler and attribution passed.');
     } catch (error) {

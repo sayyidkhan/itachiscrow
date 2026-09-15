@@ -18,7 +18,7 @@ Text and **Talk** share one composer below the conversation. **Enter** sends; **
 
 The three welcome choices open a second menu inside chat:
 
-- **Take me somewhere** opens illustrated destination cards. **Fly here** finds the place on Google Maps and flies there without generating an image.
+- **Take me somewhere** opens illustrated destination cards, including Golden Gate Bridge and Eiffel Tower (previously labelled Paris). **Fly here** finds the place on Google Maps and flies there without generating an image. **Circle landmark** flies there and makes one orbit, closing chat so you can watch.
 - **Find a local favourite** lets you choose hidden gems, coffee and bites, arts and culture, or outdoors. Choose **Find local picks** for AI suggestions near the map's current destination, with web source links.
 - **Make a day of it** offers a balanced day, food trail, or slow scenic wander. **Build my day** creates a sourced morning-to-evening itinerary. Fly to individual stops or **Save this day** as a Markdown file.
 
@@ -37,6 +37,8 @@ Choose **Steer** at the bottom left to open the glass joystick. Hold and drag up
 Choose **Talk** and say “go forward”, “turn left”, “turn right”, “fly higher”, “fly lower”, “stop”, “free roam”, or “follow the crow”. Each directional command moves or turns for two seconds, then hovers; repeat to continue. “Land here” lands at the crow's actual position without generating an image. Named destinations such as “Fly to Marina Bay Sands” still use normal place search and flight. Voice requires microphone permission and a working voice connection; the joystick does not. Steering is visual exploration, with no building collision detection.
 
 Arriving at a destination or completing a landing opens a nearby-place carousel with sights, parks, museums, cafés and restaurants returned by Google. Swipe the cards, use the arrows, or focus the carousel and press the arrow keys. Photos include contributor credits when available. Select a card to view details, save it for the session, or land there. **×** closes the carousel; **Nearby** reopens it without repeating a successful search. A new destination or landing spot clears old results. On smaller screens, chat and voice captions temporarily cover the carousel; closing them reveals it again.
+
+Choose **Circle** in the map toolbar to orbit the current landmark or selected landing spot. **Stop circle**, Pause, free roam or steering interrupts it. Eiffel Tower and Golden Gate Bridge use wider paths; the camera faces the landmark with the 3D crow in the foreground. A completed orbit opens nearby places. With reduced motion enabled, Circle shows a still landmark view. Text and voice also accept “Circle around the Golden Gate Bridge” or “Circle around the Eiffel Tower”.
 
 The guide reports progress and failures. **Stop current action** cancels pending work. Dragging the map also enters free roam. Open **Debug tools** for additional manual destination, flight, discovery, and planning controls.
 

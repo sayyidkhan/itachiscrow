@@ -21,6 +21,7 @@
 .explorer #land-map { --control-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3v14m-5-5 5 5 5-5M4 17v4h16v-4'/%3E%3C/svg%3E"); }
 .explorer #nearby { --control-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z'/%3E%3Ccircle cx='12' cy='10' r='2'/%3E%3C/svg%3E"); }
 .explorer .bottom .controls :is(#restart, #speed)::before { display: none; }
+.explorer #circle-map { --control-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 11a8 8 0 1 0-2 6M20 4v7h-7'/%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3C/svg%3E"); }
 .explorer .bottom .controls button:focus-visible { outline: 2px solid #d4ffeb; outline-offset: 1px; }
 .explorer:has(#loading:not([hidden])) :is(.bottom, .steering-control) { visibility: hidden; pointer-events: none; }
 .explorer:not(.debug-open) .bottom :is(#restart, #speed) { display: none; }

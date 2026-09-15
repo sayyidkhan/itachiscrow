@@ -4,7 +4,7 @@ import { createPanoramaJourney } from './panorama-journey.js';
 import { CrowChat } from './chat.js?v=3';
 import { CrowLive } from './live.js?v=3';
 import { createTravelExperience } from './travel.js';
-import { createDiscovery } from './discovery.js?v=3';
+import { createDiscovery } from './discovery.js?v=4';
 
 const $ = id => document.getElementById(id);
 const emptyContext = {mapReady:false,destination:{name:'Esplanade, Singapore',lat:1.2897,lng:103.8556},spot:null,savedPlaces:[]};
@@ -246,7 +246,7 @@ async function executeAction(name,args,{signal,sessionId}={}){
    }
    if(name==='fly_to'){closeResult();note(`Finding ${args.destination}…`);const place=await resolveCommandPlace(args.destination);guard();return await fly(place);}
    if(name==='land_at'){closeResult();const place=await resolveCommandPlace(args.spot,context.destination.name);guard();return await landAndLook(place,args.generate_view!==false);}
-   if(name==='circle_around'){closeResult();const place=await resolveCommandPlace(args.spot);guard();note(`Circling ${place.name}…`);const result=await window.CrowMap.circleAround(place);if(result?.cancelled)return {status:'cancelled'};note(`Orbit complete around ${place.name}.`);return {status:'completed',place,reducedMotion:result.reducedMotion||false};}
+   if(name==='circle_around'){closeResult();const place=await resolveCommandPlace(args.spot);guard();note(`Circling ${place.name}…`);const result=await window.CrowMap.circleAround(place);if(result?.cancelled)return {status:'cancelled'};note(result.reducedMotion?`Landmark view of ${place.name}.`:`Orbit complete around ${place.name}.`);return {status:'completed',place,reducedMotion:result.reducedMotion||false};}
    if(name==='generate_panorama')return await generateScene(controller.signal,args.regenerate===true);
    if(name==='picture_me_here')return await travel.portrait(controller.signal);
    if(name==='find_cafes')return await travel.discover(args.request,controller.signal);
@@ -265,12 +265,14 @@ const live = new CrowLive({
 });
 function setCommandBusy(busy){busySerial++;commandBusy=busy;$('companion').classList.toggle('busy',busy);$('chat-send').disabled=busy||!$('chat-input').value.trim();$('chat-input').setAttribute('aria-busy',String(busy));$('command-stop').hidden=!busy&&!liveState.pendingAction;}
 const chat=new CrowChat({getContext:liveContext,onAction:executeAction,onMessage:addMessage,onProgress:text=>note(text),onError:error=>note(error.message,true),onBusy:setCommandBusy});
-const discovery=createDiscovery({getContext:()=>context,request,onFly:async destination=>{
+async function discoveryFlight(name,args){
   if(commandBusy||liveState.pendingAction)throw Error('Finish or stop the current action before starting a flight.');
   live.cancelActions();abortActions();setCommandBusy(true);
   const serial=busySerial;
-  try{return await executeAction('fly_to',{destination});}finally{if(busySerial===serial)setCommandBusy(false);}
-}});
+  if(name==='circle_around'&&!$('companion').hidden)$('companion-toggle').click();
+  try{return await executeAction(name,args);}catch(error){if(name==='circle_around'&&$('companion').hidden)$('chat-open').click();throw error;}finally{if(busySerial===serial)setCommandBusy(false);}
+}
+const discovery=createDiscovery({getContext:()=>context,request,onFly:destination=>discoveryFlight('fly_to',{destination}),onCircle:spot=>discoveryFlight('circle_around',{spot})});
 function stopCommand(){chat.stop();chat.completedConversation=null;live.cancelActions();abortActions();note('Stopped. Where next?');}
 window.addEventListener('crow:manual-control',stopCommand);
 $('command-stop').onclick=stopCommand;

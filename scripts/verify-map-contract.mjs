@@ -439,3 +439,23 @@ assert.equal(neverSteady.api.getContext().mapReady,false,'Ignored native request
 neverSteady.map.flyCameraTo=nativeFly;
 advance(3500);
 assert.equal(neverSteady.api.getContext().mapReady,true,'Framing resumes once the native renderer accepts camera requests');
+
+const bridgeOrbit = {name:'Golden Gate Bridge',lat:37.8199,lng:-122.4783};
+window.matchMedia = () => ({matches:true});
+await api.flyTo(bridgeOrbit);
+await api.circleAround(bridgeOrbit);
+window.matchMedia = () => ({matches:false});
+sandbox.requestAnimationFrame = callback => schedule(callback,1000);
+const slowOrbit = api.circleAround(bridgeOrbit);
+assert.equal(api.getContext().mode,'circling','Repeating a wide orbit does not fly back to the centre');
+advance(21000);
+assert.equal(api.getContext().mode,'hovering','Even at one frame per second an orbit completes in twenty seconds');
+assert.equal((await slowOrbit).mode,'hovering');
+const cancelledOrbit = api.circleAround(bridgeOrbit);
+advance(3000);
+api.pause();
+const stoppedOrbit = JSON.stringify(api.getContext().position);
+advance(25000);
+assert.equal((await cancelledOrbit).cancelled,true);
+assert.equal(JSON.stringify(api.getContext().position),stoppedOrbit,'Cancelled orbit frames never move the crow');
+console.log('Landmark orbit contract passed: repeat, slow frames, completion and cancellation.');

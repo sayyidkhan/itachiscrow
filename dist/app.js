@@ -296,29 +296,33 @@ function flyTo(value){
 async function circleAround(value){
  if(!ready)throw Error('Wait for the map to finish loading.');
  const target=normalizeDestination(value);
- if(!scoutPosition||distance(scoutPosition,target)>700){const arrival=await flyTo(target);if(arrival?.cancelled)return arrival;}
- const from={...(scoutPosition||flightPosition(progress))},surface=surfaceAltitudeAtCrow()??0;
+ const tower=/eiffel/i.test(target.name),bridge=/golden gate/i.test(target.name);
+ const radius=bridge?900:tower?420:180,altitude=bridge?220:tower?180:110;
+ if(!scoutPosition||distance(scoutPosition,target)>Math.max(700,radius*1.3)){const arrival=await flyTo(target);if(arrival?.cancelled)return arrival;}
+ const from={...(scoutPosition||flightPosition(progress))},surface=scoutAltitudeBase??surfaceAltitudeAtCrow()??0;
  stop();cancelLandingMode();clearNearby();destination=target;landingSpot=null;scoutMode='circling';playing=true;setFlightView(true);
- const serial=journeySerial,startAngle=bearing(target,from)*radians,radius=180,duration=14000;
+ const serial=journeySerial,startAngle=bearing(target,from)*radians,duration=20000;
+ const orbitCamera=position=>({...scoutCamera(position,false,surface),heading:bearing(position,target),tilt:tower?85:78});
  $('fly').textContent='Pause';status('Circling · '+target.name);hint('Circling once. Say stop or drag the map to pause.');emitCrow('destination');
  if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){
-  poseScout({...relativeOffset(target,-radius,0),altitude:110},0,surface);
-  map.flyCameraTo({endCamera:{center:{...target,altitude:surface+70},altitudeMode:'ABSOLUTE',heading:0,tilt:60,range:480},durationMillis:0});
+  const position={...relativeOffset(target,-radius,0),altitude};
+  poseScout(position,0,surface);
+  map.flyCameraTo({endCamera:orbitCamera(position),durationMillis:0});
   scoutMode='hovering';playing=false;setFlightView(false);$('fly').textContent='Fly again';status('View around · '+target.name);emitCrow('context');return {...getCrowContext(),reducedMotion:true};
  }
  return new Promise(resolve=>{
-  const state={resolve,frame:0,timer:0};journey=state;let elapsed=0,previous=performance.now();
+  const state={resolve,frame:0,timer:0};journey=state;const startedAt=performance.now();let previous=startedAt;
   const step=now=>{
    if(serial!==journeySerial)return;
    if(now-previous<FRAME_INTERVAL){state.frame=requestAnimationFrame(step);return;}
-   const dt=Math.min(.15,(now-previous)/1000);previous=now;elapsed+=dt*1000;flightTime+=dt;
+   const dt=Math.min(.15,(now-previous)/1000),elapsed=now-startedAt;previous=now;flightTime+=dt;
    const t=Math.min(1,elapsed/duration),orbitT=Math.max(0,(t-.12)/.88),angle=startAngle+orbitT*Math.PI*2;
    const point=relativeOffset(target,Math.cos(angle)*radius,Math.sin(angle)*radius),blend=Math.min(1,t/.12),ease=blend*blend*(3-2*blend);
-   const position={...sphericalPoint(from,point,ease),altitude:from.altitude+(110-from.altitude)*ease};
+   const position={...sphericalPoint(from,point,ease),altitude:from.altitude+(altitude-from.altitude)*ease};
    crowHeading=wrapAngle(angle/radians+90);poseScout(position,0,surface);
-   map.flyCameraTo({endCamera:{center:{lat:target.lat,lng:target.lng,altitude:surface+70},altitudeMode:'ABSOLUTE',heading:wrapAngle(angle/radians+180),tilt:60,range:480,roll:0},durationMillis:0});updateProgress(t);
+   map.flyCameraTo({endCamera:orbitCamera(position),durationMillis:0});updateProgress(t);
    if(t<1){state.frame=requestAnimationFrame(step);return;}
-   journey=null;playing=false;scoutMode='hovering';setFlightView(false);$('fly').textContent='Fly again';status('Orbit complete · '+target.name);emitCrow('context');resolve(getCrowContext());
+   journey=null;playing=false;scoutMode='hovering';setFlightView(false);$('fly').textContent='Fly again';status('Orbit complete · '+target.name);hint('Explore nearby places, circle again or choose your next destination.');emitCrow('context');nearby(true);resolve(getCrowContext());
   };state.frame=requestAnimationFrame(step);
  });
 }

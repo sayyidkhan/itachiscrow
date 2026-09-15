@@ -1,10 +1,13 @@
-import { illustration } from './discovery.js?v=3';
+import { illustration } from './discovery.js?v=4';
 
 (() => {
   const $ = id => document.getElementById(id);
   function reflect() {
     const state = window.CrowMap?.getContext();
-    for (const id of ['free-roam', 'land-map']) $(id).disabled = !state?.mapReady;
+    for (const id of ['free-roam', 'land-map', 'circle-map']) $(id).disabled = !state?.mapReady;
+    $('circle-map').setAttribute('aria-pressed', String(state?.mode === 'circling'));
+    $('circle-map').textContent = state?.mode === 'circling' ? 'Stop circle' : 'Circle';
+    $('circle-map').setAttribute('aria-label', state?.mode === 'circling' ? 'Stop circling landmark' : `Circle ${state?.spot?.name || state?.destination?.name || 'landmark'}`);
     $('free-roam').setAttribute('aria-pressed', String(Boolean(state?.freeRoaming)));
     $('free-roam').textContent = state?.freeRoaming ? 'Follow crow' : 'Free roam';
     $('land-map').setAttribute('aria-pressed', String(Boolean(state?.landingMode)));
@@ -21,6 +24,15 @@ import { illustration } from './discovery.js?v=3';
     try {
       if (window.CrowMap.getContext().landingMode) window.CrowMap.cancelLandingMode();
       else window.CrowMap.selectLandingMode();
+    } catch (error) { $('hint').textContent = error.message; }
+  };
+  $('circle-map').onclick = async () => {
+    const state = window.CrowMap.getContext();
+    window.dispatchEvent(new Event('crow:remote-control'));
+    window.dispatchEvent(new Event('crow:manual-control'));
+    try {
+      if (state.mode === 'circling') window.CrowMap.pause();
+      else await window.CrowMap.circleAround(state.spot || state.destination);
     } catch (error) { $('hint').textContent = error.message; }
   };
   $('nearby-close').onclick = () => {

@@ -1,6 +1,6 @@
 # Discovery artwork
 
-Public UI artwork generated on 15 September 2026 with the built-in image generation tool. These six illustrations are intended for the public repository; they contain no personal reference photos. Final assets are in `dist/images/destinations/`, encoded as 768 × 512 WebP at quality 84.
+Public UI artwork generated on 15 September 2026 with the built-in image generation tool, following the imagegen skill. These seven illustrations are intended for the public repository; they contain no personal reference photos. Final assets are in `dist/images/destinations/`, encoded as 768 × 512 WebP at quality 84.
 
 ## Prompt set
 
@@ -14,6 +14,7 @@ Each image used the following prompt, substituting its subject below:
 - `paris.webp`: Paris, France: recognisable Eiffel Tower above the Seine with stone embankments and elegant Parisian buildings.
 - `sydney.webp`: Sydney Harbour, Australia: recognisable white tiled sails of the Sydney Opera House on its peninsula, harbour water and distant Harbour Bridge.
 - `kampong.webp`: Kampong Glam, Singapore: recognisable golden dome of Sultan Mosque framed by colourful heritage shophouses and a charming pedestrian lane.
+- `golden-gate.webp`: Golden Gate Bridge, San Francisco: recognisable international-orange suspension towers, long sweeping suspension cables and bridge deck spanning blue Pacific water between coastal headlands, atmospheric light mist in distance.
 
 ## Use
 
