@@ -19,6 +19,7 @@
     "verify:discovery": "node scripts/verify-discovery.mjs",
     "verify:scene-author": "node scripts/verify-scene-author.mjs",
     "verify:flight-controls": "node scripts/verify-flight-controls.mjs",
+    "verify:vote": "node scripts/verify-vote.mjs",
     "verify:models": "node scripts/verify-models.mjs",
     "build": "node scripts/build-sites.mjs"
   },

@@ -97,6 +97,7 @@ try {
       await page.locator('#land-map').click();
       assert.equal(await page.evaluate(() => CrowMap.getContext().landingMode), false);
       await page.evaluate(() => CrowMap.flyTo({ name: 'The Arts House', lat: 1.2886, lng: 103.851 }));
+      assert(await page.locator('#project-vote').isVisible(), 'Completed destination flight offers voting');
       await page.locator('.nearby-card').first().waitFor();
       assert.equal(await page.evaluate(() => nearbyRequests.length), 1);
       assert.equal(await page.locator('.nearby-card').count(), 8);

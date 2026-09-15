@@ -44,6 +44,10 @@ The guide reports progress and failures. **Stop current action** cancels pending
 
 Long journeys show a globe transition and route card. With chat open, the route and progress sit below its heading; in voice mode they sit above the captions. Closing chat keeps the journey visible on the map. A device’s reduced-motion preference shortens or skips sweeping camera movement. This is a visual exploration route, not walking directions or collision avoidance.
 
+## Vote for the project
+
+Choose **Vote for this project** on the homepage to open the hackathon gallery in a new tab. On the map, a gold **Vote** button appears beside **•••** after the first completed destination flight, then every third flight with at least two minutes between prompts. It shines twice and disappears after 15 seconds, staying available while hovered or focused. Reduced-motion settings disable the shimmer. Opening the voting link stops map prompts for the rest of that tab’s session; it does not cast a vote automatically.
+
 ## Crow mode and Author mode
 
 The 3D map always begins with the crow. Your reference portrait should not cover the map.

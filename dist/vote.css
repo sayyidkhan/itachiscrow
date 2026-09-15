@@ -1,0 +1,48 @@
+.project-vote {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid #f5c97c99;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #563d24, #2e3029);
+  color: #ffe3af;
+  font: 600 13px/1.3 system-ui, sans-serif;
+  white-space: nowrap;
+  text-decoration: none;
+  box-shadow: inset 0 1px 0 #ffe4ae26;
+}
+.project-vote[hidden] { display: none; }
+.project-vote:hover { background: #59452f; border-color: #ffe3af; }
+.project-vote:focus-visible { outline: 2px solid #ffe3af; outline-offset: 3px; }
+.hero .project-vote { margin-top: 18px; }
+.project-vote::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 20%, #fff3d655 48%, transparent 76%);
+  transform: translateX(-130%);
+  pointer-events: none;
+}
+.vote-shimmer::after { animation: vote-shine 1.8s ease-in-out 2; }
+@keyframes vote-shine { to { transform: translateX(130%); } }
+.explorer .topbar { column-gap: 10px; }
+.explorer .project-vote { flex: 0 0 auto; margin-left: auto; padding: 10px 12px; }
+.explorer .topbar:has(.project-vote:not([hidden])) .crow-navigation { margin-left: 0; }
+.explorer .topbar:has(.project-vote:not([hidden])) .brand { flex: 1 1 auto; max-width: none; overflow: hidden; }
+.explorer .topbar:has(.project-vote:not([hidden])) .brand :is(h1, p) { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+@media (max-width: 600px) {
+  .explorer .project-vote .vote-long-label { display: none; }
+  .explorer .project-vote { padding: 10px; gap: 5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vote-shimmer::after { animation: none; }
+}
+@media (forced-colors: active) {
+  .project-vote { border: 1px solid ButtonText; color: LinkText; }
+}
