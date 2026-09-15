@@ -307,6 +307,19 @@ try {
       await page.waitForFunction(() => CrowMap.getContext().steering);
       await page.keyboard.up('ArrowRight');
       assert(await page.locator('#voice-overlay').isVisible(), 'Steering keeps voice controls visible');
+      await page.evaluate(() => {
+        for (const [role, text] of [['user', 'Show me the waterfront.'], ['assistant', 'We can fly along Marina Bay and circle the landmarks.']]) {
+          window.dispatchEvent(new CustomEvent('crow:voice-caption', { detail: { role, text } }));
+        }
+      });
+      const voiceLayout = await page.evaluate(() => {
+        const rect = id => document.getElementById(id).getBoundingClientRect().toJSON();
+        return { voice: rect('voice-overlay'), pad: rect('crow-joystick'), end: rect('voice-overlay-end'), status: rect('voice-orb-status'), style: rect('voice-style-toggle') };
+      });
+      const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+      assert(!overlaps(voiceLayout.voice, voiceLayout.pad), 'Voice panel leaves joystick clear');
+      assert(!overlaps(voiceLayout.status, voiceLayout.style), 'Orb style button leaves the call status readable');
+      assert(voiceLayout.end.bottom <= height - 40 && voiceLayout.voice.top >= 64, 'Call controls stay on screen above attribution');
       await page.screenshot({path:new URL(`steering-voice-${width}x${height}.png`,output).pathname});
       await page.evaluate(() => window.dispatchEvent(new CustomEvent('crow:voice-state',{detail:{status:'idle'}})));
       await page.evaluate(() => CrowMap.navigate('higher'));

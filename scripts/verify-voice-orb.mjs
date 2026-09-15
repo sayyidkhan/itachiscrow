@@ -63,6 +63,8 @@ try {
     await page.waitForFunction(() => document.getElementById('voice-orb-status').textContent === 'Listening');
     await page.locator('#voice-overlay-mute').click();
     await page.waitForFunction(() => document.getElementById('voice-orb-status').textContent === 'Microphone muted');
+    assert.equal(await page.locator('#voice-overlay-mute').getAttribute('aria-label'), 'Unmute mic');
+    assert(await page.locator('#voice-overlay-mute .mic-slash').isVisible());
     await page.locator('#voice-overlay-mute').click();
     await page.evaluate(() => {
       window.voiceHarness.options.onTranscript({role:'user',delta:'Take me somewhere by the water.'});
@@ -79,6 +81,15 @@ try {
     await page.locator('[data-orb-style="connecting"]').press('Escape');
     assert(await page.locator('#voice-orb-styles').isHidden());
     assert(await page.locator('#voice-style-toggle').evaluate(el => el === document.activeElement));
+    const compact = await page.evaluate(() => {
+      const rect = id => document.getElementById(id).getBoundingClientRect().toJSON();
+      return { overlay: rect('voice-overlay'), mute: rect('voice-overlay-mute'), end: rect('voice-overlay-end'), captions: rect('voice-captions'), toolbar: document.querySelector('.voice-toolbar').getBoundingClientRect().toJSON() };
+    });
+    if (height > 500 && width <= 430) assert(compact.overlay.height <= 250, 'Phone voice panel leaves the city in view');
+    assert(compact.mute.width >= 44 && compact.mute.height >= 44 && compact.end.width >= 44 && compact.end.height >= 44, 'Call controls retain accessible touch targets');
+    assert(compact.captions.bottom <= compact.toolbar.top + 1, 'Captions never overlap call controls');
+    assert.equal(await page.locator('#voice-overlay-end svg').count(), 1, 'Voice state updates retain the hang-up icon');
+    assert.equal(await page.locator('.voice-caption.assistant').evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(0, 0, 0, 0)', 'Captions share one surface instead of stacking glass panels');
     await page.screenshot({path:new URL(`voice-${width}x${height}.png`,output).pathname});
     await page.locator('#voice-chat').click();
     const paused = await pixels();
@@ -100,7 +111,7 @@ try {
       let release;
       await context.route('**/voice-orb.js*', async route => { await new Promise(resolve => { release = resolve; }); await route.continue(); });
       await page.reload({waitUntil:'commit'});
-      await page.waitForFunction(() => document.getElementById('connection-status').textContent === 'Your guide to anywhere');
+      await page.waitForFunction(() => document.getElementById('connection-status')?.textContent === 'Your guide to anywhere');
       await page.locator('#voice-launch').click();
       await setState({status:'connected'});
       while (!release) await page.waitForTimeout(10);

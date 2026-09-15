@@ -53,9 +53,11 @@
       $('voice-overlay-end').focus({ preventScroll: true });
     }
     $('voice-overlay-end').disabled = state.status === 'closing';
-    $('voice-overlay-end').textContent = state.status === 'closing' ? 'Ending…' : 'End call';
+    $('voice-overlay-end').setAttribute('aria-label', state.status === 'closing' ? 'Ending call' : 'End live voice guide');
+    $('voice-overlay-end').title = state.status === 'closing' ? 'Ending…' : 'End call';
     $('voice-overlay-mute').hidden = state.status !== 'connected';
-    $('voice-overlay-mute').textContent = state.muted ? 'Unmute mic' : 'Mute mic';
+    $('voice-overlay-mute').setAttribute('aria-label', state.muted ? 'Unmute mic' : 'Mute mic');
+    $('voice-overlay-mute').title = state.muted ? 'Unmute mic' : 'Mute mic';
     $('voice-overlay-mute').setAttribute('aria-pressed', String(state.muted));
     $('voice-overlay-audio').hidden = !state.playbackBlocked;
     surfaces();
