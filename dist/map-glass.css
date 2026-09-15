@@ -1,0 +1,46 @@
+.explorer {
+  --glass-tint: #142b30;
+  --glass-border: #e5fff333;
+  --glass-highlight: linear-gradient(135deg, #e3fff012, #ffffff00 55%);
+  --glass-blur: none;
+  --glass-shadow: inset 0 1px 0 #effff01f, 0 10px 32px #03131529;
+}
+.explorer #world, .explorer .vignette { top: 0; }
+.explorer :is(.topbar, .companion, .chat-launcher, .voice-toolbar, .voice-caption, .loading, .scout-panel, .travel-transition, .controls, .flight-state, .side-tools > .glass, #crow-navigation-links, dialog) {
+  background: var(--glass-highlight), var(--glass-tint);
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.explorer .topbar { border-bottom: 1px solid var(--glass-border); }
+.explorer .companion-heading { border-bottom-color: #e5fff31a; }
+.explorer .chat-form { background: #061b2566; border-color: #d9fff533; box-shadow: inset 0 1px 8px #00000012; }
+.explorer .chat-form:focus-within { border-color: #b6eed8; box-shadow: 0 0 0 3px #a1dfc810; }
+.explorer .chat-form textarea::placeholder { color: #b6ccc6; }
+.explorer :is(.command-examples button, .voice-overlay-actions button, .crow-menu-toggle) { background: #effff00d; border-color: #d9fff533; }
+.explorer .command-examples button:hover { background: #e0fff01a; border-color: #c1f5df66; }
+.explorer :is(.connection-status, .command-hint, .command-examples small, .chat-eyebrow, .composer-hint, .brand p) { color: #c0d6ce; }
+.explorer :is(.chat-bubble b, .voice-caption strong) { color: #c1e6d4; }
+.explorer .chat-bubble.user { background: #75cfad24; border-color: #b9f2d92b; }
+.explorer .voice-caption.user { background: var(--glass-highlight), var(--glass-tint); border-color: #b9f2d957; }
+.explorer .voice-overlay-actions .voice-end { color: #ffe5dc; background: #a84d4b4d; }
+.explorer .crow-navigation #crow-navigation-links :is(a, button):hover,
+.explorer .crow-navigation #crow-navigation-links [aria-current=page] { background: #c6ffe51a; color: #d8ffea; }
+.explorer .crow-navigation .crow-menu-tools,
+.explorer .crow-navigation #crow-navigation-links .crow-menu-home { border-top-color: #e5fff324; }
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .explorer {
+    --glass-tint: #10282dbd;
+    --glass-blur: blur(18px) saturate(125%);
+  }
+  .explorer :is(dialog, #crow-navigation-links) { --glass-tint: #10282de8; }
+}
+@media (max-width: 760px) {
+  .explorer { --glass-blur: blur(12px) saturate(115%); }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .explorer { --glass-tint: #142b30; --glass-blur: none; --glass-highlight: none; }
+  .explorer :is(dialog, #crow-navigation-links) { --glass-tint: #142b30; }
+}
