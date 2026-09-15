@@ -1,9 +1,13 @@
 // Web Request/Response adapter for the existing, validated Node API handler.
-let handler, activeEnv;
+let handler, activeEnv, sourceEnv, configuredEnv;
 const publicOrigin = 'https://itachis-crow.promptalchemistlabs.chatgpt.site';
 export default {
   async fetch(request, env, ctx) {
+    if(sourceEnv!==env){sourceEnv=env;configuredEnv={...fileConfig,...env};}
+    env=configuredEnv;
     const url = new URL(request.url);
+    let pathname;try{pathname=decodeURIComponent(url.pathname);}catch{return new Response('Not found',{status:404});}
+    if(pathname.split('/').some(part=>['config.json','config.example.json','server'].includes(part)))return new Response('Not found',{status:404});
     const group=usageGroup(url.pathname);
     if(group){
       if(request.method!=='POST')return Response.json({error:{message:'Use POST.'}},{status:405});

@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadEnvFile } from 'node:process';
+import { loadRuntimeConfig } from './config-file.mjs';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -91,7 +91,7 @@ export function getStatus(config, instagramSession = null) {
 }
 
 function requireOpenAI(config) {
-  if (!config.apiKey) throw new HttpError(503, 'openai_not_configured', 'Add OPENAI_API_KEY to the server .env file and restart to enable GPT-Live, panoramas, and travel plans.');
+  if (!config.apiKey) throw new HttpError(503, 'openai_not_configured', 'AI features are not configured yet. Please try again later.');
 }
 
 // Provider bodies can contain credentials or request details. Never forward or log them.
@@ -599,6 +599,7 @@ async function serveStatic(req, res, distDir) {
   if (!['GET', 'HEAD'].includes(req.method)) throw new HttpError(405, 'method_not_allowed', 'Method not allowed.');
   let pathname;
   try { pathname = decodeURIComponent(req.url.split('?')[0]); } catch { fail('Invalid URL.'); }
+  if (pathname.split('/').some(part => ['config.json','config.example.json','server'].includes(part))) throw new HttpError(404, 'not_found', 'File not found.');
   if (pathname.includes('\\') || pathname.includes('\0') || pathname.split('/').some(part => part.startsWith('.'))) throw new HttpError(404, 'not_found', 'File not found.');
   const root = await realpath(distDir);
   const file = resolve(root, `.${pathname === '/' ? '/index.html' : pathname}`);
@@ -693,8 +694,8 @@ export function startServer({ port = Number(process.env.PORT || 3000), host = '1
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  try { loadEnvFile(resolve(ROOT, '.env')); } catch (error) { if (error.code !== 'ENOENT') throw error; }
-  const server = startServer();
+  const env = await loadRuntimeConfig();
+  const server = startServer({env, port:Number(env.PORT), host:env.HOST});
   server.on('listening', () => console.log(`Crow Explorer: http://localhost:${server.address().port}`));
   server.on('error', error => { console.error(`Unable to start Crow Explorer (${error.code || 'server_error'}).`); process.exitCode = 1; });
 }

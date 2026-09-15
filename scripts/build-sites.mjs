@@ -1,4 +1,9 @@
-import { readFile, writeFile, mkdir, readdir, cp, rm } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, readdir, cp, rm, chmod } from 'node:fs/promises';
+import {readFileConfig} from '../server/config-file.mjs';
+
+const args=process.argv.slice(2);
+if(args.length&&!(args.length===2&&args[0]==='--config'))throw Error('Usage: npm run build -- [--config /private/config.json]');
+const fileConfig=await readFileConfig(args[1]||'config.example.json');
 
 // Adapt the existing API handler without changing the Node development server.
 let core = await readFile('server/index.mjs', 'utf8');
@@ -26,11 +31,12 @@ await mkdir('dist/server', { recursive: true });
 await rm('dist/client', { recursive: true, force: true });
 await mkdir('dist/client', { recursive: true });
 for (const entry of await readdir('dist')) {
-  if (['client','server','.openai','config.js','config.example.js'].includes(entry)) continue;
+  if (['client','server','.openai','config.js','config.example.js','config.json','config.example.json'].includes(entry)) continue;
   await cp(`dist/${entry}`, `dist/client/${entry}`, { recursive: true });
 }
 const adapter = await readFile('worker/adapter.mjs','utf8');
-await writeFile('dist/server/index.js', helpers + core + '\n' + await readFile('worker/usage-limits.mjs','utf8') + '\n' + adapter);
+await writeFile('dist/server/index.js', 'const fileConfig='+JSON.stringify(fileConfig)+';\n'+helpers + core + '\n' + await readFile('worker/usage-limits.mjs','utf8') + '\n' + adapter, {mode:0o600});
+await chmod('dist/server/index.js',0o600);
 await mkdir('dist/.openai', { recursive: true });
 try { await cp('.openai/hosting.json', 'dist/.openai/hosting.json'); }
 catch(error) { if(error.code!=='ENOENT')throw error;console.log('No GPT Sites hosting configuration present; built bundles are available for local verification.'); }

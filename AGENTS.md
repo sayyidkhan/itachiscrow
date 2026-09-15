@@ -6,7 +6,7 @@ This repository is developed in two environments. Keep their responsibilities se
 
 - Treat GitHub `main` as the portable source of record. Pull before work and push completed, verified changes back to `main`.
 - Use Node.js 22.6 or later. Run `npm ci`, then run the relevant checks; use `npm test` and `npm run build` before a handoff when practical.
-- Never commit `.env`, real API keys, browser configuration containing a key, user uploads, generated private images, or provider tokens.
+- Never commit `.env`, private root `config.json`, real API keys, browser configuration containing a key, user uploads, generated private images, or provider tokens. Commit only blank `config.example.json`.
 - The active map implementation uses Google Maps JavaScript API's native `maps3d` renderer and Places API (New). Do not reintroduce Cesium, the Map Tiles API, or `CROW_TILES_KEY`.
 - Keep Google attribution visible. The crow must remain a real embedded 3D model, not a static image overlay.
 - Record the commit SHA, checks run, and any external configuration required in each handoff.
@@ -16,13 +16,13 @@ This repository is developed in two environments. Keep their responsibilities se
 Use Zo for normal code changes, browser/WebGL2 investigation, and GitHub commits.
 
 1. Clone or pull `main` from `https://github.com/sayyidkhan/itachiscrow.git`.
-2. Run `npm ci` and copy `.env.example` to `.env` for local-only configuration.
-3. Add secrets only in Zo's secret/environment settings:
-   - `OPENAI_API_KEY`
+2. Run `npm ci`. On first setup only, copy `.env.example` to `.env` and `config.example.json` to private `config.json`; preserve existing values.
+3. Keep only Maps keys and the origin in `.env` or the Zo service environment:
    - `CROW_MAPS_KEY1`
    - `CROW_MAPS_KEY2` (optional)
    - `CROW_MAPS_KEY3` and further numbered keys (optional)
    - `PUBLIC_ORIGIN` set to Zo's exact public HTTPS URL when using a deployed preview.
+   Put OpenAI/Instagram credentials, model names, port, host, base path and storage paths in private `config.json` (permissions `600`). Restart after changes. Legacy environment overrides remain supported.
 4. Do not add `CROW_TILES_KEY`.
 5. Verify actual rendering in a WebGL2-capable browser when changing map/crow behaviour. A successful model download is not proof that the crow is visible.
 6. Commit and push verified changes to `main` with a clear message.
@@ -31,7 +31,7 @@ Use Zo for normal code changes, browser/WebGL2 investigation, and GitHub commits
 
 - The Zo checkout lives at `Github/itachiscrow`.
 - The public development route is `https://public-apps-sayyidkhan.zocomputer.io/crow`; its exact permitted `PUBLIC_ORIGIN` is `https://public-apps-sayyidkhan.zocomputer.io`.
-- The `itachiscrow-dev` process service listens only on localhost port `8806` and is reached through the Garden of Zo public router. Keep `APP_BASE_PATH=/crow` and preserve the router path-aware browser contract.
+- The `itachiscrow-dev` process service listens only on localhost port `8806` and is reached through the Garden of Zo public router. Keep `PORT: 8806`, `HOST: "127.0.0.1"` and `APP_BASE_PATH: "/crow"` in private `config.json` and preserve the router path-aware browser contract.
 - The public route declaration is in `Start/garden-of-zo/zo-router/public.routes.json`. Do not recreate a direct public HTTP service for this app.
 
 ### Zo limitation
@@ -52,7 +52,7 @@ Use ChatGPT Work/Codex to operate the existing public Sites deployment at `https
    - `CROW_MAPS_KEY2` (optional)
    - `CROW_MAPS_KEY3` and further numbered keys (optional)
    - `PUBLIC_ORIGIN` set to `https://itachis-crow.promptalchemistlabs.chatgpt.site`
-4. Rebuild, save a version from the exact source commit, deploy it, and confirm deployment success.
+4. Rebuild, save a version from the exact source commit, deploy it, and confirm deployment success. A normal build uses the blank `config.example.json` and existing runtime secrets. To adopt private JSON configuration in GPT, explicitly build with `npm run build -- --config /private/config.json` using GPT's own values; this embeds credentials in server output only. Never use Zo's private config for GPT or commit the generated server bundle.
 5. A GitHub push never auto-deploys this Site. Production deployment is a separate explicit ChatGPT Work/Codex step.
 
 ## Configuration notes

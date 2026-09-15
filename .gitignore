@@ -6,6 +6,7 @@ _debug/
 .private/
 node_modules/
 .env
+/config.json
 .zo-data/
 .env.*
 !.env.example

@@ -3,7 +3,7 @@ import { mkdir, readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadEnvFile } from 'node:process';
+import { loadRuntimeConfig } from './config-file.mjs';
 import { createHandler } from './index.mjs';
 import { enforceUsage, proxyPlaceSearch, usageGroup, mapBrowserConfig } from '../worker/usage-limits.mjs';
 
@@ -120,6 +120,5 @@ export async function startZoRuntime({port=Number(process.env.PORT||3000),host='
 }
 
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- try{loadEnvFile(resolve(ROOT,'.env'));}catch(error){if(error.code!=='ENOENT')throw error;}
- startZoRuntime().then(server=>console.log(`Crow Explorer Zo runtime: http://localhost:${server.address().port}`)).catch(error=>{console.error(`Unable to start Crow Explorer Zo runtime (${error.code||'server_error'}).`);process.exitCode=1;});
+ loadRuntimeConfig().then(env=>startZoRuntime({env,port:Number(env.PORT),host:env.HOST,databasePath:resolve(ROOT,env.CROW_USAGE_DB||'.zo-data/usage.sqlite')})).then(server=>console.log(`Crow Explorer Zo runtime: http://localhost:${server.address().port}`)).catch(()=>{console.error('Unable to start Crow Explorer Zo runtime. Check config.json and .env.');process.exitCode=1;});
 }

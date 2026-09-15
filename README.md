@@ -49,16 +49,18 @@ git clone https://github.com/sayyidkhan/itachiscrow.git
 cd itachiscrow
 npm ci
 cp .env.example .env
+cp config.example.json config.json
 cp dist/config.example.js dist/config.js
 ```
 
-Configure credentials privately using the [operations guide](docs/operations.md). `npm run build` prepares the Sites Worker and browser assets. `npm start` runs the original Node server, but **the current map-start and place-search endpoints are Worker-only**: Node alone is not a complete preview of this version. Use the Sites Worker with its D1 binding for the full app.
+Configure credentials privately using the [operations guide](docs/operations.md). `.env` contains only numbered Maps keys and `PUBLIC_ORIGIN`; private `config.json` contains OpenAI/Instagram credentials, model names, port, host and other server settings. Both files are ignored by Git. `config.example.json` is the blank, committed template.
 
-For a hosted Zo or Sites deployment, configure these values as server-side secrets rather than committing them:
+`npm run start:zo` runs the complete Zo preview with SQLite. `npm start` runs the original Node server without the Worker-style map-session and Places endpoints. `npm run build` prepares the Sites Worker using the blank config template; an explicitly supplied deployment config can be included in the server bundle with `npm run build -- --config /private/config.json`.
+
+The environment file needs only:
 
 | Variable | Purpose |
 | --- | --- |
-| `OPENAI_API_KEY` | Enables chat, voice, image generation, and travel planning. Keep server-side. |
 | `CROW_MAPS_KEY1` | Primary Google Maps key used for the browser map and Places requests. |
 | `CROW_MAPS_KEY2` | Optional second Google Maps key used for controlled retry and rotation. It shares the same Google project quota when both keys belong to that project. |
 | `CROW_MAPS_KEY3` | Optional third Google Maps key in the same rotation. Keys in one Google project still share quota. |

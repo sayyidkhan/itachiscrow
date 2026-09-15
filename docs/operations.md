@@ -8,14 +8,23 @@ This describes the current Sites Worker implementation. Historical verification 
 
 | Setting | Where / purpose |
 | --- | --- |
-| `OPENAI_API_KEY` | Server secret for chat, voice, images, and research; never put in browser assets |
-| `OPENAI_TEXT_MODEL`, `OPENAI_LIVE_MODEL`, `OPENAI_IMAGE_MODEL` | Optional model overrides; inspect `.env.example` and `server/index.mjs` for configured defaults and request compatibility |
+| `config.json` → `OPENAI_API_KEY` | Private server credential for chat, voice, images and research |
+| `config.json` → `OPENAI_TEXT_MODEL`, `OPENAI_LIVE_MODEL`, `OPENAI_IMAGE_MODEL` | Model settings; defaults are documented in `config.example.json` |
 | `CROW_MAPS_KEY1` | Primary Google key; served to the browser through `/config.js` on Sites |
 | `CROW_MAPS_KEY2` | Optional second Google key, used for rotation and retry |
 | `CROW_MAPS_KEY3` | Optional third Google key, used for rotation and retry |
 | `PUBLIC_ORIGIN` | Exact published HTTPS origin, without a path; protected Worker requests must match it |
 | `DB` | Sites-managed D1 binding declared in `.openai/hosting.json`; required for protected routes |
-| Meta settings in `.env.example` | Optional Instagram integration; not required for flight or Author scenes |
+| `config.json` → Meta/Instagram settings | Optional Instagram credentials and API version |
+| `config.json` → `PORT`, `HOST`, `APP_BASE_PATH`, `CROW_USAGE_DB`, `CROW_OWNER_PHOTO` | Local server and storage settings; ignored by the Worker where not applicable |
+
+### Private configuration
+
+Keep only `CROW_MAPS_KEY1`, `CROW_MAPS_KEY2`, further numbered keys and `PUBLIC_ORIGIN` in `.env` or the service environment. Copy `config.example.json` to root `config.json` for everything else. Keep `config.json` private (permissions `600`); it is ignored by Git and never served over HTTP. Do not place it under `dist/`. Restart the Zo service after editing either file.
+
+Zo loads template defaults, then `config.json`, then `.env`, then process environment overrides. Older environment-based settings remain accepted for deployment compatibility. Never overwrite an existing config with the blank example during setup.
+
+The normal `npm run build` uses only `config.example.json`, so Zo's private config cannot accidentally enter a GPT handoff. In the GPT deployment environment, `npm run build -- --config /private/config.json` explicitly embeds that environment's config into the **server bundle only**. That bundle then contains credentials: keep it private and do not commit it or serve it as a browser asset. Runtime secret bindings override embedded config and remain compatible with the existing GPT deployment. JSON configuration is never copied to `dist/client/`; do not commit credentials to `config.example.json`.
 
 The active city renderer is **Maps JavaScript API (`maps3d`)**. Place search uses **Places API (New)** through the Worker. Map Tiles API and Cesium are not used by this reverted renderer. Preserve appropriate website/API restrictions for browser calls; the server Places request must also be permitted by the credential’s restrictions. Do not remove restrictions blindly to diagnose a failure.
 
@@ -32,6 +41,7 @@ Browser Google keys are visible by design. OpenAI and Meta secrets stay server-s
 | `dist/scene-author.js`, `dist/scene-author.css` | Crow/Author scene switch and generated variations |
 | `dist/crow-studio.html`, `src/customise.js` | Legacy crow appearance editor and bundled viewer source |
 | `server/index.mjs` | Original Node API implementation and provider validation |
+| `server/config-file.mjs`, `config.example.json` | Private JSON configuration loading and blank template |
 | `worker/adapter.mjs` | Worker request adapter, map-session endpoint, Places proxy, runtime configuration |
 | `worker/usage-limits.mjs` | Durable admission counters and route policies |
 | `db/schema.ts`, `drizzle/` | Database schema and published migration history |
@@ -39,19 +49,19 @@ Browser Google keys are visible by design. OpenAI and Meta secrets stay server-s
 
 ## Local development caveat
 
-`npm start` serves the original Node implementation on port 3000 and loads `.env`. It does not implement the new `/api/map-session` and `/api/places/search` routes. The current browser calls both, so a plain Node or Python static server is not a complete map preview. Do not diagnose its missing endpoints as provider quota failures.
+`npm start` serves the original Node implementation, loading `config.json` and `.env` (port 3000 by default). It does not implement the new `/api/map-session` and `/api/places/search` routes. The current browser calls both, so a plain Node or Python static server is not a complete map preview. Do not diagnose its missing endpoints as provider quota failures.
 
 Use a Sites Worker environment with `ASSETS`, `DB`, and the runtime settings for the full flow. Local Node configuration still requires the ignored `dist/config.js`; `.env` alone does not generate that file. Never commit a filled `.env` or config containing secrets.
 
 ## Zo development runtime
 
-`npm run start:zo` is the closest portable equivalent to the Sites Worker/D1 runtime. It serves the same browser assets, emits `/config.js`, applies the same protected route groups and limits, and stores the usage counters in SQLite at `.zo-data/usage.sqlite` by default. Set `CROW_USAGE_DB` to a persistent absolute path when registering a Zo service. This database is runtime state and is ignored by Git.
+`npm run start:zo` is the closest portable equivalent to the Sites Worker/D1 runtime. It serves the same browser assets, emits `/config.js`, applies the same protected route groups and limits, and stores the usage counters in SQLite at `.zo-data/usage.sqlite` by default. Set `CROW_USAGE_DB` in `config.json`; relative paths resolve from the project root. This database is runtime state and is ignored by Git.
 
 For a public Zo preview, set `PUBLIC_ORIGIN` to that service’s exact HTTPS origin. The runtime rejects protected requests from other origins. It logs only redacted Places diagnostics: route, provider-reached flag, HTTP status, and error category; it never logs query payloads or credentials. A normal `npm start` preview intentionally remains the original Node server, while `start:zo` is for close Worker/D1-equivalent development.
 
 ### Garden of Zo route
 
-The active Zo development deployment is the public router route `https://public-apps-sayyidkhan.zocomputer.io/crow`. Its backend is an internal process on port `8806`; the router strips `/crow` before proxying and supplies the route prefix to the runtime. Set `PUBLIC_ORIGIN=https://public-apps-sayyidkhan.zocomputer.io` and `APP_BASE_PATH=/crow` for this deployment. Do not use a direct `*.zocomputer.io` service URL for Itachi’s Crow.
+The active Zo development deployment is the public router route `https://public-apps-sayyidkhan.zocomputer.io/crow`. Its backend is an internal process on port `8806`; the router strips `/crow` before proxying and supplies the route prefix to the runtime. Keep `PUBLIC_ORIGIN=https://public-apps-sayyidkhan.zocomputer.io` in the environment. In private `config.json`, set `PORT` to `8806`, `HOST` to `127.0.0.1` and `APP_BASE_PATH` to `/crow`. Do not use a direct `*.zocomputer.io` service URL for Itachi’s Crow.
 
 ## Publish an update
 
