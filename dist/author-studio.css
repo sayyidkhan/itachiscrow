@@ -29,6 +29,9 @@ a:hover { color: var(--mint); }
 #studio-navigation a { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 44px; padding: 12px; border-radius: 7px; font-size: 13px; }
 #studio-navigation a:hover, #studio-navigation a:focus-visible { background: #24443f; color: var(--mint); }
 #studio-navigation a > span { color: var(--muted); }
+#studio-navigation a[aria-current=page] { background: #24443f; color: var(--mint); }
+#studio-navigation a[aria-current=page] > span { color: inherit; }
+#studio-navigation .menu-home { border-top: 1px solid var(--line); border-radius: 0 0 7px 7px; margin-top: 6px; padding-top: 16px; }
 main { max-width: 1240px; margin: auto; padding: 48px 48px 24px; }
 .eyebrow { font-size: 10px; font-weight: 600; letter-spacing: .2em; color: var(--mint); }
 .intro .eyebrow { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; }
