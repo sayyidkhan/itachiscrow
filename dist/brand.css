@@ -1,0 +1,15 @@
+.crow-brand { display: inline-flex; align-items: center; gap: 10px; min-width: 0; text-decoration: none; }
+.wordmark.crow-brand { font: 700 23px/1.2 Georgia, serif; letter-spacing: -.5px; color: #e5eee6; }
+.crow-brand > span:last-child { font: inherit; color: inherit; margin: 0; }
+footer .crow-brand { font-size: 19px; }
+.crow-brand > .crow-mark { display: block; width: 36px; height: 36px; flex: 0 0 36px; }
+.crow-brand > :last-child { min-width: 0; }
+.companion .voice-orb { width: 36px; height: 36px; min-width: 36px; border: 0; border-radius: 11px; background: transparent; }
+.companion .voice-orb .crow-mark { display: block; width: 36px; height: 36px; }
+.companion .voice-orb.connected { box-shadow: 0 0 0 2px #9ce6d266; }
+@media (max-width: 760px) {
+  .crow-brand { gap: 9px; }
+  .crow-brand > .crow-mark { width: 32px; height: 32px; flex-basis: 32px; }
+  header .crow-brand { font-size: 20px; white-space: nowrap; }
+  .explorer .brand p { max-width: min(240px, calc(100vw - 142px)); }
+}
