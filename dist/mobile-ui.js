@@ -2,6 +2,27 @@
   const $ = id => document.getElementById(id);
   const companion = $('companion');
   const input = $('chat-input');
+  const sceneDialog = $('panorama-dialog');
+  const docked = ['companion', 'chat-launcher', 'voice-overlay'].map(id => {
+    const element = $(id), anchor = document.createComment('Scene chat anchor');
+    element.before(anchor); return {element, anchor};
+  });
+  window.addEventListener('crow:scene-open', () => {
+    for (const {element} of docked) sceneDialog.append(element);
+    surfaces();
+  });
+  sceneDialog.addEventListener('close', () => {
+    if (sceneDialog.open) return;
+    for (const {element, anchor} of docked) anchor.after(element);
+    sceneDialog.classList.remove('scene-has-chat');
+    surfaces();
+  });
+  sceneDialog.addEventListener('cancel', event => {
+    if (!companion.hidden && companion.contains(document.activeElement)) {
+      event.preventDefault(); closeChat();
+    }
+  });
+
   let voiceActive = false;
   let captions = [];
   const travel = $('travel-transition');
@@ -9,6 +30,7 @@
   travel.before(travelAnchor);
 
   function surfaces() {
+    sceneDialog.classList.toggle('scene-has-chat', sceneDialog.contains(companion) && (!companion.hidden || voiceActive));
     $('chat-launcher').hidden = !companion.hidden || voiceActive;
     $('voice-overlay').hidden = !companion.hidden || !voiceActive;
     for (const id of ['chat-open', 'voice-chat']) $(id).setAttribute('aria-expanded', String(!companion.hidden));
@@ -35,7 +57,7 @@
   $('voice-chat').onclick = openChat;
   $('companion-toggle').onclick = closeChat;
   companion.addEventListener('keydown', event => {
-    if (event.key === 'Escape') { event.preventDefault(); closeChat(); }
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeChat(); }
   });
   $('voice-launch').onclick = () => $('voice-toggle').click();
   window.addEventListener('crow:steering-open', () => closeChat(false));

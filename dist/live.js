@@ -14,6 +14,7 @@ const ACTIONS = Object.freeze({
   circle_around:{field:'spot',limit:240},
   stop:{field:null},
   picture_me_here: { field: null },
+  author_scene: {field:null},
   find_cafes: { field: 'request', limit: 1200 },
   fly_to: { field: 'destination', limit: 240 },
   land_at: {fields:{spot:'text',generate_view:'boolean'},defaults:{generate_view:true}},
@@ -41,6 +42,15 @@ export function validateLiveAction(name, rawArguments) {
   catch { throw new Error('The assistant sent invalid action arguments. Please try the request again.'); }
   if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('Action arguments must be an object.');
   if (name === 'navigate' && !['forward', 'backward', 'left', 'right', 'higher', 'lower', 'stop', 'land_here', 'free_roam', 'follow'].includes(args.command)) throw new Error('Unsupported crow direction.');
+
+  if(name==='author_scene'){
+    if(Object.keys(args).some(key=>!['command','direction','variation'].includes(key)))throw Error('Unexpected author action arguments.');
+    if(!['open','generate','retry','select','download','stop','crow','close','reference','reset_reference','status'].includes(args.command))throw Error('Unsupported author scene control.');
+    const direction=args.direction??'',variation=args.variation??0;
+    if(typeof direction!=='string'||direction.length>400)throw Error('Scene direction must be at most 400 characters.');
+    if(!Number.isInteger(variation)||variation<0||variation>10000)throw Error('Choose a valid variation number.');
+    return {command:args.command,direction:direction.trim(),variation};
+  }
   const { field, limit, fields, defaults={} } = ACTIONS[name];
   if(fields){
     if(Object.keys(args).some(key=>!Object.hasOwn(fields,key)))throw Error('Unexpected action arguments.');
@@ -75,6 +85,8 @@ function contextText(context) {
   if (typeof context === 'string') return context;
   const data = context && typeof context === 'object' ? context : {};
   const facts = {
+    author: data.author?{mode:data.author.mode,open:data.author.open,generating:data.author.generating,selected:data.author.selected,ready:data.author.variations?.filter(item=>item.state==='ready').map(item=>item.id).slice(-12),reference:data.author.reference}:undefined,
+
     destination: placeLabel(data.destination),
     spot: placeLabel(data.spot),
     days: typeof data.days === 'number' ? data.days : undefined,

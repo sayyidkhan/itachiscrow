@@ -13,11 +13,18 @@ try{
  for(const [width,height] of [[320,568],[390,844],[430,932],[740,390],[390,380],[1280,844]]){
   const context=await browser.newContext({viewport:{width,height},acceptDownloads:true});
   const jobs=[],errors=[];
+  let action=null;
+  const chatRequests=[];
+  await context.route('**/api/chat',async route=>{
+   const body=route.request().postDataJSON();chatRequests.push(body);
+   await route.fulfill({json:body.message?{conversationId:'author-chat',calls:[{call_id:'author-'+chatRequests.length,name:'author_scene',arguments:JSON.stringify(action)}]}:{conversationId:'author-chat',text:'Author controls updated.',calls:[]}});
+  });
+
   await context.route('**/config.js',route=>route.fulfill({contentType:'text/javascript',body:''}));
   await context.route('**/api/status',route=>route.fulfill({json:{capabilities:{chat:true,panorama:true},traveller:{}}}));
   await context.route('**/app.js*',route=>route.fulfill({contentType:'text/javascript',body:`
    window.mapContext={mapReady:true,destination:{name:'Singapore',lat:1.29,lng:103.85},spot:{name:'Padang, Singapore',lat:1.29,lng:103.85},savedPlaces:[]};
-   window.CrowMap={getContext:()=>window.mapContext,pause(){}};
+   window.CrowMap={getContext:()=>window.mapContext,pause(){},async landAt(place){window.mapContext.spot=place;document.dispatchEvent(new CustomEvent('crow:context',{detail:window.mapContext}));return {status:'landed'}}};
    document.getElementById('loading').hidden=true;
   `}));
   await context.route('**/panorama.js*',route=>route.fulfill({contentType:'text/javascript',body:`
@@ -90,8 +97,73 @@ try{
    await page.emulateMedia({reducedMotion:'reduce'});
    assert.equal(await page.locator('.author-progress-mark').evaluate(el=>getComputedStyle(el,'::after').animationName),'none');
    for(const job of jobs.slice(16))job.finish();await until(async()=>await ready()===3);
+   async function command(command,direction='',variation=0){
+    action={command,direction,variation};
+    await page.locator('#chat-input').fill('Author '+command);
+    await page.locator('#chat-send').click();
+    await until(()=>page.locator('#chat-send').isVisible());
+    await page.waitForFunction(()=>!document.getElementById('chat-input').getAttribute('aria-busy')||document.getElementById('chat-input').getAttribute('aria-busy')==='false');
+   }
+   await page.locator('#panorama-close').click();
+   await page.evaluate(()=>{window.mapContext.spot=null;window.mapContext.position={lat:1.3,lng:103.8};document.dispatchEvent(new CustomEvent('crow:context',{detail:window.mapContext}))});
+   await page.locator('#chat-open').click();
+   await command('open');
+   await until(()=>jobs.length===22);
+   assert(jobs.slice(19).every(job=>job.body.destination.name==='Current crow location'),'Author request lands at the crow position when needed');
+   assert(await page.locator('#panorama-dialog #companion').isVisible(),'Chat belongs to the modal top layer');
+   await page.locator('#chat-input').focus();
+   assert(await page.locator('#chat-input').evaluate(el=>el===document.activeElement),'Composer remains interactive inside scene');
+   const chatBounds=await page.locator('#companion').boundingBox();
+   const sceneBounds=await page.locator('#panorama-dialog').boundingBox();
+   await page.screenshot({path:new URL(`chat-${width}x${height}.png`,output).pathname});
+   assert(chatBounds.x>=0&&chatBounds.y>=0&&chatBounds.x+chatBounds.width<=width+1&&chatBounds.y+chatBounds.height<=height+1,'Chat stays in viewport');
+   assert(width<=600?sceneBounds.y+sceneBounds.height<=chatBounds.y+2:sceneBounds.x+sceneBounds.width<=chatBounds.x+2,'Scene and chat do not overlap');
+   await page.screenshot({path:new URL(`chat-${width}x${height}.png`,output).pathname});
+   jobs[19].finish();jobs[20].finish(true);jobs[21].finish();
+   await until(()=>page.locator('.author-more').isEnabled());
+   await command('status');
+   const latest=chatRequests.at(-1);
+   assert.equal(latest.context.author.variations.filter(item=>item.state==='ready').length,2);
+   assert(!JSON.stringify(latest.context.author).includes('data:image/'),'Image bytes stay out of chat context');
+   assert.deepEqual(Object.keys(latest.context.author.variations[0]).sort(),['id','state']);
+   await command('select','',3);
+   assert.equal(await page.locator('.author-selected-label').textContent(),'Variation 03');
+   await page.screenshot({path:new URL(`chat-selected-${width}x${height}.png`,output).pathname});
+   const chatDownload=page.waitForEvent('download');await command('download','',3);
+   assert.equal((await chatDownload).suggestedFilename(),'author-scene-3.jpg');
+   await command('retry','',2);await until(()=>jobs.length===23);jobs[22].finish();
+   await until(async()=>await ready()===3);
+   await command('generate','A red jacket at golden hour.');
+   await until(()=>jobs.length===26);
+   assert(jobs.slice(23).every(job=>job.body.scene.includes('A red jacket at golden hour.')));
+   await command('stop');
+   for(const job of jobs.slice(23))job.finish();
+   await delay(80);assert.equal(await ready(),3);
+   await command('crow');
+   assert(await page.locator('#panorama-view').isVisible());
+   await command('open');assert.equal(jobs.length,26,'Open reuses completed images');
+   await command('reference');
+   assert(await page.locator('.author-reference-status').textContent());
+   await page.locator('.author-reference-file').setInputFiles(new URL('../dist/images/author-default.jpeg',import.meta.url).pathname);
+   await until(()=>page.locator('.author-reference-status').textContent().then(text=>text.includes('updated')));
+   assert.equal(await ready(),0,'Changing reference clears incompatible portraits');
+   await command('reset_reference');
+   await command('generate');await until(()=>jobs.length===29);
+   await command('stop');for(const job of jobs.slice(26))job.finish();
+   await page.locator('#chat-input').fill('Keep my draft');
+   await page.locator('#companion-toggle').click();
+   assert(await page.locator('#panorama-dialog #chat-launcher').isVisible());
+   await page.locator('#chat-open').click();
+   assert.equal(await page.locator('#chat-input').inputValue(),'Keep my draft');
+   await page.locator('#chat-input').press('Escape');
+   assert(await page.locator('#panorama-dialog').isVisible(),'Escape closes chat before the scene');
+   await page.locator('#chat-open').click();
+   await command('close');
+   assert.equal(await page.locator('#panorama-dialog #companion').count(),0);
+   assert(await page.locator('#companion').isVisible(),'Closing scene restores chat to map');
+
    assert.deepEqual(errors,[]);
-   console.log(width+'×'+height+': parallel requests, partial success, retry, comments, more batches, download, cancellation, context reset and reduced motion passed.');
+   console.log(width+'×'+height+': parallel requests, partial success, retry, comments, more batches, download, cancellation, context reset, reduced motion, chat actions, modal focus, responsive docking, reference changes and chat restoration passed.');
   }finally{for(const job of jobs)job.finish();await context.close()}
  }
 }finally{await browser.close()}

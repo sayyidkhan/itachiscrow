@@ -45,3 +45,25 @@
 @media(max-width:420px){.scene-mode button{font-size:12px;padding:8px 11px}.author-thumbs{gap:7px}.author-variation-caption{font-size:10px}.author-progress{gap:9px}.author-progress-mark{width:36px;height:36px}.author-progress-mark img{width:24px;height:24px}}
 @media(prefers-reduced-motion:reduce){.author-scene[data-generating=true] .author-progress-mark::after,.author-variation[data-state=pending]>button::after{animation:none}.author-variation[data-state=pending]>button::after{transform:none}}
 @media(prefers-reduced-transparency:reduce),(prefers-contrast:more){.author-variation>button,.author-variations textarea{background:#142d2e}.author-variation-caption{background:#0b2426}}
+
+.author-reference-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 16px}
+.author-reference-controls button{font:inherit;font-size:12px;padding:8px 12px;min-height:40px;background:#193b36}
+.author-reference-status{flex-basis:100%;font-size:12px;color:#b9ccc4}
+#panorama-dialog :is(#companion,#chat-launcher,#voice-overlay){position:fixed;z-index:10;right:20px;left:auto;bottom:calc(24px + env(safe-area-inset-bottom));top:auto}
+#panorama-dialog #companion{display:flex;width:360px;max-height:calc(var(--mobile-viewport-height,100dvh) - 48px - env(safe-area-inset-bottom))}
+#panorama-dialog #voice-overlay{width:360px;max-height:calc(var(--mobile-viewport-height,100dvh) - 48px)}
+#panorama-dialog.scene-has-chat{left:12px;right:400px;width:min(680px,calc(100% - 424px));max-height:calc(var(--mobile-viewport-height,100dvh) - 48px);margin:auto}
+#panorama-dialog #companion .companion-body{flex:1;min-height:0}
+#panorama-dialog #companion .companion-heading{min-height:54px}
+@media(max-width:600px){
+ #panorama-dialog.scene-has-chat{left:8px;right:8px;top:calc(var(--mobile-viewport-top,0px) + 8px);bottom:auto;width:calc(100% - 16px);margin:0 auto;max-height:calc(var(--mobile-viewport-height,100dvh)*.48 - 12px);padding:14px}
+ #panorama-dialog #companion{left:8px;right:8px;top:calc(var(--mobile-viewport-top,0px) + var(--mobile-viewport-height,100dvh)*.48);bottom:auto;width:auto;height:calc(var(--mobile-viewport-height,100dvh)*.52 - 8px - env(safe-area-inset-bottom));max-height:none}
+ #panorama-dialog #voice-overlay{left:8px;right:8px;top:auto;bottom:calc(8px + env(safe-area-inset-bottom));width:auto;max-height:calc(var(--mobile-viewport-height,100dvh)*.48)}
+ #panorama-dialog #chat-launcher{right:12px;bottom:calc(12px + env(safe-area-inset-bottom))}
+ #panorama-dialog #companion .companion-heading{min-height:44px;padding:2px 8px}
+ #panorama-dialog #companion .companion-body{padding:6px 12px}
+ #panorama-dialog #companion .companion-composer{padding:0 8px 6px}
+ #panorama-dialog #companion .command-status{max-height:36px;padding:4px}
+ #panorama-dialog .author-scene-image{max-height:28dvh}
+}
+#panorama-dialog{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;max-width:none}

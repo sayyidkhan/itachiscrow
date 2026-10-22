@@ -1,8 +1,8 @@
-import {createSceneAuthor} from './scene-author.js?v=2';
+import {createSceneAuthor} from './scene-author.js?v=3';
 import { PanoramaViewer } from './panorama.js?v=2';
 import { createPanoramaJourney } from './panorama-journey.js';
-import { CrowChat } from './chat.js?v=3';
-import { CrowLive } from './live.js?v=4';
+import { CrowChat } from './chat.js?v=4';
+import { CrowLive } from './live.js?v=5';
 import { createTravelExperience } from './travel.js';
 import { createDiscovery } from './discovery.js?v=4';
 
@@ -25,7 +25,7 @@ function identity(value){return value?`${value.name}|${value.lat}|${value.lng}`:
 function setOpen(open,explicit=false){if(open&&!explicit)return;$('scout-panel').hidden=!open;$('scout-open').setAttribute('aria-expanded',String(open));document.body.classList.toggle('scout-visible',open);document.body.classList.toggle('debug-open',open);}
 function tab(name,focus=false){currentTab=name;for(const button of document.querySelectorAll('[data-tab]')){const active=button.dataset.tab===name;button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;$(`panel-${button.dataset.tab}`).hidden=!active;if(active&&focus)button.focus();}}
 function preferences(){return {days:Number($('plan-days').value),budget:$('plan-budget').value,interests:$('plan-interests').value.trim()};}
-function liveContext(){const prefs=preferences();return {...context,...prefs,interests:prefs.interests.split(/[,\n]/).map(x=>x.trim().slice(0,100)).filter(Boolean).slice(0,12),flightState:context.mode||'exploring'};}
+function liveContext(){const prefs=preferences();return {...context,...prefs,interests:prefs.interests.split(/[,\n]/).map(x=>x.trim().slice(0,100)).filter(Boolean).slice(0,12),flightState:context.mode||'exploring',author:sceneAuthor.state()};}
 function clearPlan(){planning?.abort();planning=null;plan=null;$('plan-result').replaceChildren();$('plan-sources').replaceChildren();$('download-plan').hidden=true;$('plan-status').textContent='';$('generate-plan').disabled=false;$('generate-plan').textContent='Plan my trip ↗';}
 function renderPlan(text,target=$('plan-result')){
   const fragment=document.createDocumentFragment();
@@ -112,12 +112,15 @@ async function generateSceneNow(signal,regenerate=false){
   finally{signal?.removeEventListener('abort',cancel);if(generation===controller){generation=null;$('generate-scene').disabled=!context.spot||!capabilities.panorama;$('generate-scene').textContent='Generate scene ↗';}}
 }
 const sceneAuthor=createSceneAuthor({getScene:()=>scene,getViewer:()=>viewer,request,cancelJourney:()=>panoramaJourney.cancel()});
+let renderedScene=null;
+window.addEventListener('crow:author-state',()=>live.updateContext(liveContext()));
 async function openScene(){
-  if(!scene)return;window.CrowMap?.pause();sceneAuthor.open();
+  if(!scene||($('panorama-dialog').open&&renderedScene===scene))return;window.CrowMap?.pause();sceneAuthor.open();
   $('scene-open').hidden=false;
   $('panorama-title').textContent=scene.spot.name;$('panorama-download').href=scene.imageUrl;
+  window.dispatchEvent(new Event('crow:scene-open'));
   if(!$('panorama-dialog').open)$('panorama-dialog').showModal();
-  viewer?.destroy();viewer=new PanoramaViewer($('panorama-view'),{onSelect:panoramaJourney.select});await viewer.load(scene.imageUrl);
+  renderedScene=scene;viewer?.destroy();viewer=new PanoramaViewer($('panorama-view'),{onSelect:panoramaJourney.select});await viewer.load(scene.imageUrl);
 }
 async function generatePlan(extraRequest='',signal){
   if(!capabilities.plan)throw Error('Trip planning needs the server’s OpenAI connection.');
@@ -214,7 +217,7 @@ async function resolveCommandPlace(query,city){
 async function executeAction(name,args,{signal,sessionId}={}){
  if(signal?.aborted)return {status:'cancelled'};
  if(sessionId)chat.stop();
- if(name==='stop'){abortActions();note('Stopped. Where next?');return {status:'stopped'};}
+ if(name==='stop'){sceneAuthor.cancel();abortActions();note('Stopped. Where next?');return {status:'stopped'};}
  actionAbort?.abort();const controller=new AbortController();actionAbort=controller;
  const abort=()=>controller.abort();signal?.addEventListener('abort',abort,{once:true});
  const cancel=()=>window.CrowMap?.pause();controller.signal.addEventListener('abort',cancel,{once:true});
@@ -247,6 +250,22 @@ async function executeAction(name,args,{signal,sessionId}={}){
    if(name==='fly_to'){closeResult();note(`Finding ${args.destination}…`);const place=await resolveCommandPlace(args.destination);guard();return await fly(place);}
    if(name==='land_at'){closeResult();const place=await resolveCommandPlace(args.spot,context.destination.name);guard();return await landAndLook(place,args.generate_view!==false);}
    if(name==='circle_around'){closeResult();const place=await resolveCommandPlace(args.spot);guard();note(`Circling ${place.name}…`);const result=await window.CrowMap.circleAround(place);if(result?.cancelled)return {status:'cancelled'};note(result.reducedMotion?`Landmark view of ${place.name}.`:`Orbit complete around ${place.name}.`);return {status:'completed',place,reducedMotion:result.reducedMotion||false};}
+
+   if(name==='author_scene'){
+     if(['stop','close','status'].includes(args.command))return sceneAuthor.control(args);
+     if(!scene){
+       if(['retry','select','download','crow'].includes(args.command))throw Error('There is no author scene yet. Ask to superimpose the author first.');
+       await waitForMap(controller.signal);guard();
+       if(!context.spot){
+         const place=context.position?{...context.position,name:'Current crow location'}:context.destination;
+         const result=await landAndLook(place,true);guard();
+         if(result.status==='partial'||result.status==='cancelled')return result;
+       }else await generateScene(controller.signal);
+       guard();if(!scene)throw Error('The crow scene could not be created. Try again.');
+     }
+     await openScene();guard();
+     return sceneAuthor.control(args);
+   }
    if(name==='generate_panorama')return await generateScene(controller.signal,args.regenerate===true);
    if(name==='picture_me_here')return await travel.portrait(controller.signal);
    if(name==='find_cafes')return await travel.discover(args.request,controller.signal);
@@ -274,7 +293,7 @@ async function discoveryFlight(name,args){
   try{return await executeAction(name,args);}catch(error){if(name==='circle_around'&&$('companion').hidden)$('chat-open').click();throw error;}finally{if(busySerial===serial)setCommandBusy(false);}
 }
 const discovery=createDiscovery({getContext:()=>context,request,onFly:destination=>discoveryFlight('fly_to',{destination}),onCircle:spot=>discoveryFlight('circle_around',{spot})});
-function stopCommand(){chat.stop();chat.completedConversation=null;live.cancelActions();abortActions();note('Stopped. Where next?');}
+function stopCommand(){chat.stop();chat.completedConversation=null;live.cancelActions();sceneAuthor.cancel();abortActions();note('Stopped. Where next?');}
 window.addEventListener('crow:manual-control',stopCommand);
 $('command-stop').onclick=stopCommand;
 $('chat-form').onsubmit=event=>{event.preventDefault();const message=$('chat-input').value.trim();if(!message)return;if(commandBusy&&!/^(stop|pause|cancel)[.!]?$/i.test(message)){note('Finish or stop the current request before sending another.');return;}$('chat-input').value='';$('chat-input').dispatchEvent(new Event('input'));if(/^(stop|pause|cancel)[.!]?$/i.test(message)){addMessage('user',message);stopCommand();addMessage('assistant','Stopped.');return;}live.cancelActions();abortActions();chat.send(message);};

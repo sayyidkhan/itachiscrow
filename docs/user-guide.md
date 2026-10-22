@@ -56,6 +56,11 @@ Choose **Vote for our project** on the homepage to open the hackathon gallery in
 
 The 3D map always begins with the crow. Your reference portrait should not cover the map.
 
+Ask chat **“Show me the superimposed author here”** to open Author mode. It reuses existing images for the current scene; if needed, it lands at your current crow position, creates the scene, then starts the first three portraits. Chat remains interactive inside the scene window: beside it on desktop and below it on phones. You can collapse chat and reopen it without losing your draft or ending voice.
+
+Continue with **“Make three more in a blue jacket at golden hour”**, **“Show variation 2”**, **“Download variation 2”**, **“Retry unfinished”**, **“Stop generating”**, **“Switch back to Crow”** or **“Close the scene”**. Ask for progress to check actual completion. Downloads request your browser to save the selected image. Image refinements apply to new batches; opening an existing scene does not generate another batch.
+
+
 After landing and generating a scene, use the scene window’s **Crow / Author** switch. Crow shows the generated crow scene. Author uses the reference portrait and current scene as image-generation context to create three variations of you at that destination concurrently. Three animated cards show progress, and each finished image appears immediately. Select a card to preview and save it. Each variation is a separate image request and uses the image allowance.
 
 Add optional comments under **Shape your next variations**, then choose **Generate 3 more** for another concurrent batch. Try a closer portrait, a different outfit or a candid pose. Your reference identity and location stay consistent; previous results remain in the dialog. If an image fails, retry its card individually or choose **Retry unfinished**. Successful images are not regenerated. Comments apply to new batches; retries use the original direction.
@@ -66,7 +71,7 @@ Author pictures are generated 2D scenes. They are not live photographs or a 3D a
 
 ## Change your reference photo
 
-Open **Author Studio** in the map toolbar and tap **Change photo**. Select a clear reference photo, check its preview, then choose a destination and scene direction. **Use default** restores the approved Sayyid Khan portrait included with the app.
+Ask chat **“Change my reference photo”** and use **Change reference photo** inside the scene, or open **Author Studio** in the map toolbar and tap **Change photo**. Changing the reference clears incompatible variations in the current scene; save favourites first. Select a clear reference photo, check its preview, then choose a destination and scene direction. **Use default** restores the approved Sayyid Khan portrait included with the app.
 
 Supported portrait uploads are JPEG, PNG, or WebP up to 5 MB. Studio resizes the photo in your browser and keeps the selection for the current tab, including reloads and returning to the map. Author scenes and the map’s initial portrait reference use this selection. Choosing a photo does not upload it; the reference is sent to the backend and image provider when you request generation. It does not replace the public default or another visitor’s photo. Do not treat tab-held images or results as a permanent gallery.
 

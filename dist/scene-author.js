@@ -1,4 +1,4 @@
-import {authorPhoto,selectedAuthorPhoto} from './author-reference.js';
+import {authorPhoto,selectedAuthorPhoto,prepareAuthorPhoto,saveAuthorPhoto} from './author-reference.js';
 
 export function createSceneAuthor({getScene,getViewer,request,cancelJourney}){
  const dialog=document.getElementById('panorama-dialog'),view=document.getElementById('panorama-view'),footer=dialog.querySelector('.panorama-footer'),eyebrow=dialog.querySelector('.eyebrow');
@@ -7,6 +7,7 @@ export function createSceneAuthor({getScene,getViewer,request,cancelJourney}){
  dialog.querySelector('.dialog-top').after(tabs);
  const panel=document.createElement('section');panel.className='author-scene';panel.hidden=true;
  panel.innerHTML=`<div class="author-progress"><div class="author-progress-mark" aria-hidden="true"><img src="images/crow-mark.svg" width="28" height="28" alt=""></div><div><p role="status" class="author-scene-status"></p><p class="author-progress-detail"></p></div><button type="button" class="author-stop" hidden>Stop</button></div>
+ <div class="author-reference-controls"><button type="button" class="author-change-reference">Change reference photo</button><button type="button" class="author-reset-reference">Use default photo</button><input type="file" class="author-reference-file" accept="image/jpeg,image/png,image/webp" aria-label="Choose author reference photo" hidden><span class="author-reference-status" role="status"></span></div>
  <div class="author-thumbs" role="group" aria-label="Generated variations"></div>
  <figure class="author-preview" hidden><img class="author-scene-image" alt=""><figcaption><span class="author-selected-label"></span><a class="author-save" download>Save image ↓</a></figcaption></figure>
  <form class="author-variations"><label for="author-direction">Shape your next variations <span>Optional</span></label><textarea id="author-direction" rows="2" maxlength="400" placeholder="Try a closer portrait, a candid pose, or a different outfit…"></textarea><div class="author-scene-actions"><button type="submit" class="author-more">Generate 3 more <span aria-hidden="true">↗</span></button><button type="button" class="author-retry" hidden>Retry unfinished</button></div><p class="author-scene-note">Three images per batch · AI-generated · Save your favourites before leaving.</p></form>`;
@@ -16,11 +17,18 @@ export function createSceneAuthor({getScene,getViewer,request,cancelJourney}){
  const directions=['Replace the crow with the reference person in a relaxed, three-quarter travel portrait, facing the camera.','Replace the crow with the reference person walking candidly, head turned to the camera with a natural smile.','Replace the crow with the reference person casually gesturing towards the landmark, face clearly visible.'];
  let source=null,items=[],controller=null,reference=null,mode='crow',selected=null;
  let selectedReference=selectedAuthorPhoto();
+ function state(){
+  return {available:Boolean(getScene()),open:dialog.open,mode,generating:Boolean(controller),reference:selectedReference?'custom':'default',direction:direction.value,selected:selected?.id||0,variations:items.map(item=>({id:item.id,state:item.state})),status:status.textContent};
+ }
+ function changed(){window.dispatchEvent(new CustomEvent('crow:author-state',{detail:state()}))}
+
  const current=job=>controller===job&&!job.signal.aborted&&getScene()===source&&mode==='author'&&dialog.open;
- function select(item){
+ function select(item,reveal=false){
   selected=item;img.src=item.url;img.alt=`AI-generated variation ${item.id} of you at ${source.spot.name}`;
   save.href=item.url;save.download=`author-scene-${item.id}.${item.url.startsWith('data:image/png')?'png':item.url.startsWith('data:image/webp')?'webp':'jpg'}`;
   label.textContent=`Variation ${String(item.id).padStart(2,'0')}`;preview.hidden=false;
+  if(reveal)preview.scrollIntoView({block:'nearest'});
+  changed();
   for(const button of thumbs.querySelectorAll('[aria-pressed]'))button.setAttribute('aria-pressed',String(Number(button.dataset.id)===item.id));
  }
  function render(){
@@ -30,7 +38,7 @@ export function createSceneAuthor({getScene,getViewer,request,cancelJourney}){
    const button=document.createElement('button');button.type='button';button.dataset.id=item.id;
    if(item.url){
     const thumb=new Image();thumb.src=item.url;thumb.alt='';button.append(thumb);
-    button.setAttribute('aria-label',`Show variation ${item.id}`);button.setAttribute('aria-pressed',String(selected===item));button.onclick=()=>select(item);
+    button.setAttribute('aria-label',`Show variation ${item.id}`);button.setAttribute('aria-pressed',String(selected===item));button.onclick=()=>select(item,true);
    }else{
     button.disabled=item.state==='pending'||Boolean(controller);
     button.setAttribute('aria-label',item.state==='pending'?`Creating variation ${item.id}`:`Retry variation ${item.id}`);
@@ -44,6 +52,7 @@ export function createSceneAuthor({getScene,getViewer,request,cancelJourney}){
   const busy=Boolean(controller);panel.dataset.generating=String(busy);thumbs.setAttribute('aria-busy',String(busy));
   more.disabled=busy;direction.disabled=busy;stop.hidden=!busy;retry.hidden=busy||!items.some(item=>!item.url);
   more.firstChild.textContent=items.length?'Generate 3 more ':'Generate 3 scenes ';
+  panel.querySelector('.author-reset-reference').hidden=!selectedReference;changed();
  }
  function cancel(){
   if(!controller)return;
@@ -55,6 +64,7 @@ export function createSceneAuthor({getScene,getViewer,request,cancelJourney}){
   mode=next;const active=next==='author';dialog.classList.toggle('scene-author-open',active);crow.setAttribute('aria-pressed',String(!active));author.setAttribute('aria-pressed',String(active));
   view.hidden=active;footer.hidden=active;panel.hidden=!active;eyebrow.textContent=active?'YOU, IN THIS PLACE':'YOUR CROW’S POINT OF VIEW';
   if(!active){cancel();getViewer()?.render()}
+  changed();
  }
  function reset(){
   cancel();source=getScene();items=[];reference=null;selected=null;preview.hidden=true;img.removeAttribute('src');save.removeAttribute('href');direction.value='';status.textContent='';detail.textContent='';render();setMode('crow');
@@ -100,11 +110,57 @@ export function createSceneAuthor({getScene,getViewer,request,cancelJourney}){
    if(controller===job){controller=null;render()}
   }
  }
+
+ const file=panel.querySelector('.author-reference-file'),referenceStatus=panel.querySelector('.author-reference-status');
+ let referenceVersion=0;
+ async function changeReference(data){
+  saveAuthorPhoto(data);selectedReference=data;reset();setMode('author');
+  referenceStatus.textContent=data?'Reference photo updated. Generate a new batch when ready.':'Default reference restored. Generate a new batch when ready.';
+ }
+ panel.querySelector('.author-change-reference').onclick=()=>file.click();
+ file.onchange=async()=>{
+  const version=++referenceVersion,sceneAtSelection=getScene();
+  try{if(file.files[0]){const data=await prepareAuthorPhoto(file.files[0]);if(version===referenceVersion&&sceneAtSelection===getScene())await changeReference(data)}}
+  catch(error){referenceStatus.textContent=error.message}
+  finally{file.value=''}
+ };
+ panel.querySelector('.author-reset-reference').onclick=()=>{referenceVersion++;changeReference(null).catch(error=>referenceStatus.textContent=error.message)};
+ function control({command,direction:nextDirection='',variation=0}){
+  if(command==='close'){dialog.close();return {...state(),status:'closed'}}
+  if(command==='stop'){cancel();return {...state(),status:'stopped'}}
+  if(getScene()!==source)reset();
+  if(command==='status')return state();
+  if(command==='crow'){setMode('crow');return state()}
+  cancelJourney();setMode('author');
+  if(nextDirection)direction.value=nextDirection;
+  if(command==='reference'){
+   referenceStatus.textContent='Choose a clear face photo using Change reference photo. Your photo is sent to OpenAI only when you generate.';
+   panel.querySelector('.author-change-reference').scrollIntoView({block:'nearest'});
+   panel.querySelector('.author-change-reference').focus({preventScroll:true});
+   return {...state(),status:'needs_photo',summary:referenceStatus.textContent};
+  }
+  if(command==='reset_reference'){referenceVersion++;changeReference(null).catch(error=>referenceStatus.textContent=error.message);return state()}
+  if(command==='select'||command==='download'){
+   const item=variation?items.find(item=>item.id===variation):selected;
+   if(!item?.url)throw Error('Choose a ready variation before selecting or saving it.');
+   select(item,true);
+   if(command==='download')save.click();
+   return {...state(),status:command==='download'?'download_requested':'selected'};
+  }
+  if(command==='retry'){
+   if(controller)return {...state(),status:'generating'};
+   const unfinished=items.filter(item=>!item.url&&(!variation||item.id===variation)).slice(0,3);
+   if(!unfinished.length)throw Error('There are no unfinished variations to retry.');
+   generate(unfinished);
+  }else if(command==='generate'||(command==='open'&&!items.length))generate();
+  if(command==='open'&&selected)preview.scrollIntoView({block:'nearest'});
+  return {...state(),summary:'Author controls are open. Images appear progressively; use status to check completion.'};
+ }
  crow.onclick=()=>setMode('crow');
  author.onclick=()=>{if(getScene()!==source)reset();cancelJourney();setMode('author');if(!items.length)generate()};
  form.onsubmit=event=>{event.preventDefault();generate()};
  retry.onclick=()=>generate(items.filter(item=>!item.url).slice(0,3));stop.onclick=cancel;
  dialog.addEventListener('close',()=>{if(!dialog.open)cancel()});window.addEventListener('pagehide',cancel);
  window.addEventListener('pageshow',()=>{const next=selectedAuthorPhoto();if(next!==selectedReference){selectedReference=next;reset()}});
- return {open(){if(source!==getScene())reset();else setMode('crow')}};
+ return {state,control,cancel,open(){if(source!==getScene())reset();else setMode('crow')}};
 }

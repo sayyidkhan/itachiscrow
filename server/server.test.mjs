@@ -179,10 +179,16 @@ test('GPT-Live sends the current Live session schema with bounded server-defined
   assert.equal(request.body.session.type, undefined);
   assert.equal(request.body.session.delegation.type, 'responses');
   assert.equal(request.body.session.delegation.responses.parallel_tool_calls, false);
-  assert.deepEqual(request.body.session.delegation.responses.tools.slice(1).map(tool => tool.name), ['navigate', 'travel_to', 'circle_around', 'stop', 'picture_me_here', 'find_cafes', 'fly_to', 'land_at', 'take_off', 'generate_panorama', 'plan_trip']);
+  assert.deepEqual(request.body.session.delegation.responses.tools.slice(1).map(tool => tool.name), ['navigate', 'travel_to', 'circle_around', 'stop', 'author_scene', 'picture_me_here', 'find_cafes', 'fly_to', 'land_at', 'take_off', 'generate_panorama', 'plan_trip']);
   const navigate = request.body.session.delegation.responses.tools.find(tool => tool.name === 'navigate');
   assert.deepEqual(navigate.parameters.properties.command.enum, ['forward', 'backward', 'left', 'right', 'higher', 'lower', 'stop', 'land_here', 'free_roam', 'follow']);
   assert.equal(navigate.parameters.additionalProperties, false);
+  const author=request.body.session.delegation.responses.tools.find(tool=>tool.name==='author_scene');
+  assert.equal(author.parameters.additionalProperties,false);
+  assert(author.parameters.properties.command.enum.includes('download'));
+  assert(author.parameters.properties.command.enum.includes('reference'));
+  assert.deepEqual(author.parameters.required,['command','direction','variation']);
+
   const takeOff = request.body.session.delegation.responses.tools.find(tool => tool.name === 'take_off');
   assert.deepEqual(takeOff.parameters, { type: 'object', properties: {}, required: [], additionalProperties: false });
   assert.deepEqual(result, { session: { id: 'live_123' }, transport: { type: 'webrtc', sdp: 'v=0\r\nanswer' } });
@@ -568,4 +574,22 @@ test('command chat validates pending results and continues a compound journey wi
   const next=await post(base,'/api/chat',{conversationId:data.conversationId,results:[{call_id:'travel-1',output:'{"status":"generated"}'}],context:{destination:place}});
   assert.equal(next.status,200);assert.equal((await next.json()).text,'Your scene is ready.');
   assert(providerRequests[1].input.some(item=>item.type==='function_call_output'&&item.call_id==='travel-1'));
+});
+
+test('author chat receives validated scene state without photo bytes and rejects malformed metadata',async t=>{
+  const requests=[];
+  const base=await start(t,{config,fetchImpl:async(url,options)=>{
+    requests.push(JSON.parse(options.body));
+    return ok({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'Variation 2 is ready.'}]}]});
+  }});
+  const author={available:true,open:true,mode:'author',generating:false,reference:'custom',selected:2,direction:'Blue jacket',variations:[{id:2,state:'ready'}],photo:'private-image',status:'untrusted metadata'};
+  const result=await post(base,'/api/chat',{message:'Show variation 2',context:{destination:place,author}});
+  assert.equal(result.status,200);
+  assert.match(requests[0].instructions,/"selected":2/);
+  assert.doesNotMatch(requests[0].instructions,/private-image|untrusted metadata/);
+  assert(requests[0].tools.some(tool=>tool.name==='author_scene'));
+  for(const invalid of [{...author,mode:'delete'},{...author,selected:-1},{...author,variations:[{id:1,state:'uploaded'}]}]){
+    assert.equal((await post(base,'/api/chat',{message:'Show author',context:{author:invalid}})).status,400);
+  }
+  assert.equal(requests.length,1);
 });

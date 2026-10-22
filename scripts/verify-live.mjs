@@ -295,3 +295,11 @@ test('close timeout frees devices while marking final usage unconfirmed', async 
   assert.equal(f.client.status, 'idle');
   assert.match(f.errors.at(-1).message, /could not be confirmed/);
 });
+
+test('author scene controls accept bounded directions and reject unsupported or injected actions',()=>{
+  assert.deepEqual(validateLiveAction('author_scene',{command:'generate',direction:' A blue jacket. ',variation:0}),{command:'generate',direction:'A blue jacket.',variation:0});
+  assert.deepEqual(validateLiveAction('author_scene',{command:'status'}),{command:'status',direction:'',variation:0});
+  for(const args of [{command:'delete'},{command:'open',direction:'x'.repeat(401)},{command:'select',variation:-1},{command:'download',variation:1.5},{command:'reference',url:'https://example.com/private-photo'}]){
+    assert.throws(()=>validateLiveAction('author_scene',args));
+  }
+});
