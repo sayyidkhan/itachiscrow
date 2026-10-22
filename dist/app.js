@@ -450,10 +450,16 @@ function freeRoam(){
  stop();cancelLandingMode();freeRoaming=true;
  status('Free roam · '+destination.name);hint('Drag to explore, pinch or scroll to zoom. Follow crow brings you back.');emitCrow('context');return getCrowContext();
 }
-function followCrow(){
+function followCrow({preserveView=false}={}){
  if(!ready)throw Error('Wait for the map to finish loading.');
- const view=cameraView;stop();cameraView=view;cancelLandingMode();freeRoaming=false;
+ const current=preserveView?cameraSnapshot():null,view=cameraView;
+ stop();if(!preserveView)cameraView=view;cancelLandingMode();freeRoaming=false;
  const cam=scoutPosition?scoutCamera(scoutPosition,scoutMode==='landed'):camera(progress);
+ if(current){
+  cameraView={rotation:((current.heading-cam.heading+cameraView.rotation+180)%360+360)%360-180,tilt:Math.max(0,Math.min(85,current.tilt)),zoom:Math.max(.4,Math.min(4,current.range/(cam.range/cameraView.zoom)))};
+  for(const key of ['heading','tilt','range','roll','fov'])cam[key]=current[key];
+  document.dispatchEvent(new CustomEvent('crow:camera',{detail:getCameraView()}));
+ }
  map.flyCameraTo({endCamera:cam,durationMillis:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?0:900});
  status('With your crow · '+destination.name);hint(scoutMode==='landed'?'Lift off or choose a destination.':'Choose a place to land or fly somewhere new.');emitCrow('context');return getCrowContext();
 }

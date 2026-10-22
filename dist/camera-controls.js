@@ -40,8 +40,7 @@
   }
   function findCrow() {
     try {
-      update({ rotation: 0, tilt: 0, zoom: 2 });
-      window.CrowMap.followCrow();
+      window.CrowMap.followCrow({ preserveView: true });
     } catch (error) { $('hint').textContent = error.message; }
   }
   toggle.onclick = () => {

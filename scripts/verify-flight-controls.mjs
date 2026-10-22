@@ -109,11 +109,11 @@ try {
       await cameraPad.focus();
       await page.keyboard.press('ArrowRight');
       assert.deepEqual(await page.evaluate(() => testMap.center), explored, 'Free roam rotation keeps explored centre');
+      const beforeFind=await page.evaluate(() => ({heading:testMap.heading,tilt:testMap.tilt,range:testMap.range,view:CrowMap.getCameraView()}));
       await page.locator('#camera-reset').click();
       assert.equal(await page.evaluate(() => CrowMap.getContext().freeRoaming), false, 'Find crow leaves free roam');
       assert.equal(await page.evaluate(() => testMap.center.lat), crowBeforeCamera.lat, 'Find crow actually recentres');
-      assert.equal(await page.evaluate(() => testMap.tilt), 0, 'Find crow provides a clear overhead view');
-      assert.equal(await page.evaluate(() => CrowMap.getCameraView().zoom), 2);
+      assert.deepEqual(await page.evaluate(() => ({heading:testMap.heading,tilt:testMap.tilt,range:testMap.range,view:CrowMap.getCameraView()})),beforeFind,'Find crow preserves angle and zoom');
       assert.deepEqual(await page.evaluate(() => CrowMap.getContext().position), crowBeforeCamera, 'Camera never moves crow');
       await page.screenshot({path:new URL(`camera-${width}x${height}.png`,output).pathname});
       await cameraPad.focus();
@@ -121,7 +121,7 @@ try {
       assert(await page.locator('#camera-panel').isHidden());
       assert(await page.locator('#camera-toggle').evaluate(button => document.activeElement === button), 'Escape restores focus');
       await page.locator('#camera-toggle').click();
-      assert.equal(await page.evaluate(() => CrowMap.getCameraView().zoom), 2, 'Closing keeps camera settings');
+      assert.equal(await page.evaluate(() => CrowMap.getCameraView().zoom), beforeFind.view.zoom, 'Closing keeps camera settings');
       await page.evaluate(() => CrowMap.setCameraView({rotation:90,tilt:65,zoom:1}));
       assert.equal(await page.evaluate(() => CrowMap.getCameraView().rotation), 90);
       assert.equal(await page.evaluate(() => testMap.heading), (await page.evaluate(() => CrowMap.getContext().heading) + 90) % 360);
@@ -154,10 +154,14 @@ try {
       await cameraPad.focus();
       await page.keyboard.press('ArrowUp');
       await page.waitForFunction(tilt => Math.abs(testMap.tilt-Math.max(0,tilt-10))<.001,smoothTilt);
+      await page.evaluate(() => {
+        document.getElementById('camera-pad').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));
+        document.getElementById('camera-reset').click();
+        window.findCrowAngle={heading:testMap.heading,tilt:testMap.tilt,range:testMap.range};
+      });
       await page.locator('#camera-reset').click();
-      assert.equal(await page.evaluate(() => testMap.tilt),0,'Find crow interrupts pending smoothing');
       await page.waitForTimeout(150);
-      assert.equal(await page.evaluate(() => testMap.tilt),0,'Stale look frames cannot override Find crow');
+      assert.deepEqual(await page.evaluate(() => ({heading:testMap.heading,tilt:testMap.tilt,range:testMap.range})),await page.evaluate(() => findCrowAngle),'Find crow preserves the visible angle and cancels stale look frames');
       await page.locator('#camera-toggle').click();
       await page.emulateMedia({reducedMotion:'reduce'});
       await page.evaluate(() => CrowMap.setCameraView({reset:true}));
