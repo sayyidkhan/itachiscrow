@@ -1,43 +1,45 @@
 .explorer #camera-toggle { --control-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 4h-4L8 7H4a2 2 0 0 0-2 2v10h20V9a2 2 0 0 0-2-2h-4Z'/%3E%3Ccircle cx='12' cy='13' r='4'/%3E%3C/svg%3E"); }
 .explorer #camera-panel {
-  position: absolute; top: calc(100% + 8px); left: 0; width: 100%; box-sizing: border-box;
-  max-height: calc(100dvh - var(--header-height) - 150px - env(safe-area-inset-bottom));
-  overflow-y: auto; overscroll-behavior: contain; padding: 12px; border-radius: 18px;
+  position: fixed; z-index: 4; right: 20px; bottom: calc(128px + env(safe-area-inset-bottom));
+  width: 148px; box-sizing: border-box; padding: 8px; border-radius: 20px;
+  max-height: calc(100dvh - var(--header-height) - 144px - env(safe-area-inset-bottom));
+  overflow-y: auto; overscroll-behavior: contain;
   color: #e0ece7; background: var(--glass-highlight), var(--glass-tint); border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
 }
 .explorer #camera-panel[hidden] { display: none; }
-.camera-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.camera-heading h2 { margin: 0; flex: 1; font: 17px/1.3 Georgia, serif; }
-.explorer #camera-panel button { min-height: 44px; padding: 6px 10px; border-radius: 10px; font-size: 12px; background: #b5efd815; color: #d5ffec; }
-.explorer #camera-close { min-width: 44px; font-size: 22px; background: transparent; }
-.explorer #camera-reset { background: transparent; color: #bfd3cd; }
-.camera-presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 4px 0 10px; }
-.explorer .camera-presets button[aria-pressed="true"] { background: #b5efd8; color: #12251e; }
-.camera-setting { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 2px; font: 12px/1.4 system-ui; }
-.camera-setting output { font-variant-numeric: tabular-nums; color: #b5efd8; }
-.explorer .camera-setting input { width: 100%; min-width: 0; height: 36px; padding: 0; margin: 0 0 3px; accent-color: #b5efd8; cursor: pointer; }
-.camera-distance { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; color: #bfd3cd; }
-.camera-distance > span:nth-child(2) { grid-column: 1; grid-row: 1; }
-.camera-distance > span:nth-child(3) { grid-column: 3; grid-row: 1; }
-.explorer .camera-distance input { grid-column: 2; grid-row: 1; height: 44px; margin: 0; }
-.explorer #camera-fine-tune summary { display: list-item; box-sizing: border-box; min-height: 44px; padding: 12px 2px; font: 12px/20px system-ui; color: #bfd3cd; cursor: pointer; }
-.camera-fine-settings { padding-top: 4px; }
-.explorer #camera-panel :is(button, input, summary):focus-visible { outline: 2px solid #d4ffeb; outline-offset: 2px; }
-.explorer.conversation-first:has(#camera-panel:not([hidden])) .travel-transition:not(.travel-contained) { visibility: hidden; }
-.explorer.conversation-first:has(#camera-panel:not([hidden])) .bottom { z-index: 6; }
+.camera-heading { display: flex; align-items: center; justify-content: space-between; }
+.camera-heading h2 { margin: 0 0 0 3px; font: 11px/1.3 system-ui; font-weight: 600; white-space: nowrap; }
+.explorer #camera-panel button { min-height: 44px; padding: 0; border-radius: 12px; font-size: 12px; background: #b5efd815; color: #d5ffec; touch-action: manipulation; }
+.explorer #camera-close { min-width: 44px; flex: 0 0 44px; font-size: 22px; background: transparent; }
+.explorer #camera-pad { position: relative; display: grid; place-items: center; width: 100%; height: 104px; border-radius: 16px; background: radial-gradient(ellipse, #b5efd830, #b5efd808); border: 1px solid #b5efd82b; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+.explorer #camera-pad.dragging { cursor: grabbing; background-color: #b5efd822; }
+#camera-pad > * { pointer-events: none; }
+#camera-pad span { position: absolute; font: 27px/1 system-ui; color: #c7f4e2; }
+.camera-up { top: 2px; left: calc(50% - 8px); }
+.camera-down { bottom: 3px; left: calc(50% - 8px); }
+.camera-left { left: 9px; top: calc(50% - 16px); }
+.camera-right { right: 9px; top: calc(50% - 16px); }
+#camera-help { margin: 6px -2px; text-align: center; font: 9px/1.5 system-ui; color: #bfd3cd; }
+.camera-zoom-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.explorer .camera-zoom-buttons button { font-size: 24px; }
+.explorer #camera-panel button:disabled { opacity: .4; }
+.explorer #camera-reset { width: 100%; margin-top: 4px; background: transparent; }
+.explorer #camera-panel button:focus-visible { outline: 2px solid #d4ffeb; outline-offset: 2px; }
+.explorer:has(#loading:not([hidden])) #camera-panel,
+.explorer:has(#companion:not([hidden])) #camera-panel,
+.explorer:has(#voice-overlay:not([hidden])) #camera-panel,
+.explorer:has(#nearby-panel:not([hidden])) #camera-panel,
+.explorer.long-flight #camera-panel { visibility: hidden; pointer-events: none; }
 @media (max-width: 370px) {
   .explorer .bottom .controls button { font-size: 10px; }
+  .explorer #camera-panel { width: 132px; right: 12px; }
 }
-@media (max-width: 760px) and (orientation: portrait) {
-  .explorer #camera-panel {
-    position: fixed; top: auto; left: 12px; right: 12px; bottom: calc(108px + env(safe-area-inset-bottom));
-    width: auto; max-height: calc(50dvh - 112px); z-index: 6;
-  }
+@media (max-width: 1000px) {
+  .explorer #camera-panel { right: 12px; }
 }
-@media (max-width: 1000px) and (orientation: landscape) {
-  .explorer #camera-panel {
-    position: fixed; top: calc(var(--header-height) + 12px); left: auto; right: 12px;
-    width: min(320px, calc(50% - 24px)); max-height: calc(100dvh - var(--header-height) - 132px); z-index: 6;
-  }
+@media (max-height: 600px) {
+  .explorer #camera-panel { width: 132px; bottom: calc(108px + env(safe-area-inset-bottom)); max-height: calc(100dvh - var(--header-height) - 200px - env(safe-area-inset-bottom)); padding: 6px; }
+  .explorer #camera-pad { height: 80px; }
+  .camera-heading, #camera-help { display: none; }
 }
