@@ -1,4 +1,4 @@
-import { validateLiveAction } from './live.js?v=5';
+import { validateLiveAction } from './live.js?v=6';
 
 // Typed and spoken commands use the same validated application action handler.
 export class CrowChat {

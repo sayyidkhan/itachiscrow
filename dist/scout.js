@@ -1,8 +1,9 @@
 import {createSceneAuthor} from './scene-author.js?v=3';
 import { PanoramaViewer } from './panorama.js?v=2';
 import { createPanoramaJourney } from './panorama-journey.js';
-import { CrowChat } from './chat.js?v=4';
-import { CrowLive } from './live.js?v=5';
+import { CrowChat } from './chat.js?v=5';
+import { CrowLive } from './live.js?v=6';
+import { controlCamera } from './camera-actions.js';
 import { createTravelExperience } from './travel.js';
 import { createDiscovery } from './discovery.js?v=4';
 
@@ -25,7 +26,7 @@ function identity(value){return value?`${value.name}|${value.lat}|${value.lng}`:
 function setOpen(open,explicit=false){if(open&&!explicit)return;$('scout-panel').hidden=!open;$('scout-open').setAttribute('aria-expanded',String(open));document.body.classList.toggle('scout-visible',open);document.body.classList.toggle('debug-open',open);}
 function tab(name,focus=false){currentTab=name;for(const button of document.querySelectorAll('[data-tab]')){const active=button.dataset.tab===name;button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;$(`panel-${button.dataset.tab}`).hidden=!active;if(active&&focus)button.focus();}}
 function preferences(){return {days:Number($('plan-days').value),budget:$('plan-budget').value,interests:$('plan-interests').value.trim()};}
-function liveContext(){const prefs=preferences();return {...context,...prefs,interests:prefs.interests.split(/[,\n]/).map(x=>x.trim().slice(0,100)).filter(Boolean).slice(0,12),flightState:context.mode||'exploring',author:sceneAuthor.state()};}
+function liveContext(){const prefs=preferences();return {...context,...prefs,camera:context.mapReady?window.CrowMap?.getCameraView?.():undefined,interests:prefs.interests.split(/[,\n]/).map(x=>x.trim().slice(0,100)).filter(Boolean).slice(0,12),flightState:context.mode||'exploring',author:sceneAuthor.state()};}
 function clearPlan(){planning?.abort();planning=null;plan=null;$('plan-result').replaceChildren();$('plan-sources').replaceChildren();$('download-plan').hidden=true;$('plan-status').textContent='';$('generate-plan').disabled=false;$('generate-plan').textContent='Plan my trip ↗';}
 function renderPlan(text,target=$('plan-result')){
   const fragment=document.createDocumentFragment();
@@ -114,6 +115,7 @@ async function generateSceneNow(signal,regenerate=false){
 const sceneAuthor=createSceneAuthor({getScene:()=>scene,getViewer:()=>viewer,request,cancelJourney:()=>panoramaJourney.cancel()});
 let renderedScene=null;
 window.addEventListener('crow:author-state',()=>live.updateContext(liveContext()));
+document.addEventListener('crow:camera',()=>live.updateContext(liveContext()));
 async function openScene(){
   if(!scene||($('panorama-dialog').open&&renderedScene===scene))return;window.CrowMap?.pause();sceneAuthor.open();
   $('scene-open').hidden=false;
@@ -217,6 +219,15 @@ async function resolveCommandPlace(query,city){
 async function executeAction(name,args,{signal,sessionId}={}){
  if(signal?.aborted)return {status:'cancelled'};
  if(sessionId)chat.stop();
+ if(name==='camera'){
+   await waitForMap(signal || new AbortController().signal);
+   if(signal?.aborted)return {status:'cancelled'};
+   if(args.command!=='status'){
+     if($('panorama-dialog').open)$('panorama-dialog').close();
+     closeResult();
+   }
+   return controlCamera(window.CrowMap,args);
+ }
  if(name==='stop'){sceneAuthor.cancel();abortActions();note('Stopped. Where next?');return {status:'stopped'};}
  actionAbort?.abort();const controller=new AbortController();actionAbort=controller;
  const abort=()=>controller.abort();signal?.addEventListener('abort',abort,{once:true});

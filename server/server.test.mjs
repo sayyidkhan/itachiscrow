@@ -244,7 +244,13 @@ test('GPT-Live sends the current Live session schema with bounded server-defined
   assert.equal(request.body.session.type, undefined);
   assert.equal(request.body.session.delegation.type, 'responses');
   assert.equal(request.body.session.delegation.responses.parallel_tool_calls, false);
-  assert.deepEqual(request.body.session.delegation.responses.tools.slice(1).map(tool => tool.name), ['navigate', 'travel_to', 'circle_around', 'stop', 'author_scene', 'picture_me_here', 'find_cafes', 'fly_to', 'land_at', 'take_off', 'generate_panorama', 'plan_trip']);
+  assert.deepEqual(request.body.session.delegation.responses.tools.slice(1).map(tool => tool.name), ['camera', 'navigate', 'travel_to', 'circle_around', 'stop', 'author_scene', 'picture_me_here', 'find_cafes', 'fly_to', 'land_at', 'take_off', 'generate_panorama', 'plan_trip']);
+  const camera = request.body.session.delegation.responses.tools.find(tool => tool.name === 'camera');
+  assert.equal(camera.parameters.additionalProperties, false);
+  assert.deepEqual(camera.parameters.required, ['command', 'rotation', 'tilt', 'zoom']);
+  assert(camera.parameters.properties.command.enum.includes('find_crow'));
+  assert.match(request.body.session.instructions, /Camera requests change only the view/);
+  assert.match(request.body.session.delegation.responses.instructions, /Look left\/right changes the camera/);
   const navigate = request.body.session.delegation.responses.tools.find(tool => tool.name === 'navigate');
   assert.deepEqual(navigate.parameters.properties.command.enum, ['forward', 'backward', 'left', 'right', 'higher', 'lower', 'stop', 'land_here', 'free_roam', 'follow']);
   assert.equal(navigate.parameters.additionalProperties, false);
@@ -639,6 +645,26 @@ test('command chat validates pending results and continues a compound journey wi
   const next=await post(base,'/api/chat',{conversationId:data.conversationId,results:[{call_id:'travel-1',output:'{"status":"generated"}'}],context:{destination:place}});
   assert.equal(next.status,200);assert.equal((await next.json()).text,'Your scene is ready.');
   assert(providerRequests[1].input.some(item=>item.type==='function_call_output'&&item.call_id==='travel-1'));
+});
+
+test('chat and voice accept bounded camera state and discard unrelated metadata', async t => {
+  const requests = [];
+  const fetchImpl = async (url, options) => {
+    requests.push(JSON.parse(options.body));
+    return url.endsWith('/live/sessions') ? ok({ session: { id: 'camera-live' }, transport: { type: 'webrtc', sdp: 'answer' } }) : ok({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: 'Camera ready.' }] }] });
+  };
+  const base = await start(t, { config, fetchImpl });
+  const camera = { rotation: -30, tilt: 42, zoom: .8, hidden: 'untrusted-camera-instructions' };
+  assert.equal((await post(base, '/api/chat', { message: 'Look left', context: { camera } })).status, 200);
+  await createLiveSession({ sdp: 'v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n', context: { camera } }, { config, fetchImpl });
+  for (const instructions of [requests[0].instructions, requests[1].session.delegation.responses.instructions]) {
+    assert.match(instructions, /"camera":\{"rotation":-30,"tilt":42,"zoom":0.8\}/);
+    assert.doesNotMatch(instructions, /untrusted-camera-instructions/);
+  }
+  for (const invalid of [[], { rotation: 181, tilt: 40, zoom: 1 }, { rotation: 0, tilt: -1, zoom: 1 }, { rotation: 0, tilt: 40, zoom: 0 }, { rotation: 0, tilt: '40', zoom: 1 }]) {
+    assert.equal((await post(base, '/api/chat', { message: 'Look left', context: { camera: invalid } })).status, 400);
+  }
+  assert.equal(requests.length, 2);
 });
 
 test('author chat receives validated scene state without photo bytes and rejects malformed metadata',async t=>{

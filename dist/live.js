@@ -9,7 +9,10 @@
  * JSON result and should honor its third argument's AbortSignal.
  */
 
+import { validateCameraAction } from './camera-actions.js';
+
 const ACTIONS = Object.freeze({
+  camera: { field: null },
   travel_to: {fields:{destination:'text',landing_spot:'text',generate_view:'boolean'}},
   circle_around:{field:'spot',limit:240},
   stop:{field:null},
@@ -41,6 +44,7 @@ export function validateLiveAction(name, rawArguments) {
   try { args = typeof rawArguments === 'string' ? JSON.parse(rawArguments) : rawArguments; }
   catch { throw new Error('The assistant sent invalid action arguments. Please try the request again.'); }
   if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('Action arguments must be an object.');
+  if (name === 'camera') return validateCameraAction(args);
   if (name === 'navigate' && !['forward', 'backward', 'left', 'right', 'higher', 'lower', 'stop', 'land_here', 'free_roam', 'follow'].includes(args.command)) throw new Error('Unsupported crow direction.');
 
   if(name==='author_scene'){
@@ -85,6 +89,7 @@ function contextText(context) {
   if (typeof context === 'string') return context;
   const data = context && typeof context === 'object' ? context : {};
   const facts = {
+    camera: data.camera ? { rotation: data.camera.rotation, tilt: data.camera.tilt, zoom: data.camera.zoom } : undefined,
     author: data.author?{mode:data.author.mode,open:data.author.open,generating:data.author.generating,selected:data.author.selected,ready:data.author.variations?.filter(item=>item.state==='ready').map(item=>item.id).slice(-12),reference:data.author.reference}:undefined,
 
     destination: placeLabel(data.destination),

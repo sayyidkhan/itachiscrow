@@ -59,6 +59,25 @@ function responseEvent(channel, event, delegationId = 'delegation_1') {
   channel.receive({ type: 'response.event', delegation_id: delegationId, event });
 }
 
+test('voice camera actions validate once, deduplicate repeats and return current camera context', async () => {
+  const actions = [];
+  const f = fixture({ onAction: async (name, args) => { actions.push({ name, args }); return { status: 'completed', camera: { rotation: -30, tilt: 65, zoom: 1 } }; } });
+  const channel = await f.connect({ camera: { rotation: 0, tilt: 65, zoom: 1 } });
+  assert.match(channel.sent[0].content, /"camera":\{"rotation":0,"tilt":65,"zoom":1\}/);
+  for (const id of ['camera-response', 'duplicate-response']) {
+    responseEvent(channel, { type: 'response.created', response: { id } });
+    responseEvent(channel, { type: 'response.output_item.done', item: { type: 'function_call', call_id: 'same-camera-call', name: 'camera', arguments: '{"command":"adjust","rotation":-30,"tilt":null,"zoom":null}' } });
+    responseEvent(channel, { type: 'response.completed', response: { id } });
+    await tick();
+  }
+  assert.deepEqual(actions, [{ name: 'camera', args: { command: 'adjust', rotation: -30, tilt: null, zoom: null } }]);
+  const outputs = channel.sent.filter(event => event.item?.type === 'function_call_output');
+  assert.equal(outputs.length, 2);
+  assert.deepEqual(JSON.parse(outputs[0].item.output).camera, { rotation: -30, tilt: 65, zoom: 1 });
+  assert.equal(f.errors.length, 0);
+  await f.close();
+});
+
 test('voice meter reads existing streams, respects mute and releases audio resources', async () => {
   const contexts = [], levels = [];
   class MeterContext {

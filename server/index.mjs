@@ -394,6 +394,15 @@ function liveContext(value) {
   if (value.budget != null) result.budget = boundedText(value.budget, 'context.budget', 120);
   if (value.interests != null) result.interests = validateInterests(value.interests);
   if (value.flightState != null) result.flightState = boundedText(value.flightState, 'context.flightState', 80);
+  if (value.camera != null) {
+    if (typeof value.camera !== 'object' || Array.isArray(value.camera)) fail('context.camera must be an object.');
+    result.camera = {};
+    for (const [key, min, max] of [['rotation', -180, 180], ['tilt', 0, 85], ['zoom', .4, 4]]) {
+      const number = value.camera[key];
+      if (!Number.isFinite(number) || number < min || number > max) fail('Invalid camera ' + key + '.');
+      result.camera[key] = number;
+    }
+  }
   if(value.author!=null){
     const author=value.author;
     if(typeof author!=='object'||Array.isArray(author)||!author)fail('context.author must be an object.');
@@ -416,6 +425,7 @@ function liveContext(value) {
 }
 
 const liveTools = [
+  {name:'camera',description:'Adjust only the live 3D map camera, never move or turn the crow. adjust applies relative rotation/tilt in degrees and multiplies zoom; set uses absolute rotation/tilt/zoom. Unused values must be null. Look left: adjust rotation -15; right: +15. Look up: tilt -10; down: +10. Zoom in: zoom 0.833333; out: 1.2. Honour requested degrees/factors. Tilt 0 looks straight down from above, 85 looks towards the horizon. set zoom must be 0.4 to 4. Presets behind/side/front/above preserve zoom. reset restores the default camera. find_crow recentres preserving the rendered angle and zoom; status reads current settings. Presets/find_crow/reset/status require all three numeric fields null. Opens the map if a generated scene is open; does not edit generated images.',properties:{command:{type:'string',enum:['adjust','set','behind','side','front','above','find_crow','reset','status']},rotation:{type:['number','null'],minimum:-180,maximum:180},tilt:{type:['number','null'],minimum:-85,maximum:85},zoom:{type:['number','null'],minimum:0.1,maximum:10}},required:['command','rotation','tilt','zoom']},
   {name:'navigate',description:'Steer the crow directly relative to its current heading: forward/backward move, left/right turn, higher/lower change altitude. Each direction lasts two seconds then hovers; takeoff happens automatically when perched. land_here lands at the actual crow position without generating images. free_roam releases the camera; follow returns to the crow. Use for short directional voice/text commands; never invent a destination or repeat unless asked.',properties:{command:{type:'string',enum:['forward','backward','left','right','higher','lower','stop','land_here','free_roam','follow']}},required:['command']},
   {name:'travel_to',description:'Complete a connected journey: fly to a city, land at a named spot there, and generate/open a 360 view. Prefer this single tool for multi-step travel requests. Generate the view by default after landing unless the traveler explicitly declines images.',properties:{destination:{type:'string',description:'City or region, with country when helpful.'},landing_spot:{type:'string',description:'Landing landmark or neighborhood within that destination.'},generate_view:{type:'boolean',description:'True by default; false only if the traveler declines a generated view.'}},required:['destination','landing_spot','generate_view']},
   {name:'circle_around',description:'Fly to and circle around a named landmark or place once. Use for circle, orbit, loop around, or show me around from above. Does not land or generate an image.',properties:{spot:{type:'string',description:'Searchable place including city/country, or here for the current location.'}},required:['spot']},
@@ -432,7 +442,7 @@ const liveTools = [
 ].map(tool => ({ type: 'function', name: tool.name, description: tool.description, parameters: { type: 'object', properties: tool.properties, required: tool.required, additionalProperties: false }, strict: true }));
 
 function guideInstructions(context) {
-  return 'Use navigate for forward, backward, turn left/right, fly higher/lower, free roam, follow crow, and land here. These are direct controls, not place searches. land_here does not generate an image. Directional commands run once for two seconds then hover; do not repeat automatically. Use take_off for lift off and stop immediately for stop/hover. ' + travelInstructions(context);
+  return 'Use camera for camera/look/view/angle/tilt/zoom requests, including look left/right/up/down, closer/further, behind/side/front/above, reset camera, find crow and camera status. Look left/right changes the camera; turn left/right without camera/view wording steers the crow with navigate. A more top-down view decreases tilt. Apply relative changes using adjust, explicit absolute settings using set. Combine angle and zoom changes in one camera call when requested. Camera actions run once, preserve crow position/heading, and remain usable while steering. find_crow must preserve the current view. Camera results report the target settings; movement eases towards them. Camera tools control the live map, not generated Author images; image framing refinements still use author_scene. Use navigate for forward, backward, turn left/right, fly higher/lower, free roam, follow crow, and land here. These are direct controls, not place searches. land_here does not generate an image. Directional commands run once for two seconds then hover; do not repeat automatically. Use take_off for lift off and stop immediately for stop/hover. ' + travelInstructions(context);
 }
 
 function travelInstructions(context) {
@@ -492,7 +502,7 @@ export async function createLiveSession(body, { config, fetchImpl, signal }) {
   const result = await openAIRequest('/live/sessions', {
     session: {
       model: config.liveModel,
-      instructions: 'You are Itachi, a friendly crow companion exploring a virtual world map with the traveler. Speak naturally and briefly. Delegate clear map commands and compound journeys immediately to the backend; do not direct the traveler to manual controls. A landing normally includes a 360 view. Circle and orbit requests use the circle tool. Delegate stop/cancel immediately. Announce actions only after tools confirm success. Ask for the destination if absent. Explain that panoramas are AI impressions and Instagram posts are recent hashtag matches. Never claim that the crow or generated imagery is a real-time camera.',
+      instructions: 'You are Itachi, a friendly crow companion exploring a virtual world map with the traveler. Speak naturally and briefly. Delegate clear map commands and compound journeys immediately to the backend; do not direct the traveler to manual controls. Delegate camera angle, look left/right/up/down, zoom, closer/further, viewing presets, reset camera and find crow requests too. Camera requests change only the view; turn left/right without camera wording steers the crow. Find crow preserves the current angle and zoom. A landing normally includes a 360 view. Circle and orbit requests use the circle tool. Delegate stop/cancel immediately. Announce actions only after tools confirm success. Ask for the destination if absent. Explain that panoramas are AI impressions and Instagram posts are recent hashtag matches. Never claim that the crow or generated imagery is a real-time camera.',
       delegation: {
         type: 'responses',
         responses: {

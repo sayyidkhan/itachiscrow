@@ -13,18 +13,19 @@ try{
  for(const [width,height] of [[320,568],[390,844],[430,932],[740,390],[390,380],[1280,844]]){
   const context=await browser.newContext({viewport:{width,height},acceptDownloads:true});
   const jobs=[],errors=[];
-  let action=null;
+  let action=null, actionName='author_scene';
   const chatRequests=[];
   await context.route('**/api/chat',async route=>{
    const body=route.request().postDataJSON();chatRequests.push(body);
-   await route.fulfill({json:body.message?{conversationId:'author-chat',calls:[{call_id:'author-'+chatRequests.length,name:'author_scene',arguments:JSON.stringify(action)}]}:{conversationId:'author-chat',text:'Author controls updated.',calls:[]}});
+   await route.fulfill({json:body.message?{conversationId:'author-chat',calls:[{call_id:'author-'+chatRequests.length,name:actionName,arguments:JSON.stringify(action)}]}:{conversationId:'author-chat',text:'Author controls updated.',calls:[]}});
   });
 
   await context.route('**/config.js',route=>route.fulfill({contentType:'text/javascript',body:''}));
   await context.route('**/api/status',route=>route.fulfill({json:{capabilities:{chat:true,panorama:true},traveller:{}}}));
   await context.route('**/app.js*',route=>route.fulfill({contentType:'text/javascript',body:`
    window.mapContext={mapReady:true,destination:{name:'Singapore',lat:1.29,lng:103.85},spot:{name:'Padang, Singapore',lat:1.29,lng:103.85},savedPlaces:[]};
-   window.CrowMap={getContext:()=>window.mapContext,pause(){},async landAt(place){window.mapContext.spot=place;document.dispatchEvent(new CustomEvent('crow:context',{detail:window.mapContext}));return {status:'landed'}}};
+   window.mapCamera={rotation:0,tilt:65,zoom:1};
+   window.CrowMap={getContext:()=>window.mapContext,getCameraView:()=>({...window.mapCamera}),setCameraView(next){Object.assign(window.mapCamera,next);document.dispatchEvent(new CustomEvent('crow:camera'));},pause(){},async landAt(place){window.mapContext.spot=place;document.dispatchEvent(new CustomEvent('crow:context',{detail:window.mapContext}));return {status:'landed'}}};
    document.getElementById('loading').hidden=true;
   `}));
   await context.route('**/panorama.js*',route=>route.fulfill({contentType:'text/javascript',body:`
@@ -161,6 +162,16 @@ try{
    await command('close');
    assert.equal(await page.locator('#panorama-dialog #companion').count(),0);
    assert(await page.locator('#companion').isVisible(),'Closing scene restores chat to map');
+
+   await command('open');
+   assert(await page.locator('#panorama-dialog').isVisible());
+   actionName='camera';action={command:'above'};
+   await page.locator('#chat-input').fill('Show the map camera from above');
+   await page.locator('#chat-send').click();
+   await page.waitForFunction(()=>!document.getElementById('panorama-dialog').open&&document.getElementById('chat-input').getAttribute('aria-busy')!=='true');
+   assert.equal(await page.evaluate(()=>CrowMap.getCameraView().tilt),0);
+   assert(await page.locator('#companion').isVisible(),'Camera commands restore chat from the scene to the map');
+   assert.equal(await page.locator('#panorama-dialog #companion').count(),0);
 
    assert.deepEqual(errors,[]);
    console.log(width+'×'+height+': parallel requests, partial success, retry, comments, more batches, download, cancellation, context reset, reduced motion, chat actions, modal focus, responsive docking, reference changes and chat restoration passed.');
