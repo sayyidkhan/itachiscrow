@@ -4,7 +4,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { request } from 'node:http';
-import { startZoRuntime } from './zo-runtime.mjs';
+import { openUsageDatabase, startZoRuntime } from './zo-runtime.mjs';
+import { enforceUsage } from '../worker/usage-limits.mjs';
 
 async function start(t,options={}){
  const server=await startZoRuntime({port:0,host:'127.0.0.1',databasePath:':memory:',...options,env:{PUBLIC_ORIGIN:'https://crow.example',...options.env}});
@@ -26,8 +27,23 @@ test('discovery previews use the existing image allowance in Zo', async t => {
  const base=await start(t,{env:{OPENAI_API_KEY:'test-key'},fetchImpl:async()=>Response.json({data:[{b64_json:'/9j/4AAQ'}]})});
  const send=origin=>fetch(base+'/api/discovery/image',{method:'POST',headers:{...headers(),Origin:origin},body:JSON.stringify({query:'Park, Singapore'})});
  assert.equal((await send('https://other.example')).status,403);
- for(let i=0;i<6;i++)assert.equal((await send('https://crow.example')).status,200);
+ for(let i=0;i<18;i++)assert.equal((await send('https://crow.example')).status,200);
  assert.equal((await send('https://crow.example')).status,429);
+});
+
+test('image admission allows 18 per minute and 72 per hour with fixed-window resets', async t => {
+ const {db,adapter}=await openUsageDatabase();
+ t.after(()=>db.close());
+ const request=new Request('https://crow.example/api/portrait',{headers:{'cf-connecting-ip':'192.0.2.1'}});
+ const hour=Date.UTC(2026,9,22,12);
+ for(let minute=0;minute<4;minute++){
+  const now=hour+minute*60000;
+  for(let i=0;i<18;i++)assert.equal((await enforceUsage(request,adapter,'image',now)).allowed,true);
+  assert.deepEqual(await enforceUsage(request,adapter,'image',now),{allowed:false,retryAfter:minute===3?3420:60});
+ }
+ assert.deepEqual(await enforceUsage(request,adapter,'image',hour+4*60000),{allowed:false,retryAfter:3360});
+ assert.equal(db.prepare('SELECT hour_count FROM usage_limits').get().hour_count,72);
+ assert.equal((await enforceUsage(request,adapter,'image',hour+3600000)).allowed,true);
 });
 
 test('Zo runtime mirrors protected map and configuration contracts with persistent SQLite admission',async t=>{

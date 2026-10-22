@@ -7,7 +7,7 @@ Server-enforced per-IP limits use persistent D1 counters. Requests are charged b
 | Chat API requests (including tool follow-ups) | 12 | 120 |
 | Place searches | 20 | 100 |
 | Map starts | 4 | 10 |
-| Generated images / panoramas | 6 | 24 |
+| Generated images / panoramas | 18 | 72 |
 | Voice session starts | 3 | 12 |
 | Research / trip plans / AI place recommendations | 3 | 20 |
 

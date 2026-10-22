@@ -1,4 +1,4 @@
-export const usagePolicies={chat:[12,120],search:[20,100],map:[4,10],image:[6,24],voice:[3,12],research:[3,20]};
+export const usagePolicies={chat:[12,120],search:[20,100],map:[4,10],image:[18,72],voice:[3,12],research:[3,20]};
 export function mapKeyEntries(env){
  const numbered=Object.fromEntries(Object.entries(env).filter(([name,value])=>/^CROW_MAPS_KEY[1-9]\d*$/.test(name)&&typeof value==='string'));
  const aliases=['CROW_MAPS_KEY','CROW_MAPS_FALLBACK_KEY','CROW_MAPS_FALLBACK_KEY_2'];
