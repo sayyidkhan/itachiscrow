@@ -15,10 +15,12 @@
 <link rel="stylesheet" href="discovery.css?v=3">
 <link rel="stylesheet" href="flight-controls.css?v=7">
 <link rel="stylesheet" href="camera-controls.css?v=6">
+<link rel="stylesheet" href="rooftops.css?v=1">
 <link rel="stylesheet" href="voice-orb.css?v=3">
 <link rel="stylesheet" href="steering.css?v=5"><link rel="stylesheet" href="vote.css?v=2"><script src="vote.js?v=2" defer></script></head>
 <body class="explorer conversation-first">
 <main id="world" aria-label="Interactive 3D travel map"></main>
+<a class="building-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">Buildings © OpenStreetMap</a>
 <div class="vignette" aria-hidden="true"></div>
 <div class="travel-atmosphere" aria-hidden="true"></div>
 <section id="travel-transition" class="travel-transition" aria-label="Destination flight" hidden><div class="travel-caption"><span id="travel-stage" role="status">Leaving the familiar</span><span id="travel-distance"></span></div><div class="travel-route"><span id="travel-origin">Your location</span><span class="travel-route-line" aria-hidden="true"><i></i><b>↗</b></span><span id="travel-destination"></span></div><div class="travel-track" aria-hidden="true"><i id="travel-progress"></i></div><p>A little further. A whole new perspective.</p></section>
@@ -104,9 +106,10 @@
 <script src="config.js"></script>
 <script type="module" src="music.js?v=2"></script>
 <script src="location.js"></script>
+<script src="rooftops.js?v=1"></script>
 <script src="map-keys.js?v=23"></script>
 <script src="place-search.js?v=23"></script>
-<script src="app.js?v=32"></script>
+<script src="app.js?v=33"></script>
 <script type="module" src="flight-controls.js?v=5"></script>
 <script src="camera-controls.js?v=7" defer></script>
 <section class="steering-control" aria-label="Crow steering">

@@ -306,13 +306,13 @@ assert.equal(parts[0].position.lat, rooftop.lat);
 assert(Math.abs(parts[0].position.lng - rooftop.lng) < 1e-10);
 assert.equal(parts[0].altitudeMode, 'RELATIVE_TO_MESH', 'Without a resolved rooftop height, stay over the same roof');
 
-async function locationCase(locate, key = 'test', nativeAnimationEnd = false, adjustedCamera = false, noSteady = false) {
+async function locationCase(locate, key = 'test', nativeAnimationEnd = false, adjustedCamera = false, noSteady = false, rooftops = undefined) {
   const nodes = new Map();
   const isolatedDocument = Object.assign(new EventTarget(), {
     baseURI: document.baseURI, currentScript: document.currentScript, head: new Element(), body: new Element(), activeElement: null,
     getElementById(id) { if (!nodes.has(id)) nodes.set(id, new Element()); return nodes.get(id); }, createElement() { return new Element(); },
   });
-  const isolatedWindow = Object.assign(createCrowWindow(key), { CrowLocation: { locate } });
+  const isolatedWindow = Object.assign(createCrowWindow(key), { CrowLocation: { locate }, CrowRooftops: rooftops });
   const isolated = vm.createContext({ ...sandbox, document: isolatedDocument, window: isolatedWindow });
   const emitted = [];
   for (const name of ['ready', 'landed']) isolatedDocument.addEventListener('crow:' + name, event => emitted.push({ name, detail: event.detail }));
@@ -348,6 +348,33 @@ async function locationCase(locate, key = 'test', nativeAnimationEnd = false, ad
 }
 let locationCalls = 0;
 const singapore = { name: 'Your location', lat: 1.2868, lng: 103.8545 };
+const roofPlace={...singapore,lat:singapore.lat+.0003,perch:'rooftop',building:'Nearest building'};
+let rooftopLookups=0;
+const rooftopStart=await locationCase(async()=>({status:'located',place:singapore}),'test',false,false,false,{async find(){rooftopLookups++;return roofPlace;}});
+assert.equal(rooftopStart.api.getContext().spot.lat,roofPlace.lat,'Startup picks the nearby roof');
+assert.equal(rooftopStart.api.getContext().startLocation.lat,singapore.lat,'The real device location remains separate from the perch');
+assert.equal(rooftopStart.map.initialOptions.center.lat,roofPlace.lat,'Bootstrap uses the roof from the first map frame');
+assert.equal(vm.runInContext('crowParts[0].altitudeMode',rooftopStart.sandbox),'RELATIVE_TO_MESH','Google resolves the actual rooftop elevation');
+rooftopStart.nodes.get('restart').onclick();
+assert.equal(rooftopStart.api.getContext().position.lat,roofPlace.lat,'Reset returns to the saved rooftop');
+assert.equal(rooftopLookups,1,'Reset does not repeat the footprint lookup');
+await rooftopStart.api.useCurrentLocation();
+assert.equal(rooftopStart.api.getContext().spot.lat,roofPlace.lat,'Current location also chooses the roof');
+let releaseRoof;
+rooftopStart.window.CrowRooftops.find=()=>new Promise(resolve=>{releaseRoof=resolve;});
+const pendingRoof=rooftopStart.api.useCurrentLocation();
+await new Promise(resolve=>setImmediate(resolve));
+const rooftopInterruptedFlight=rooftopStart.api.flyTo({name:'User chosen destination',lat:48.85,lng:2.35});
+releaseRoof(roofPlace);assert.equal((await pendingRoof).cancelled,true,'A late roof lookup cannot override a new flight');
+assert.equal(rooftopStart.api.getContext().destination.name,'User chosen destination');rooftopStart.api.pause();await rooftopInterruptedFlight;
+const fallbackRoof=await locationCase(async()=>({status:'denied',place:null}),'test',false,false,false,{async find(place){return {...place,lat:place.lat+.0003,perch:'rooftop'};}});
+assert.equal(fallbackRoof.api.getContext().hasUserLocation,false);
+fallbackRoof.nodes.get('restart').onclick();
+assert.equal(fallbackRoof.api.getContext().position.lat,1.28972+.0003,'Denied location reset keeps the fallback rooftop');
+for(const find of [async()=>{throw Error('Footprints unavailable');},async()=>({...singapore,lat:singapore.lat+1})]){
+ const unavailableRoof=await locationCase(async()=>({status:'located',place:singapore}),'test',false,false,false,{find});
+ assert.equal(unavailableRoof.api.getContext().position.lat,singapore.lat,'Missing or out-of-range roofs keep the original starting point');
+}
 const located = await locationCase(async () => { locationCalls++; return { status: 'located', place: singapore, accuracy: 12, message: 'Starting at your browser location.' }; });
 assert.equal(locationCalls, 1);
 assert.equal(located.api.getContext().locationStatus, 'located');

@@ -6,6 +6,8 @@
 
 Open **Let’s explore**. Location permission is optional: if unavailable, the app starts at its Esplanade, Singapore fallback. Starting the map does not automatically generate an AI picture.
 
+The crow starts on the nearest mapped rooftop within 250 metres, keeping clear of roof edges and courtyards. If no suitable building is mapped nearby, or building data cannot load, it starts at the original point. Reset returns to the same starting perch; **Use my location** checks for a roof around your refreshed location.
+
 Open **Chat** or choose **Talk** from the floating controls on the map. Text works without microphone permission. Try:
 
 - “Fly to Osaka and land at Shinsaibashi.”

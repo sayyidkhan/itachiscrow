@@ -14,6 +14,7 @@ try {
     await context.route('**/config.js', route => route.fulfill({ contentType: 'text/javascript', body: 'window.CROW_MAPS_KEY1="test";' }));
     await context.route('**/api/map-session', route => route.fulfill({ json: { ok: true } }));
     await context.route('**/api/status', route => route.fulfill({ json: { capabilities: { chat: true, live: true, panorama: true } } }));
+    await context.route('https://overpass-api.de/**', route => route.fulfill({json:{elements:[]}}));
     let panoramaRequests = 0;
     await context.route('**/api/panorama', route => { panoramaRequests++; return route.fulfill({status:503,json:{error:{message:'Generation disabled in verification'}}}); });
     await context.route('https://maps.googleapis.com/maps/api/js?*', route => route.fulfill({ contentType: 'text/javascript', body: `

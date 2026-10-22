@@ -1,0 +1,1 @@
+.building-attribution { position: absolute; left: 8px; bottom: calc(32px + env(safe-area-inset-bottom)); z-index: 2; padding: 1px 4px; border-radius: 3px; background: #101f26e6; color: #e0ece7; font-size: 10px; line-height: 16px; text-decoration: none; }

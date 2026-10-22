@@ -21,7 +21,7 @@ function finishLoading(){
  clearTimeout(startupTimer);clearTimeout(sceneTimer);clearTimeout(startupCameraTimer);cancelAnimationFrame(startupCameraFrame);ready=true;
  $('loading').hidden=true;for(const id of ['fly','restart','speed','height','nearby'])$(id).disabled=false;
  clearTimeout(startupPerchTimer);landedSurfaceAltitude=surfaceAltitudeAtCrow();$('fly').textContent='Lift off';updateProgress(0);
- status(startLocation?'Ready · Your location':'Ready · Esplanade, Singapore');hint(colourWarning);registerTools();emitCrow('ready');
+ status((startLocation?'Ready · Your location':'Ready · Esplanade, Singapore')+(startingPerch?.perch==='rooftop'?' · Rooftop':''));hint(colourWarning);registerTools();emitCrow('ready');
 }
 function initialPerchMatches(){
  if(!map||!scoutPosition)return false;
@@ -73,7 +73,7 @@ let destination={...DEMO_DESTINATION},landingSpot=null,landingMode=false,scoutMo
 let scoutAltitudeBase=null,landedSurfaceAltitude=null;
 let journey=null,journeySerial=0,nearbySerial=0;
 let flightStage=null,routeDistanceMeters=0,flightInfo=null;
-let startLocation=null,locationStatus='locating',locationMessage='Finding your current location…',initialLocationPromise;
+let startLocation=null,startingPerch=null,locationStatus='locating',locationMessage='Finding your current location…',initialLocationPromise;
 let locationRequestSerial=0,mapIntentSerial=0,lastLocationOutcome={status:'unavailable',message:'Location unavailable. Explore the Esplanade, Singapore or choose a destination.'};
 function normalizeDestination(value){
  const location=value?.location||value;
@@ -108,7 +108,14 @@ function invalidateLocationRequest(){
 function restoreUserLocation(place){
  destination={...place};landingSpot={...place};scoutMode='landed';freeRoaming=false;landedSurfaceAltitude=null;bank=0;flightTime=0;crowHeading=heading=125;
  poseScout({lat:place.lat,lng:place.lng,altitude:1.2},1);map.flyCameraTo({endCamera:scoutCamera(scoutPosition,true),durationMillis:0});
- updateProgress(0);$('fly').textContent='Lift off';status('Ready · '+place.name);hint('');
+ updateProgress(0);$('fly').textContent='Lift off';status('Ready · '+place.name+(place.perch==='rooftop'?' · Rooftop':''));hint('');
+}
+async function findStartingPerch(place){
+ try{
+  const roof=await window.CrowRooftops?.find(place);
+  if(roof){const point=normalizeDestination(roof);if(distance(place,point)<=250)return {...point,perch:'rooftop',building:roof.building};}
+ }catch{}
+ return {...place};
 }
 async function useCurrentLocation(){
  if(!ready)throw Error('Wait for the map to finish loading.');
@@ -117,7 +124,13 @@ async function useCurrentLocation(){
  const result=await locateBrowser();
  if(request!==locationRequestSerial||intent!==mapIntentSerial)return {cancelled:true};
  const place=acceptLocation(result);
- if(place){invalidateLocationRequest();cancelLandingMode();$('details').close();detailSerial++;clearNearby();restoreUserLocation(place);emitCrow('destination');}
+ if(place){
+  locationMessage='Finding a nearby rooftop…';emitCrow('context');
+  const perch=await findStartingPerch(place);
+  if(request!==locationRequestSerial||intent!==mapIntentSerial)return {cancelled:true};
+  startingPerch=perch;locationMessage=lastLocationOutcome.message;
+  invalidateLocationRequest();cancelLandingMode();$('details').close();detailSerial++;clearNearby();restoreUserLocation(perch);emitCrow('destination');
+ }
  else{hint(locationMessage);emitCrow('context');}
  return getCrowContext();
 }
@@ -636,7 +649,7 @@ async function mountCrow(Model){
   }finally{clearTimeout(timer)}
  }));
  if(startupFailed)return;
- const perch=startLocation||DEMO_PERCH,position={lat:perch.lat,lng:perch.lng,altitude:1.2};
+ const perch=startingPerch||startLocation||DEMO_PERCH,position={lat:perch.lat,lng:perch.lng,altitude:1.2};
  crowParts=names.map(name=>new Model({src:new URL(name+'.glb',MODEL_BASE),position,altitudeMode:'RELATIVE_TO_MESH',scale:2.2}));
  crowHeading=125;poseScout(position,1);
  crowParts.forEach(part=>map.append(part));modelsMounted=true;
@@ -687,8 +700,8 @@ function start(){
 }
 function reset(){
  if(!ready)return;invalidateLocationRequest();clearTimeout(transitionTimer);stop();cancelLandingMode();clearNearby();routeDistanceMeters=0;progress=0;
- if(startLocation){restoreUserLocation(startLocation);emitCrow('destination');return;}
- restoreUserLocation(DEMO_PERCH);destination={...DEMO_DESTINATION};
+ if(startLocation){restoreUserLocation(startingPerch||startLocation);emitCrow('destination');return;}
+ restoreUserLocation(startingPerch||DEMO_PERCH);destination={...DEMO_DESTINATION};
  status('Ready · Esplanade, Singapore');hint(locationMessage);emitCrow('destination');
 }
 function fail(message){if(!ready&&mapsKeys.retry())return;startupFailed=true;clearTimeout(startupCameraTimer);cancelAnimationFrame(startupCameraFrame);clearTimeout(startupTimer);clearTimeout(sceneTimer);clearTimeout(transitionTimer);stop();ready=false;emitCrow('context');for(const id of ['fly','restart','speed','height','nearby'])$(id).disabled=true;$('loading').hidden=false;$('loading').querySelector('.spinner').classList.add('failed');$('loading').querySelector('h2').textContent='The city couldn’t load';$('loading').querySelector('p').textContent=message;$('reload').hidden=false;status('Map unavailable');;}
@@ -739,11 +752,14 @@ window.initCrow=async()=>{
   const [lib,locationResult]=await Promise.all([google.maps.importLibrary('maps3d'),initialLocationPromise||locateBrowser()]);
   if(startupFailed)return;
   const located=acceptLocation(locationResult);
-  destination={...(located||DEMO_DESTINATION)};landingSpot={...(located||DEMO_PERCH)};scoutMode='landed';
+  $('loading').querySelector('p').textContent='Finding the nearest rooftop…';
+  startingPerch=await findStartingPerch(located||DEMO_PERCH);
+  if(startupFailed)return;
+  destination={...(located||DEMO_DESTINATION)};landingSpot={...startingPerch};scoutMode='landed';
   Marker=lib.Marker3DInteractiveElement;
   // Bootstrap above the chosen coordinates; flyCameraTo then resolves the exact
   // mesh elevation. Map3DElement constructor center itself is always absolute.
-  const perch=located||DEMO_PERCH;
+  const perch=startingPerch;
   const cam={center:{lat:perch.lat,lng:perch.lng,altitude:0},heading:125,tilt:0,range:20000,roll:0,fov:50};heading=cam.heading;
   map=new lib.Map3DElement({...cam,fov:50,mode:'HYBRID',gestureHandling:'GREEDY',defaultUIHidden:true});
   map.style.width='100%';map.style.height='100%';
