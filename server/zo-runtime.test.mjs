@@ -22,6 +22,14 @@ test('Zo recommendations share research allowance and reject foreign origins', a
  assert.equal((await send('https://crow.example')).status,429);
 });
 
+test('discovery previews use the existing image allowance in Zo', async t => {
+ const base=await start(t,{env:{OPENAI_API_KEY:'test-key'},fetchImpl:async()=>Response.json({data:[{b64_json:'/9j/4AAQ'}]})});
+ const send=origin=>fetch(base+'/api/discovery/image',{method:'POST',headers:{...headers(),Origin:origin},body:JSON.stringify({query:'Park, Singapore'})});
+ assert.equal((await send('https://other.example')).status,403);
+ for(let i=0;i<6;i++)assert.equal((await send('https://crow.example')).status,200);
+ assert.equal((await send('https://crow.example')).status,429);
+});
+
 test('Zo runtime mirrors protected map and configuration contracts with persistent SQLite admission',async t=>{
  const base=await start(t,{env:{CROW_MAPS_KEY3:'third-test-key'}});
  const config=await fetch(base+'/config.js',{headers:{...headers(),'X-Forwarded-Prefix':'/crow'}});

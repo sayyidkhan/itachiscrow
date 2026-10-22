@@ -34,7 +34,11 @@ export default {
     // Environment bindings are server-only. Never serialize them into responses.
     if (!handler || activeEnv !== env) {
       activeEnv = env;
-      handler = createHandler({env:{...env, CROW_OWNER_PHOTO:'', PUBLIC_ORIGIN:env.PUBLIC_ORIGIN || publicOrigin}});
+      const imageCache = typeof caches === 'undefined' ? undefined : {
+        async get(key) { const response = await caches.default.match(new Request((env.PUBLIC_ORIGIN || publicOrigin) + '/__discovery-cache/' + key)); return response?.json(); },
+        async set(key, value) { await caches.default.put(new Request((env.PUBLIC_ORIGIN || publicOrigin) + '/__discovery-cache/' + key), Response.json(value, { headers: { 'Cache-Control': 'public, max-age=604800' } })); },
+      };
+      handler = createHandler({env:{...env, CROW_OWNER_PHOTO:'', PUBLIC_ORIGIN:env.PUBLIC_ORIGIN || publicOrigin}, imageCache});
     }
     const reqEvents = new EventTarget(), resEvents = new EventTarget();
     const req = {

@@ -1,3 +1,5 @@
+import { createDiscoveryMedia } from './discovery-media.js';
+
 const make = (tag, text = '', className = '') => {
   const element = document.createElement(tag);
   element.textContent = text;
@@ -38,10 +40,18 @@ export function createDiscovery({ getContext, request, onFly, onCircle }) {
   const panel = $('discovery-panel');
   const companion = $('companion');
   const cache = new Map();
+  const preview = createDiscoveryMedia({ request });
+  let images = null;
+  const cacheName = 'crow-discovery-picks-v2';
+  try {
+    for (const [key, entry] of JSON.parse(sessionStorage.getItem(cacheName) || '[]').slice(-12)) {
+      if (Date.now() - entry.savedAt < 6 * 3600000 && Array.isArray(entry.data?.places)) cache.set(key, entry);
+    }
+  } catch {}
   let mode = null, mood = '', job = null, origin = null, opener = null, flying = false;
   const location = () => ({ ...(getContext().spot || getContext().destination) });
-  const keyFor = place => JSON.stringify([mode, mood, place.name, place.lat, place.lng]);
-  const cancel = () => { job?.abort(); job = null; panel.removeAttribute('aria-busy'); };
+  const keyFor = place => JSON.stringify([mode, mood, place.name, Number(place.lat?.toFixed(3)), Number(place.lng?.toFixed(3))]);
+  const cancel = () => { job?.abort(); job = null; images?.abort(); panel.removeAttribute('aria-busy'); };
   function back() {
     cancel(); mode = null;
     panel.hidden = true;
@@ -82,7 +92,7 @@ export function createDiscovery({ getContext, request, onFly, onCircle }) {
   function showStart() {
     if (mode === 'somewhere') { render({ places: destinations }); return; }
     const cached = cache.get(keyFor(location()));
-    if (cached) { origin = keyFor(location()); render(cached); return; }
+    if (cached && Date.now() - cached.savedAt < 6 * 3600000) { origin = keyFor(location()); render(cached.data); return; }
     const prompt = make('div', '', 'discovery-start');
     prompt.append(illustration(mode === 'day' ? 'waterfront' : mood === 'Coffee & bites' ? 'cafe' : 'gardens'), make('h3', mode === 'day' ? 'From first coffee to last light.' : 'Good places. A little less obvious.'), make('p', mode === 'day' ? 'Four stops, time to wander, and something delicious along the way. Choose your pace above.' : 'Your crow will look for places nearby that fit your mood, with web sources to explore.'));
     prompt.append(button(mode === 'day' ? 'Build my day ↗' : 'Find local picks ↗', () => load(), 'discovery-primary'));
@@ -105,7 +115,9 @@ export function createDiscovery({ getContext, request, onFly, onCircle }) {
       if (keyFor(location()) !== key) { $('discovery-status').textContent = 'Your location changed. Find picks around your new destination.'; showStart(); return; }
       if (!Array.isArray(data.places)) throw Error('The guide returned an incomplete result. Please try again.');
       if (cache.size >= 12) cache.delete(cache.keys().next().value);
-      cache.set(key, data); render(data);
+      cache.set(key, { data, savedAt: Date.now() });
+      try { sessionStorage.setItem(cacheName, JSON.stringify([...cache])); } catch {}
+      render(data);
     } catch (error) {
       if (job !== controller) return;
       $('discovery-status').textContent = controller.signal.aborted ? 'The search took too long. Please try again.' : error.message;
@@ -113,6 +125,7 @@ export function createDiscovery({ getContext, request, onFly, onCircle }) {
     } finally { clearTimeout(timeout); if (job === controller) { job = null; panel.removeAttribute('aria-busy'); } }
   }
   function render(data) {
+    images?.abort(); images = new AbortController();
     const content = $('discovery-results'); content.replaceChildren();
     $('discovery-status').textContent = '';
     if (data.summary) content.append(make('p', data.summary, 'discovery-summary'));
@@ -123,7 +136,8 @@ export function createDiscovery({ getContext, request, onFly, onCircle }) {
     const cards = make('div', '', mode === 'day' ? 'discovery-timeline' : 'discovery-grid');
     for (const [index, place] of data.places.entries()) {
       const card = make('article', '', 'discovery-card');
-      card.append(illustration(place.theme));
+      const bundled = mode === 'somewhere' ? new URL(`./images/destinations/${artwork[place.theme]}.webp`, import.meta.url).href : '';
+      card.append(preview(place, images.signal, bundled));
       const body = make('div', '', 'discovery-card-body');
       body.append(make('span', `${mode === 'day' ? String(index + 1).padStart(2, '0') + ' · ' : ''}${place.label}`, 'discovery-label'), make('h3', place.name), make('p', place.description));
       const actions = make('div', '', 'discovery-card-actions');
@@ -149,7 +163,7 @@ export function createDiscovery({ getContext, request, onFly, onCircle }) {
       }
       body.append(actions); card.append(body); cards.append(card);
     }
-    content.append(cards, make('p', mode === 'somewhere' ? 'AI-illustrated destinations · choose any place to explore.' : 'AI suggestions with web sources · artwork sets the mood, not a view of each venue. Check opening hours before visiting.', 'discovery-footnote'));
+    content.append(cards, make('p', 'Location photos when available · AI illustrations are labelled. Check opening hours before visiting.', 'discovery-footnote'));
     if (mode !== 'somewhere') {
       const actions = make('div', '', 'discovery-footer');
       actions.append(button('Refresh picks', () => load()));

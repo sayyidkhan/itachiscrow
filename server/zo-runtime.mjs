@@ -5,6 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadRuntimeConfig } from './config-file.mjs';
 import { createHandler } from './index.mjs';
+import { discoveryDiskCache } from './discovery-cache.mjs';
 import { enforceUsage, proxyPlaceSearch, usageGroup, mapBrowserConfig } from '../worker/usage-limits.mjs';
 
 const ROOT=resolve(dirname(fileURLToPath(import.meta.url)),'..');
@@ -87,7 +88,7 @@ function safeDiagnostic(detail){
 
 export async function startZoRuntime({port=Number(process.env.PORT||3000),host='0.0.0.0',env=process.env,databasePath=process.env.CROW_USAGE_DB||resolve(ROOT,'.zo-data/usage.sqlite'),fetchImpl=globalThis.fetch,diagnostic=safeDiagnostic}={}){
  const usage=await openUsageDatabase(databasePath);
- const core=createHandler({env,fetchImpl});
+ const core=createHandler({env,fetchImpl,imageCache:databasePath === ':memory:' ? undefined : discoveryDiskCache(resolve(dirname(databasePath), 'discovery-images'))});
  const server=createServer(async(req,res)=>{
   normaliseTrustedProxyHost(req,env);
   const path=new URL(req.url,'http://localhost').pathname;

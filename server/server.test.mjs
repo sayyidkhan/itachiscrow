@@ -5,11 +5,76 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { once } from 'node:events';
 import { request as httpRequest } from 'node:http';
-import { createConfig, createLiveSession, fetchInstagram, generatePanorama, explorePanorama, generatePortrait, discoverOffers, generatePlan, recommendPlaces, getStatus, startServer } from './index.mjs';
+import { createConfig, createLiveSession, fetchInstagram, generatePanorama, explorePanorama, generatePortrait, discoverOffers, generatePlan, recommendPlaces, createDiscoveryImages, getStatus, startServer } from './index.mjs';
+import { discoveryDiskCache } from './discovery-cache.mjs';
 
 const place = { name: 'Gardens by the Bay', lat: 1.2816, lng: 103.8636, address: 'Singapore' };
 const config = createConfig({ OPENAI_API_KEY: 'sk-test-secret', INSTAGRAM_ACCESS_TOKEN: 'meta-secret', INSTAGRAM_USER_ID: '123456' });
 const ok = body => new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+
+test('discovery images coalesce concurrent requests, persist across restarts and expire after seven days', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'crow-discovery-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const cache = discoveryDiskCache(directory);
+  let calls = 0, now = Date.now();
+  const options = { config, fetchImpl: async (_url, init) => {
+    calls++;
+    const body = JSON.parse(init.body);
+    assert.equal(body.quality, 'low'); assert.match(body.prompt, /Marsiling Park/);
+    assert.equal(body.n, 1);
+    await new Promise(resolve => setTimeout(resolve, 10));
+    return ok({ data: [{ b64_json: '/9j/4AAQ' }] });
+  } };
+  const generate = createDiscoveryImages({ cache, now: () => now });
+  const [first, second] = await Promise.all([generate({ query: 'Marsiling Park, Singapore' }, options), generate({ query: 'Marsiling Park, Singapore' }, options)]);
+  assert.equal(calls, 1); assert.deepEqual(first, second); assert.equal(first.synthetic, true);
+  const restarted = createDiscoveryImages({ cache, now: () => now });
+  assert.deepEqual(await restarted({ query: 'Marsiling Park, Singapore' }, options), first);
+  assert.equal(calls, 1);
+  now += 8 * 86400000;
+  await restarted({ query: 'Marsiling Park, Singapore' }, options);
+  assert.equal(calls, 2);
+});
+
+test('discovery images validate inputs and malformed providers, and never cache errors', async () => {
+  const generate = createDiscoveryImages();
+  for (const query of [null, '', 'x'.repeat(251), { text: 'park' }]) await assert.rejects(generate({ query }, { config, fetchImpl: () => assert.fail('Unexpected provider call') }), error => error.status === 400);
+  for (const data of [[], [{}], [{ b64_json: '' }], [{ b64_json: 'not valid!' }]]) await assert.rejects(generate({ query: 'Park' }, { config, fetchImpl: async () => ok({ data }) }), error => error.status === 502);
+  const value = await generate({ query: 'Park' }, { config, fetchImpl: async () => ok({ data: [{ b64_json: '/9j/4AAQ' }] }) });
+  assert.equal(value.synthetic, true);
+});
+
+test('discovery image route preserves origin checks and hides server credentials', async t => {
+  const base = await start(t, { env: { OPENAI_API_KEY: 'private-test-key' }, fetchImpl: async () => ok({ data: [{ b64_json: '/9j/4AAQ' }] }) });
+  const foreign = await post(base, '/api/discovery/image', { query: 'Park' }, { Origin: 'https://other.test' });
+  assert.equal(foreign.status, 403);
+  const response = await post(base, '/api/discovery/image', { query: 'Park' });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.equal((await response.text()).includes('private-test-key'), false);
+});
+
+test('discovery image generation runs three independent previews in parallel with a bounded queue', async () => {
+  let release, calls = 0;
+  const wait = new Promise(resolve => { release = resolve; });
+  const generate = createDiscoveryImages();
+  const options = { config, fetchImpl: async () => { calls++; await wait; return ok({ data: [{ b64_json: '/9j/4AAQ' }] }); } };
+  const jobs = ['Park one', 'Park two', 'Park three'].map(query => generate({ query }, options));
+  while (calls < 3) await new Promise(resolve => setImmediate(resolve));
+  try { await assert.rejects(generate({ query: 'Park four' }, options), error => error.status === 429); }
+  finally { release(); }
+  assert.equal((await Promise.all(jobs)).length, 3);
+});
+
+test('discovery disk cache limits entries and rejects path traversal', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'crow-discovery-cache-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const cache = discoveryDiskCache(directory);
+  for (let i = 0; i < 25; i++) await cache.set(i.toString(16).padStart(64, '0'), { synthetic: true, generatedAt: new Date().toISOString(), imageUrl: 'data:image/jpeg;base64,/9j/4AAQ' });
+  const { readdir } = await import('node:fs/promises');
+  assert.equal((await readdir(directory)).length, 24);
+  await assert.rejects(cache.get('../private'), /Invalid image cache key/);
+});
 
 test('recommendations require web research and retain only distinct source-backed places', async () => {
   const sourceUrl = 'https://www.gardensbythebay.com.sg/';
