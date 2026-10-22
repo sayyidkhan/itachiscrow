@@ -6,6 +6,7 @@ let map,Place,Marker,ready=false,playing=false,transitioning=false,progress=0,he
 let crowParts=[], flightTime=0, bank=0, crowHeading=125, freeRoaming=false, nearbyPending=null;
 let manualFlight=null,manualIntent=0;
 let steeringSpeed=1,crowRoll=0,rollAnimation=null;
+let cameraView={rotation:0,tilt:null,zoom:1};
 let startupFailed=false, sceneSteady=false, modelsMounted=false, startupTimer, sceneTimer, placesPromise;
 let startupCameraStage='waiting',startupCameraTimer,startupCameraFrame,startupCameraAttempts=0,startupPerchTimer,startupFramingAt=null;
 let MODEL_BASE=new URL('models/',document.currentScript?.src || document.baseURI);
@@ -152,9 +153,35 @@ async function searchCafes(){
 }
 // Mesh-relative placement follows terrain and rooftops in cities at any elevation.
 // CameraOptions.altitudeMode is handled by flyCameraTo; map.center itself is absolute.
-function scoutCamera(position,landing=false,altitudeBase=scoutAltitudeBase){
- return {center:{lat:position.lat,lng:position.lng,altitude:position.altitude+1.8+(altitudeBase??0)},altitudeMode:altitudeBase===null?'RELATIVE_TO_MESH':'ABSOLUTE',heading:crowHeading,
+function cameraWithView(cam){
+ return {...cam,heading:wrapAngle(cam.heading+cameraView.rotation),tilt:cameraView.tilt??cam.tilt,range:Math.max(8,Math.min(12000000,cam.range*cameraView.zoom))};
+}
+function getCameraView(){
+ return {...cameraView,tilt:cameraView.tilt??map?.tilt??65};
+}
+function setCameraView(value={}){
+ if(!ready)throw Error('Wait for the map to finish loading.');
+ const next=value.reset?{rotation:0,tilt:null,zoom:1}:{...cameraView};
+ for(const [key,min,max] of [['rotation',-180,180],['tilt',0,85],['zoom',.4,4]]){
+  if(value[key]===undefined)continue;
+  if(!Number.isFinite(value[key])||value[key]<min||value[key]>max)throw Error('Choose a valid camera '+key+'.');
+  next[key]=value[key];
+ }
+ const current=cameraSnapshot(),previous=cameraView;
+ cameraView=next;
+ const base=scoutPosition?scoutCamera(scoutPosition,scoutMode==='landed'):camera(progress);
+ const cam={...current,heading:freeRoaming||scoutMode==='circling'?wrapAngle(current.heading+next.rotation-previous.rotation):base.heading,tilt:value.reset?base.tilt:next.tilt??current.tilt,range:Math.max(8,Math.min(12000000,current.range*next.zoom/previous.zoom))};
+ if(value.reset&&!freeRoaming)Object.assign(cam,base);
+ map.stopCameraAnimation?.();
+ if(cam.altitudeMode==='RELATIVE_TO_MESH')map.flyCameraTo({endCamera:cam,durationMillis:0});
+ else Object.assign(map,cam);
+ document.dispatchEvent(new CustomEvent('crow:camera',{detail:getCameraView()}));
+ return getCameraView();
+}
+function scoutCamera(position,landing=false,altitudeBase=scoutAltitudeBase,adjusted=true){
+ const cam={center:{lat:position.lat,lng:position.lng,altitude:position.altitude+1.8+(altitudeBase??0)},altitudeMode:altitudeBase===null?'RELATIVE_TO_MESH':'ABSOLUTE',heading:crowHeading,
  tilt:landing?72:high?48:isEiffelView()&&['arriving','hovering'].includes(scoutMode)?85:65,range:landing?22:high?100:52,roll:0,fov:50};
+ return adjusted?cameraWithView(cam):cam;
 }
 function isEiffelView(){return /eiffel/i.test(destination.name)&&Math.abs(destination.lat-48.85837)<.01&&Math.abs(destination.lng-2.294481)<.01;}
 function poseScout(position,fold=0,altitudeBase=null,pitch=0){
@@ -259,7 +286,8 @@ function animateLongFlight({target,source,sourcePose,sourceBase,sourceFold,initi
    }else if(elapsed<departDuration+cruiseDuration+descendDuration){
     stage='descending';const t=(elapsed-departDuration-cruiseDuration)/descendDuration,e=smooth(t);
     crowHeading=arrivalHeading;poseScout(approach,0,isEiffelView()?0:null);
-    cam={...scoutCamera(approach),heading:wrapAngle(angleDelta(arrivalHeading,0)*e),tilt:blend(12,high?48:65,e),range:zoom(peakRange,high?100:52,e)};
+    const targetCamera=scoutCamera(approach);
+    cam={...targetCamera,heading:wrapAngle(angleDelta(targetCamera.heading,0)*e),tilt:blend(12,targetCamera.tilt,e),range:zoom(peakRange,targetCamera.range,e)};
     if(isEiffelView())Object.assign(map,cam);else map.flyCameraTo({endCamera:cam,durationMillis:0});
    }else{
     stage='approaching';const t=Math.min(1,(elapsed-departDuration-cruiseDuration-descendDuration)/approachDuration),e=smooth(t);
@@ -303,7 +331,7 @@ async function circleAround(value){
  const from={...(scoutPosition||flightPosition(progress))},surface=scoutAltitudeBase??surfaceAltitudeAtCrow()??0;
  stop();cancelLandingMode();clearNearby();destination=target;landingSpot=null;scoutMode='circling';playing=true;setFlightView(true);
  const serial=journeySerial,startAngle=bearing(target,from)*radians,duration=20000;
- const orbitCamera=position=>({...scoutCamera(position,false,surface),heading:bearing(position,target),tilt:tower?85:78});
+ const orbitCamera=position=>cameraWithView({...scoutCamera(position,false,surface,false),heading:bearing(position,target),tilt:tower?85:78});
  $('fly').textContent='Pause';status('Circling · '+target.name);hint('Circling once. Say stop or drag the map to pause.');emitCrow('destination');
  if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){
   const position={...relativeOffset(target,-radius,0),altitude};
@@ -369,11 +397,12 @@ function takeOff(){
   pitchAt:fraction=>reducedMotion?0:-10*Math.sin(Math.PI*smooth((fraction-.08)/.92)),
   cameraAt(fraction,position){
    const follow=smooth(fraction/.55),pullback=reducedMotion?0:smooth((fraction-.12)/.88);
+   const targetCamera=scoutCamera(position);
    const altitude=surface===null?initialCamera.center.altitude+position.altitude-from.altitude:surface+position.altitude+1.8;
    const longitudeDelta=((position.lng-initialCamera.center.lng+540)%360)-180;
    return {center:{lat:blend(initialCamera.center.lat,position.lat,follow),lng:((initialCamera.center.lng+longitudeDelta*follow+540)%360)-180,altitude:blend(initialCamera.center.altitude,altitude,follow)},
-    heading:wrapAngle(initialCamera.heading+angleDelta(crowHeading,initialCamera.heading)*(reducedMotion?0:follow)),
-    range:blend(initialCamera.range,high?100:52,pullback),tilt:blend(initialCamera.tilt,high?48:65,pullback),roll:blend(initialCamera.roll,0,pullback),fov:blend(initialCamera.fov,50,pullback)};
+    heading:wrapAngle(initialCamera.heading+angleDelta(targetCamera.heading,initialCamera.heading)*(reducedMotion?0:follow)),
+    range:blend(initialCamera.range,targetCamera.range,pullback),tilt:blend(initialCamera.tilt,targetCamera.tilt,pullback),roll:blend(initialCamera.roll,0,pullback),fov:blend(initialCamera.fov,50,pullback)};
   },
   path(fraction){
    const rise=smooth((fraction-.08)/.72),forward=smooth((fraction-.62)/.38);
@@ -501,7 +530,7 @@ async function navigateCrow(command){
 window.addEventListener('blur',()=>{if(manualFlight||rollAnimation)stop();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&(manualFlight||rollAnimation||scoutMode==='taking-off'))stop();});
 window.addEventListener('pagehide',()=>stop());
-window.CrowMap=Object.freeze({searchDestinations,searchCafes,flyTo,selectLandingMode,cancelLandingMode,landAt,takeOff,circleAround,useCurrentLocation,freeRoam,followCrow,beginSteering,steer,endSteering,setSteeringSpeed,roll:rollCrow,navigate:navigateCrow,getContext:getCrowContext,pause(){stop();return getCrowContext();}});
+window.CrowMap=Object.freeze({searchDestinations,searchCafes,flyTo,selectLandingMode,cancelLandingMode,landAt,takeOff,circleAround,useCurrentLocation,freeRoam,followCrow,beginSteering,steer,endSteering,setSteeringSpeed,getCameraView,setCameraView,roll:rollCrow,navigate:navigateCrow,getContext:getCrowContext,pause(){stop();return getCrowContext();}});
 
 // Prepared Esplanade loop; rounded junctions keep camera turns continuous.
 const corners=[{lat:1.28972,lng:103.85528},{lat:1.29010,lng:103.85620},{lat:1.28915,lng:103.85675},{lat:1.28870,lng:103.85580}];
@@ -537,8 +566,8 @@ function flightPosition(s){
 function flightBearing(s){return bearing(flightPosition(s-1),flightPosition(s+1));}
 function camera(s){
  const p=at(s),ahead=at(s+4);
- return {center:{lat:p.lat+(ahead.lat-p.lat)*.65,lng:p.lng+(ahead.lng-p.lng)*.65,altitude:106.5+2.2*Math.sin(s/31)},
- heading:bearing(at(s-10),at(s+10)),tilt:high?48:65,range:high?90:48,roll:0,fov:50};
+ return cameraWithView({center:{lat:p.lat+(ahead.lat-p.lat)*.65,lng:p.lng+(ahead.lng-p.lng)*.65,altitude:106.5+2.2*Math.sin(s/31)},
+ heading:bearing(at(s-10),at(s+10)),tilt:high?48:65,range:high?90:48,roll:0,fov:50});
 }
 function poseCrow(s){
  const position=flightPosition(s);

@@ -137,6 +137,7 @@
   }
   document.addEventListener('crow:destination', closePanel);
   window.addEventListener('crow:text-chat-open', closePanel);
+  window.addEventListener('crow:camera-open', closePanel);
   document.addEventListener('crow:landed', closePanel);
   $('nearby').addEventListener('click', closePanel);
   window.addEventListener('blur', reset);
