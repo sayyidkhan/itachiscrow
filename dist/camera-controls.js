@@ -27,7 +27,7 @@
     if (focus) toggle.focus({ preventScroll: true });
   }
   function update(value) {
-    try { window.CrowMap.setCameraView(value); }
+    try { window.CrowMap.setCameraView(value, { animate: true }); }
     catch (error) { $('hint').textContent = error.message; }
     reflect();
   }

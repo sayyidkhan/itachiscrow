@@ -562,3 +562,77 @@ assert.equal(viewMap.range, 52);
 assert.equal(viewMap.tilt, 65);
 assert.equal(viewMap.heading, api.getContext().heading);
 console.log('Camera contract passed: stationary crow, validation, steering persistence, free roam centre, follow, orbit, landing, takeoff and reset.');
+
+sandbox.requestAnimationFrame=callback=>schedule(callback,1000/60);
+api.setCameraView({rotation:179,tilt:47,zoom:1});
+const lookStart={heading:viewMap.heading,range:viewMap.range},lookPose=JSON.stringify(api.getContext().position),lookCalls=cameraCalls.length;
+api.setCameraView({rotation:-166,tilt:67,zoom:2},{animate:true});
+assert.equal(viewMap.heading,lookStart.heading,'Look input does not jump before the next frame');
+assert.equal(api.getCameraView().rotation,-166,'Rapid inputs accumulate against the requested angle');
+const lookSamples=[];
+for(let i=0;i<30;i++){
+ advance(1000/60);
+ lookSamples.push({turn:((viewMap.heading-lookStart.heading+540)%360)-180,tilt:viewMap.tilt,range:viewMap.range});
+}
+assert(lookSamples[0].turn>0&&lookSamples[0].turn<6,'The first frame eases into the shortest turn across 180 degrees');
+assert(lookSamples.filter((sample,i)=>i&&sample.turn!==lookSamples[i-1].turn).length>12,'A tap advances across many display frames');
+for(let i=1;i<lookSamples.length;i++){
+ assert(lookSamples[i].turn>=lookSamples[i-1].turn&&lookSamples[i].turn<=15,'Turn never reverses or overshoots');
+ assert(lookSamples[i].tilt>=lookSamples[i-1].tilt&&lookSamples[i].tilt<=67,'Tilt never reverses or overshoots');
+ assert(lookSamples[i].range>=lookSamples[i-1].range&&lookSamples[i].range<=lookStart.range*2+.0001,'Zoom never reverses or overshoots');
+}
+assert(Math.abs(lookSamples.at(-1).turn-15)<1e-8);
+assert.equal(viewMap.tilt,67);
+assert(Math.abs(viewMap.range-lookStart.range*2)<1e-8);
+assert.equal(cameraCalls.length,lookCalls,'Smooth look never restarts native camera animations');
+assert.equal(JSON.stringify(api.getContext().position),lookPose,'Smooth look does not move the crow');
+api.setCameraView({rotation:0,tilt:40,zoom:1});
+api.setCameraView({rotation:90},{animate:true});advance(50);
+const retargetHeading=viewMap.heading;
+api.setCameraView({rotation:-30},{animate:true});
+assert.equal(viewMap.heading,retargetHeading,'Changing direction starts at the current rendered view');
+advance(700);
+assert(Math.abs(((viewMap.heading-api.getContext().heading+540)%360)-180+30)<1e-8);
+api.freeRoam();
+const smoothCentre={lat:1.23,lng:103.78,altitude:180};viewMap.center=smoothCentre;
+api.setCameraView({rotation:70,tilt:55,zoom:1.5},{animate:true});advance(700);
+assert.equal(JSON.stringify(viewMap.center),JSON.stringify(smoothCentre),'Smoothed free roam keeps its explored centre');
+api.followCrow();
+api.setCameraView({rotation:0,tilt:40,zoom:1});
+await api.beginSteering();
+api.setCameraView({rotation:90,tilt:60,zoom:2},{animate:true});
+const steeringLooks=[];
+for(let i=0;i<40;i++){
+ api.steer(1,0);advance(1000/60);
+ steeringLooks.push(((viewMap.heading-api.getContext().heading+540)%360)-180);
+}
+assert(steeringLooks[0]>0&&steeringLooks[0]<30,'Steering uses the eased angle instead of jumping to the requested angle');
+assert(Math.abs(steeringLooks.at(-1)-90)<1e-8,'Steering and look settle on the same camera angle');
+assert.equal(viewMap.tilt,60);assert.equal(viewMap.range,104);
+api.endSteering();
+api.setCameraView({rotation:-90},{animate:true});advance(30);api.freeRoam();
+const interruptedLook=JSON.stringify({heading:viewMap.heading,range:viewMap.range,center:viewMap.center});advance(700);
+assert.equal(JSON.stringify({heading:viewMap.heading,range:viewMap.range,center:viewMap.center}),interruptedLook,'New flight actions cancel pending look frames');
+const frozenRotation=api.getCameraView().rotation;
+api.setCameraView({rotation:frozenRotation+15},{animate:true});advance(700);
+assert(Math.abs(((viewMap.heading-JSON.parse(interruptedLook).heading+540)%360)-180-15)<1e-8,'The next input continues from the cancelled rendered angle');
+api.setCameraView({rotation:frozenRotation},{animate:true});advance(30);
+window.dispatchEvent(new Event('blur'));
+const blurredHeading=viewMap.heading,blurredView=api.getCameraView().rotation;
+advance(700);assert.equal(viewMap.heading,blurredHeading,'Blur cancels pending motion');
+api.setCameraView({rotation:blurredView+15},{animate:true});advance(700);
+assert(Math.abs(((viewMap.heading-blurredHeading+540)%360)-180-15)<1e-8,'Resuming after blur keeps the rendered angle aligned with the controls');
+sandbox.requestAnimationFrame=callback=>schedule(callback,500);
+api.setCameraView({rotation:0,tilt:30,zoom:1});
+api.setCameraView({tilt:80},{animate:true});advance(500);
+assert(viewMap.tilt>30&&viewMap.tilt<60,'A delayed display frame cannot snap straight to the target');
+advance(10000);
+assert.equal(viewMap.tilt,80,'Slow rendering still reaches the exact target');
+sandbox.requestAnimationFrame=callback=>schedule(callback,1000/60);
+window.matchMedia=()=>({matches:true});
+api.setCameraView({rotation:20,tilt:30,zoom:1},{animate:true});
+assert.equal(viewMap.tilt,30,'Reduced motion applies look immediately');
+assert.equal(vm.runInContext('cameraMotion',sandbox),null);
+window.matchMedia=()=>({matches:false});
+api.setCameraView({reset:true});
+console.log('Smooth look contract passed: display cadence, shortest turn, monotonic tilt/zoom, retargeting, free roam, simultaneous steering, slow frames, interruption and reduced motion.');

@@ -127,9 +127,43 @@ try {
       assert.equal(await page.evaluate(() => testMap.heading), (await page.evaluate(() => CrowMap.getContext().heading) + 90) % 360);
       await page.locator('#camera-toggle').click();
       await page.evaluate(() => CrowMap.setCameraView({reset:true}));
+      await page.emulateMedia({reducedMotion:'no-preference'});
+      await page.locator('#camera-toggle').click();
+      const smoothLook = await page.evaluate(() => new Promise(resolve => {
+        const before={heading:testMap.heading,range:testMap.range,position:CrowMap.getContext().position};
+        const samples=[],started=performance.now();
+        document.getElementById('camera-pad').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));
+        const immediate=testMap.heading;
+        const sample=now=>{
+          samples.push({heading:testMap.heading,range:testMap.range});
+          if(now-started<600){requestAnimationFrame(sample);return;}
+          resolve({before,immediate,samples,position:CrowMap.getContext().position});
+        };
+        requestAnimationFrame(sample);
+      }));
+      assert.equal(smoothLook.immediate,smoothLook.before.heading,'Look input does not snap the camera');
+      const turns=smoothLook.samples.map(sample=>((sample.heading-smoothLook.before.heading+540)%360)-180);
+      assert(turns.some(turn=>turn>0&&turn<14),'Look has visible intermediate angles');
+      assert(Math.abs(turns.at(-1)-15)<.001,'Look settles at the requested angle');
+      assert(turns.every(turn=>turn>=0&&turn<=15.001),'Look never overshoots');
+      assert.deepEqual(smoothLook.position,smoothLook.before.position,'Smooth look leaves crow stationary');
+      const smoothRange=await page.evaluate(() => testMap.range);
+      await page.locator('#camera-zoom-out').click();
+      await page.waitForFunction(range => Math.abs(testMap.range-range*1.2)<.001,smoothRange);
+      const smoothTilt=await page.evaluate(() => testMap.tilt);
+      await cameraPad.focus();
+      await page.keyboard.press('ArrowUp');
+      await page.waitForFunction(tilt => Math.abs(testMap.tilt-Math.max(0,tilt-10))<.001,smoothTilt);
+      await page.locator('#camera-reset').click();
+      assert.equal(await page.evaluate(() => testMap.tilt),0,'Find crow interrupts pending smoothing');
+      await page.waitForTimeout(150);
+      assert.equal(await page.evaluate(() => testMap.tilt),0,'Stale look frames cannot override Find crow');
+      await page.locator('#camera-toggle').click();
+      await page.emulateMedia({reducedMotion:'reduce'});
+      await page.evaluate(() => CrowMap.setCameraView({reset:true}));
       if (process.env.CROW_TEST_CAMERA_ONLY === '1') {
         assert.deepEqual(errors, []);
-        console.log(width + '×' + height + ': camera drag, touch, arrows, zoom, free roam recovery, stationary crow, draft, layout and focus passed.');
+        console.log(width + '×' + height + ': smooth look/tilt/zoom, interruption, reduced motion, camera drag, touch, arrows, free roam recovery, stationary crow, draft, layout and focus passed.');
         continue;
       }
       await page.locator('#steering-toggle').click();
