@@ -2,16 +2,16 @@
   display: block; top: calc(var(--header-height) + 12px); bottom: auto;
   left: 20px; transform: none; width: min(360px, calc(100% - 40px)); z-index: 3;
 }
-.explorer .bottom .controls { gap: 4px; padding: 4px; border-radius: 17px; box-shadow: inset 0 1px 0 #effff014, 0 4px 16px #0313151f; }
+.explorer .bottom .controls { gap: 2px; padding: 4px; border-radius: 16px; box-shadow: var(--glass-shadow); }
 .explorer .bottom .controls button {
-  display: flex; flex: 1 1 0; min-width: 0; min-height: 52px; padding: 6px 3px;
-  flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  border-radius: 12px; font-size: 11px; font-weight: 500; line-height: 1.2; color: #e0ece7;
+  display: flex; flex: 1 1 0; min-width: 0; min-height: 44px; padding: 4px 3px;
+  flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  border-radius: 11px; font-size: 11px; font-weight: 500; line-height: 1.2; color: #e0ece7;
 }
 .explorer .bottom .controls .primary { background: #b5efd819; color: #cbf6e4; flex: 1 1 0; }
 .explorer .bottom .controls :is([aria-pressed=true], [aria-expanded=true]) { background: #b5efd825; color: #d5ffec; }
 .explorer .bottom .controls button::before {
-  content: ''; width: 18px; height: 18px; flex: 0 0 18px; background: currentColor;
+  content: ''; width: 16px; height: 16px; flex: 0 0 16px; background: currentColor;
   -webkit-mask: var(--control-icon) center / contain no-repeat;
   mask: var(--control-icon) center / contain no-repeat;
 }
