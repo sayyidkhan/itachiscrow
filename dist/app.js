@@ -8,6 +8,7 @@ let manualFlight=null,manualIntent=0;
 let steeringSpeed=1,crowRoll=0,rollAnimation=null;
 let cameraView={rotation:0,tilt:null,zoom:1};
 let cameraMotion=null;
+let cameraReturn=null;
 let startupFailed=false, sceneSteady=false, modelsMounted=false, startupTimer, sceneTimer, placesPromise;
 let startupCameraStage='waiting',startupCameraTimer,startupCameraFrame,startupCameraAttempts=0,startupPerchTimer,startupFramingAt=null;
 let MODEL_BASE=new URL('models/',document.currentScript?.src || document.baseURI);
@@ -191,6 +192,7 @@ function applyCameraView(next,previous,reset=false,incremental=false){
 }
 function setCameraView(value={},{animate=false}={}){
  if(!ready)throw Error('Wait for the map to finish loading.');
+ cancelCameraReturn();
  const next=value.reset?{rotation:0,tilt:null,zoom:1}:{...cameraView};
  for(const [key,min,max] of [['rotation',-180,180],['tilt',0,85],['zoom',.4,4]]){
   if(value[key]===undefined)continue;
@@ -463,6 +465,49 @@ function freeRoam(){
  stop();cancelLandingMode();freeRoaming=true;
  status('Free roam · '+destination.name);hint('Drag to explore, pinch or scroll to zoom. Follow crow brings you back.');emitCrow('context');return getCrowContext();
 }
+function cancelCameraReturn(){
+ if(!cameraReturn)return;
+ cancelAnimationFrame(cameraReturn.frame);cameraReturn.cleanup?.();cameraReturn=null;
+}
+function returnCameraToCrow(cam,current){
+ const surface=scoutAltitudeBase??surfaceAltitudeAtCrow()??landedSurfaceAltitude;
+ const fixed={heading:current.heading,tilt:current.tilt,range:current.range,roll:current.roll,fov:current.fov};
+ const state={frame:0,elapsed:0,previous:performance.now()};cameraReturn=state;
+ const translate=center=>{
+  if(cameraReturn!==state)return;
+  cancelAnimationFrame(state.frame);state.cleanup?.();state.cleanup=null;
+  map.stopCameraAnimation?.();
+  if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||document.hidden||distance(current.center,center)<.01&&Math.abs(current.center.altitude-center.altitude)<.01){Object.assign(map,{center,...fixed});cameraReturn=null;return;}
+  Object.assign(map,{...current,...fixed});state.previous=performance.now();
+  const longitudeDelta=((center.lng-current.center.lng+540)%360)-180;
+  const step=now=>{
+   if(cameraReturn!==state)return;
+   state.elapsed+=Math.min(32,Math.max(0,now-state.previous));state.previous=now;
+   const t=Math.min(1,state.elapsed/900),eased=t*t*(3-2*t);
+   Object.assign(map,{center:t===1?center:{lat:current.center.lat+(center.lat-current.center.lat)*eased,lng:((current.center.lng+longitudeDelta*eased+540)%360)-180,altitude:current.center.altitude+(center.altitude-current.center.altitude)*eased},...fixed});
+   if(t===1){cameraReturn=null;return;}
+   state.frame=requestAnimationFrame(step);
+  };
+  state.frame=requestAnimationFrame(step);
+ };
+ if(cam.altitudeMode==='RELATIVE_TO_MESH'&&surface===null){
+  const resolved=()=>{
+   if(cameraReturn!==state)return;
+   const center={...cam.center,altitude:cameraSnapshot().center.altitude};
+   landedSurfaceAltitude=center.altitude-scoutPosition.altitude-1.8;
+   translate(center);
+  };
+  state.cleanup=()=>map.removeEventListener('gmp-animationend',resolved);
+  map.addEventListener('gmp-animationend',resolved);
+  map.flyCameraTo({endCamera:{...cam,...fixed},durationMillis:0});
+  const check=()=>{
+   if(cameraReturn!==state)return;
+   if(distance(cameraSnapshot().center,cam.center)<Math.max(3,cam.range*.15)){resolved();return;}
+   state.frame=requestAnimationFrame(check);
+  };
+  state.frame=requestAnimationFrame(check);
+ }else translate({...cam.center,altitude:cam.center.altitude+(cam.altitudeMode==='RELATIVE_TO_MESH'?surface:0)});
+}
 function followCrow({preserveView=false}={}){
  if(!ready)throw Error('Wait for the map to finish loading.');
  const current=preserveView?cameraSnapshot():null,view=cameraView;
@@ -473,7 +518,8 @@ function followCrow({preserveView=false}={}){
   for(const key of ['heading','tilt','range','roll','fov'])cam[key]=current[key];
   document.dispatchEvent(new CustomEvent('crow:camera',{detail:getCameraView()}));
  }
- map.flyCameraTo({endCamera:cam,durationMillis:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?0:900});
+ if(current)returnCameraToCrow(cam,current);
+ else map.flyCameraTo({endCamera:cam,durationMillis:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?0:900});
  status('With your crow · '+destination.name);hint(scoutMode==='landed'?'Lift off or choose a destination.':'Choose a place to land or fly somewhere new.');emitCrow('context');return getCrowContext();
 }
 async function beginSteering(){
@@ -558,7 +604,7 @@ async function rollCrow(){
 async function navigateCrow(command){
  const directions={forward:[0,1,0],backward:[0,-1,0],left:[-1,0,0],right:[1,0,0],higher:[0,0,1],lower:[0,0,-1]};
  if(command==='free_roam')return freeRoam();
- if(command==='follow')return followCrow();
+ if(command==='follow')return followCrow({preserveView:true});
  if(command==='stop')return window.CrowMap.pause();
  if(command==='land_here'){
   if(!ready||!scoutPosition)throw Error('Wait for the crow to appear.');
@@ -577,8 +623,8 @@ async function navigateCrow(command){
   };step(startTime);
  });
 }
-window.addEventListener('blur',()=>{cancelCameraViewMotion();if(manualFlight||rollAnimation)stop();});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelCameraViewMotion();if(manualFlight||rollAnimation||scoutMode==='taking-off')stop();}});
+window.addEventListener('blur',()=>{cancelCameraReturn();cancelCameraViewMotion();if(manualFlight||rollAnimation)stop();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelCameraReturn();cancelCameraViewMotion();if(manualFlight||rollAnimation||scoutMode==='taking-off')stop();}});
 window.addEventListener('pagehide',()=>stop());
 window.CrowMap=Object.freeze({searchDestinations,searchCafes,flyTo,selectLandingMode,cancelLandingMode,landAt,takeOff,circleAround,useCurrentLocation,freeRoam,followCrow,beginSteering,steer,endSteering,setSteeringSpeed,getCameraView,setCameraView,roll:rollCrow,navigate:navigateCrow,getContext:getCrowContext,pause(){stop();return getCrowContext();}});
 
@@ -658,6 +704,7 @@ async function mountCrow(Model){
 function hint(s){$('hint').textContent=s;}
 function status(s){$('status').textContent=s;}
 function stop(){
+ cancelCameraReturn();
  cancelCameraViewMotion();
  cancelRoll();
  if(manualFlight){

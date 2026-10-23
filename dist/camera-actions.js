@@ -43,6 +43,6 @@ export function controlCamera(map, raw) {
   return {
     status: args.command === 'status' ? 'current' : 'completed', command: args.command,
     camera: map.getCameraView(), freeRoaming: map.getContext().freeRoaming,
-    ...(args.command === 'find_crow' ? { summary: 'Returning to the crow using the current angle and zoom. The 3D renderer can adjust the final distance; these are requested settings, not a measurement of the settled view.' } : {}),
+    ...(args.command === 'find_crow' ? { summary: 'Recentering on the crow while keeping the currently rendered angle and zoom.' } : {}),
   };
 }

@@ -115,6 +115,11 @@ try {
       assert.equal(await page.evaluate(() => CrowMap.getContext().freeRoaming), false, 'Find crow leaves free roam');
       assert.equal(await page.evaluate(() => testMap.center.lat), crowBeforeCamera.lat, 'Find crow actually recentres');
       assert.deepEqual(await page.evaluate(() => ({heading:testMap.heading,tilt:testMap.tilt,range:testMap.range,view:CrowMap.getCameraView()})),beforeFind,'Find crow preserves angle and zoom');
+      await page.locator('#free-roam').click();
+      await page.evaluate(() => { testMap.heading=287;testMap.tilt=33;testMap.range=65;testMap.center={lat:1.3,lng:103.86,altitude:100}; });
+      await page.locator('#free-roam').click();
+      assert.deepEqual(await page.evaluate(() => ({heading:testMap.heading,tilt:testMap.tilt,range:testMap.range})),{heading:287,tilt:33,range:65},'Toolbar Follow crow also keeps the visible perspective');
+      await page.evaluate(view => CrowMap.setCameraView(view), beforeFind.view);
       assert.deepEqual(await page.evaluate(() => CrowMap.getContext().position), crowBeforeCamera, 'Camera never moves crow');
       await page.screenshot({path:new URL(`camera-${width}x${height}.png`,output).pathname});
       await cameraPad.focus();

@@ -30,7 +30,7 @@ test('camera presets preserve zoom and find crow preserves the actual rendered v
   }
   const writes = f.writes.length;
   assert.equal(controlCamera(f.map, { command: 'status' }).status, 'current');
-  assert.match(controlCamera(f.map, { command: 'find_crow' }).summary, /requested settings, not a measurement/);
+  assert.match(controlCamera(f.map, { command: 'find_crow' }).summary, /currently rendered angle and zoom/);
   assert.deepEqual(f.follows, [{ preserveView: true }]);
   assert.equal(f.writes.length, writes, 'Status and find crow never reapply target preferences');
   assert.deepEqual(controlCamera(f.map, { command: 'reset' }).camera, { rotation: 0, tilt: 65, zoom: 1 });

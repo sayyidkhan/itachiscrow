@@ -661,6 +661,26 @@ api.setCameraView({rotation:20,tilt:30,zoom:1},{animate:true});
 assert.equal(viewMap.tilt,30,'Reduced motion applies look immediately');
 assert.equal(vm.runInContext('cameraMotion',sandbox),null);
 window.matchMedia=()=>({matches:false});
+api.freeRoam();
+vm.runInContext('scoutAltitudeBase=null;landedSurfaceAltitude=null',sandbox);
+Object.assign(viewMap,{center:{lat:1.3,lng:103.8,altitude:200},heading:275,tilt:31,range:80});
+const resolveCalls=cameraCalls.length;
+api.followCrow({preserveView:true});
+assert.equal(cameraCalls.length,resolveCalls+1,'An unknown roof height is resolved once by the mesh provider');
+assert.equal(cameraCalls.at(-1).durationMillis,0,'Height resolution never uses a native fly-to sweep');
+viewMap.range=83;
+viewMap.dispatchEvent(new Event('gmp-animationend'));
+advance(1200);
+assert.equal(viewMap.range,80,'Provider-adjusted zoom is restored after resolving the real roof height');
+assert.equal(viewMap.heading,275);assert.equal(viewMap.tilt,31);
+api.followCrow({preserveView:true});advance(1200);
+assert.equal(cameraCalls.length,resolveCalls+1,'Repeated returns reuse the resolved roof height');
+api.freeRoam();vm.runInContext('scoutAltitudeBase=null;landedSurfaceAltitude=null',sandbox);
+viewMap.center={lat:1.3,lng:103.8,altitude:200};
+api.followCrow({preserveView:true});api.freeRoam();
+const cancelledHeight=JSON.stringify(viewMap.center);
+viewMap.dispatchEvent(new Event('gmp-animationend'));advance(1200);
+assert.equal(JSON.stringify(viewMap.center),cancelledHeight,'A late height resolution cannot resume a cancelled return');
 api.setCameraView({reset:true});
 console.log('Smooth look contract passed: display cadence, shortest turn, monotonic tilt/zoom, retargeting, free roam, simultaneous steering, slow frames, interruption and reduced motion.');
 
@@ -668,7 +688,16 @@ api.freeRoam();
 Object.assign(viewMap,{heading:311,tilt:38,range:78,center:{lat:1.3,lng:103.8,altitude:200}});
 const findPose=JSON.stringify(api.getContext().position),findHeading=api.getContext().heading;
 for(let i=0;i<2;i++){
+ const calls=cameraCalls.length;
  api.followCrow({preserveView:true});
+ const start={...viewMap.center};
+ for(let frame=0;frame<60;frame++){
+  advance(1000/60);
+  assert.equal(viewMap.heading,311,'Every return frame keeps the visible rotation');
+  assert.equal(viewMap.tilt,38,'Every return frame keeps the visible tilt');
+  assert.equal(viewMap.range,78,'Every return frame keeps the visible zoom');
+  if(frame===10&&i===0){assert.notEqual(viewMap.center.lat,start.lat);assert.notEqual(viewMap.center.lat,api.getContext().position.lat,'Return eases through intermediate centres');}
+ }
  assert.equal(viewMap.heading,311,'Find crow keeps the actual free-roam heading');
  assert.equal(viewMap.tilt,38,'Find crow keeps the actual free-roam tilt');
  assert.equal(viewMap.range,78,'Repeated Find crow keeps the actual zoom');
@@ -677,7 +706,7 @@ for(let i=0;i<2;i++){
  assert.equal(JSON.stringify(api.getContext().position),findPose,'Find crow never moves the crow');
  assert.equal(api.getContext().heading,findHeading,'Find crow never turns the crow');
  assert.equal(api.getContext().freeRoaming,false);
- assert.equal(cameraCalls.at(-1).durationMillis,900,'Find crow keeps the smooth return');
+ assert.equal(cameraCalls.length,calls,'Find crow translates the camera without a native fly-to zoom sweep');
 }
 await api.beginSteering();api.steer(0,1);advance(100);
 assert(Math.abs(viewMap.heading-311)<1e-8,'Steering retains the recovered camera angle');
@@ -685,9 +714,24 @@ assert.equal(viewMap.tilt,38);assert.equal(viewMap.range,78);
 api.endSteering();
 api.setCameraView({rotation:-90,tilt:60},{animate:true});advance(50);
 const midFind={heading:viewMap.heading,tilt:viewMap.tilt,range:viewMap.range};
-api.followCrow({preserveView:true});advance(700);
+api.followCrow({preserveView:true});advance(1200);
 assert.equal(viewMap.heading,midFind.heading,'Find crow during a turn keeps the angle visible at the click');
 assert.equal(viewMap.tilt,midFind.tilt);assert.equal(viewMap.range,midFind.range);
 assert.equal(vm.runInContext('cameraMotion',sandbox),null,'Stale look frames cannot override Find crow');
+api.freeRoam();viewMap.center={lat:1.3,lng:103.8,altitude:200};
+api.followCrow({preserveView:true});advance(100);
+api.freeRoam();const interruptedReturn=JSON.stringify(viewMap.center);advance(2000);
+assert.equal(JSON.stringify(viewMap.center),interruptedReturn,'Exploring cancels an unfinished return');
+api.followCrow({preserveView:true});advance(100);window.dispatchEvent(new Event('blur'));
+const blurredReturn=JSON.stringify(viewMap.center);advance(2000);
+assert.equal(JSON.stringify(viewMap.center),blurredReturn,'Blur cancels an unfinished return');
+api.followCrow({preserveView:true});advance(100);api.setCameraView({rotation:10});
+const adjustedReturn=JSON.stringify(viewMap.center);advance(2000);
+assert.equal(JSON.stringify(viewMap.center),adjustedReturn,'New camera input cancels an unfinished return');
+window.matchMedia=()=>({matches:true});
+api.followCrow({preserveView:true});
+assert.equal(viewMap.center.lat,api.getContext().position.lat,'Reduced motion recentres immediately');
+assert.equal(vm.runInContext('cameraReturn',sandbox),null);
+window.matchMedia=()=>({matches:false});
 api.setCameraView({reset:true});
 console.log('Find crow contract passed: actual free-roam angle and zoom, repeated return, fixed crow, smooth return, steering persistence and interruption.');

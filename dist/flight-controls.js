@@ -14,7 +14,7 @@
   }
   $('free-roam').onclick = () => {
     try {
-      if (window.CrowMap.getContext().freeRoaming) window.CrowMap.followCrow();
+      if (window.CrowMap.getContext().freeRoaming) window.CrowMap.followCrow({ preserveView: true });
       else window.CrowMap.freeRoam();
     } catch (error) { $('hint').textContent = error.message; }
   };
