@@ -13,7 +13,7 @@
 <link rel="stylesheet" href="brand.css?v=2">
 <link rel="stylesheet" href="map-glass.css?v=1">
 <link rel="stylesheet" href="discovery.css?v=3">
-<link rel="stylesheet" href="flight-controls.css?v=7">
+<link rel="stylesheet" href="flight-controls.css?v=8">
 <link rel="stylesheet" href="camera-controls.css?v=6">
 <link rel="stylesheet" href="rooftops.css?v=1">
 <link rel="stylesheet" href="voice-orb.css?v=3">
@@ -28,7 +28,7 @@
 <div class="flight-state glass"><span id="status">Preparing the city…</span><span id="progress-text">0%</span><div class="track"><div id="progress"></div></div></div>
 <div class="side-tools"><button id="height" class="glass" disabled>Higher view</button><label class="glass labels"><input id="labels" type="checkbox" checked> Place labels</label></div>
 <div id="loading" class="loading glass" role="status"><span class="spinner"></span><h2>Finding your starting point</h2><p>Allow location access to start your crow nearby.</p><button id="reload" hidden>Try again</button></div>
-<section class="bottom" aria-label="Flight controls"><div class="controls glass"><button id="restart" aria-label="Restart flight" disabled>↺</button><button id="fly" class="primary" disabled>Lift off</button><button id="free-roam" aria-pressed="false" disabled>Free roam</button><button id="camera-toggle" type="button" aria-expanded="false" aria-controls="camera-panel" disabled>Camera</button><button id="circle-map" aria-pressed="false" aria-label="Circle landmark" disabled>Circle</button><button id="land-map" aria-pressed="false" disabled>Land here</button><button id="speed" disabled>1×</button><button id="nearby" aria-expanded="false" aria-controls="nearby-panel" disabled>Nearby</button></div><p id="hint" role="status"></p>
+<section class="bottom" aria-label="Map controls"><div class="controls"><div class="flight-control-group" role="group" aria-label="Flight"><button id="restart" aria-label="Restart flight" disabled>↺</button><button id="fly" class="primary" disabled>Lift off</button><button id="circle-map" aria-pressed="false" aria-label="Circle landmark" disabled>Circle</button><button id="land-map" aria-pressed="false" disabled>Land here</button><button id="speed" disabled>1×</button></div><div class="flight-control-group" role="group" aria-label="Explore"><button id="free-roam" aria-pressed="false" disabled>Free roam</button><button id="camera-toggle" type="button" aria-expanded="false" aria-controls="camera-panel" disabled>Camera</button><button id="nearby" aria-expanded="false" aria-controls="nearby-panel" disabled>Nearby</button></div></div><p id="hint" role="status"></p>
 </section>
 <section id="camera-panel" aria-label="Camera angle controls" hidden>
  <button id="camera-pad" type="button" aria-label="Camera angle. Drag to look around, or tap an arrow" aria-describedby="camera-help camera-keys" title="Drag to look around · Tap arrows to adjust"><span class="camera-up" aria-hidden="true"></span><span class="camera-left" aria-hidden="true"></span><span class="camera-pad-label" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><span>Drag</span></span><span class="camera-right" aria-hidden="true"></span><span class="camera-down" aria-hidden="true"></span></button>
@@ -110,7 +110,7 @@
 <script src="map-keys.js?v=23"></script>
 <script src="place-search.js?v=23"></script>
 <script src="app.js?v=33"></script>
-<script type="module" src="flight-controls.js?v=5"></script>
+<script type="module" src="flight-controls.js?v=6"></script>
 <script src="camera-controls.js?v=7" defer></script>
 <section class="steering-control" aria-label="Crow steering">
  <div id="steering-panel" hidden>

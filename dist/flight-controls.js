@@ -1,5 +1,9 @@
 (() => {
   const $ = id => document.getElementById(id);
+  const toolbar = document.querySelector('.bottom .controls');
+  new ResizeObserver(() => {
+    document.body.style.setProperty('--flight-toolbar-height', toolbar.getBoundingClientRect().height + 'px');
+  }).observe(toolbar);
   function reflect() {
     const state = window.CrowMap?.getContext();
     for (const id of ['free-roam', 'land-map', 'circle-map']) $(id).disabled = !state?.mapReady;

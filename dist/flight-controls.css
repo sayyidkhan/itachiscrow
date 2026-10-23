@@ -1,17 +1,30 @@
 .explorer.conversation-first .bottom {
   display: block; top: calc(var(--header-height) + 12px); bottom: auto;
-  left: 20px; transform: none; width: min(360px, calc(100% - 40px)); z-index: 3;
+  left: 20px; transform: none; width: min(560px, calc(100% - 40px)); z-index: 3;
 }
-.explorer .bottom .controls { gap: 2px; padding: 4px; border-radius: 16px; box-shadow: var(--glass-shadow); }
+.explorer .bottom .controls {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0;
+  background: none; border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.flight-control-group {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 6px;
+  border: 1px solid var(--glass-border); border-radius: 18px;
+  background: var(--glass-highlight), var(--glass-tint); box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+}
 .explorer .bottom .controls button {
-  display: flex; flex: 1 1 0; min-width: 0; min-height: 44px; padding: 4px 3px;
-  flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  border-radius: 11px; font-size: 11px; font-weight: 500; line-height: 1.2; color: #e0ece7;
+  display: flex; min-width: 0; min-height: 54px; padding: 6px 4px;
+  flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+  border: 1px solid transparent; border-radius: 12px; background: #effff005;
+  font-size: 12px; font-weight: 500; line-height: 1.25; color: #e0ece7; text-align: center;
 }
-.explorer .bottom .controls .primary { background: #b5efd819; color: #cbf6e4; flex: 1 1 0; }
-.explorer .bottom .controls :is([aria-pressed=true], [aria-expanded=true]) { background: #b5efd825; color: #d5ffec; }
+.explorer .bottom .controls .primary { background: #b5efd82b; border-color: #b5efd84a; color: #ddffed; }
+.explorer .bottom .controls :is([aria-pressed=true], [aria-expanded=true]) { background: #b5efd81c; border-color: #b5efd82e; color: #d5ffec; }
+@media (hover: hover) {
+  .explorer .bottom .controls button:hover:not(:disabled) { background: #b5efd82b; border-color: #b5efd84a; }
+}
 .explorer .bottom .controls button::before {
-  content: ''; width: 16px; height: 16px; flex: 0 0 16px; background: currentColor;
+  content: ''; width: 18px; height: 18px; flex: 0 0 18px; background: currentColor;
   -webkit-mask: var(--control-icon) center / contain no-repeat;
   mask: var(--control-icon) center / contain no-repeat;
 }
@@ -75,11 +88,20 @@
   .explorer:has(#voice-overlay:not([hidden])) .nearby-panel { display: none; }
 }
 @media (max-width: 760px) {
-  .explorer.conversation-first .bottom { left: 12px; width: min(360px, calc(100% - 24px)); top: calc(var(--header-height) + 12px); }
-  .explorer .bottom #hint { max-width: none; }
+  .explorer.conversation-first .bottom { left: 12px; width: min(560px, calc(100% - 24px)); top: calc(var(--header-height) + 12px); }
   .explorer .nearby-panel { padding: 9px; border-radius: 18px; }
   .nearby-card { flex-basis: 158px; }
   .explorer.conversation-first.long-flight .travel-transition { top: calc(var(--header-height) + 76px); }
+}
+@media (max-width: 600px) and (min-height: 501px) {
+  .explorer.conversation-first .bottom { width: min(360px, calc(100% - 24px)); }
+  .explorer .bottom .controls { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+}
+@media (max-height: 500px) {
+  .explorer .bottom .controls { gap: 8px; }
+  .flight-control-group { padding: 4px; gap: 2px; border-radius: 14px; }
+  .explorer .bottom .controls button { min-height: 44px; padding: 3px 1px; gap: 3px; font-size: 10px; }
+  .explorer .bottom .controls button::before { width: 16px; height: 16px; flex-basis: 16px; }
 }
 @media (max-height: 600px) {
   .nearby-art { height: 44px; }
@@ -96,8 +118,8 @@
   .nearby-distance { padding-top: 5px; }
 }
 .explorer.conversation-first.long-flight .travel-transition:not(.travel-contained) {
-  top: calc(var(--header-height) + 80px); bottom: auto; left: 20px; transform: none;
-  width: min(360px, calc(100% - 40px)); padding: 12px 16px; animation: none; z-index: 3;
+  top: calc(var(--header-height) + 24px + var(--flight-toolbar-height, 68px)); bottom: auto; left: 20px; transform: none;
+  width: min(560px, calc(100% - 40px)); padding: 12px 16px; animation: none; z-index: 3;
 }
 .explorer.long-flight .bottom #hint { display: none; }
 .explorer.conversation-first .travel-transition.travel-contained {
